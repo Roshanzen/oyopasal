@@ -308,7 +308,7 @@ const PRODUCTS: ProductItem[] = [
     discounted_price: 175,
     discount_percentage: 20,
     unit: 'Pack of 2',
-    stock: 18,
+    stock: 2,
     in_stock: true,
     is_organic: false,
     rating: 4.8,
@@ -417,7 +417,7 @@ const PRODUCTS: ProductItem[] = [
     discounted_price: 120,
     discount_percentage: 25,
     unit: '1 head (approx 450g)',
-    stock: 22,
+    stock: 3,
     in_stock: true,
     is_organic: true,
     rating: 4.8,
@@ -1491,6 +1491,172 @@ app.get('/api/v1/seller/dashboard/', (req, res) => {
     ],
     products: vendorProducts
   });
+});
+
+// Seller Product Management: Add, List, Toggle Stock, Delete
+app.post('/api/v1/seller/products/', async (req, res) => {
+  const {
+    vendor_id,
+    name,
+    category_slug,
+    unit,
+    original_price,
+    discounted_price,
+    stock,
+    is_organic,
+    description,
+    image_url,
+    sections
+  } = req.body;
+
+  if (!name || !discounted_price || !unit) {
+    return res.status(400).json({ detail: 'Product name, discounted price, and unit are required.' });
+  }
+
+  const vendor = VENDORS.find(v => v.id === vendor_id) || VENDORS[0];
+  const cat = CATEGORIES.find(c => c.slug === category_slug || c.id === category_slug) || CATEGORIES[0];
+
+  const origPrice = Number(original_price) || Number(discounted_price);
+  const discPrice = Number(discounted_price);
+  const discountPercent = origPrice > discPrice ? Math.round(((origPrice - discPrice) / origPrice) * 100) : 0;
+  const stockCount = Number(stock) || 25;
+
+  const newProduct: ProductItem = {
+    id: `prod-${Date.now()}`,
+    name: name.trim(),
+    slug: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    category: {
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug
+    },
+    vendor: {
+      id: vendor.id,
+      name: vendor.name,
+      rating: vendor.rating || 4.9,
+      delivery_time_mins: vendor.delivery_time_mins || '10-15 mins'
+    },
+    original_price: origPrice,
+    discounted_price: discPrice,
+    discount_percentage: discountPercent,
+    unit: unit.trim(),
+    stock: stockCount,
+    in_stock: stockCount > 0,
+    is_organic: Boolean(is_organic),
+    rating: 5.0,
+    reviews_count: 1,
+    image_url: image_url || '/src/assets/images/hero_groceries_fresh_1794407355931.jpg',
+    gallery: [image_url || '/src/assets/images/hero_groceries_fresh_1794407355931.jpg'],
+    description: description || `${name.trim()} freshly supplied by ${vendor.name}.`,
+    origin: vendor.location || 'Kathmandu Valley',
+    variants: [
+      {
+        id: `var-${Date.now()}`,
+        name: unit.trim(),
+        unit: unit.trim(),
+        price: discPrice,
+        original_price: origPrice,
+        stock: stockCount
+      }
+    ],
+    sections: Array.isArray(sections) && sections.length > 0 ? sections : ['fresh_arrivals', 'recommended', 'best_sellers']
+  };
+
+  // Add to in-memory PRODUCTS list at the top so it immediately appears on customer homepage and search
+  PRODUCTS.unshift(newProduct);
+
+  // Sync to Cloud SQL PostgreSQL if connected
+  try {
+    await db.insert(products).values({
+      slug: newProduct.slug,
+      name: newProduct.name,
+      category: newProduct.category.slug,
+      subCategory: newProduct.category.slug,
+      price: newProduct.discounted_price,
+      originalPrice: newProduct.original_price,
+      discountPercent: newProduct.discount_percentage,
+      unit: newProduct.unit,
+      inStock: newProduct.in_stock,
+      stockCount: newProduct.stock,
+      rating: '5.0',
+      ratingCount: 1,
+      image: newProduct.image_url,
+      description: newProduct.description,
+      vendorName: newProduct.vendor.name,
+      isBestSeller: newProduct.sections.includes('best_sellers'),
+      isTrending: newProduct.sections.includes('trending'),
+      isFresh: newProduct.sections.includes('fresh_arrivals'),
+      isDeal: newProduct.sections.includes('top_deals'),
+    }).onConflictDoNothing();
+  } catch (sqlErr) {
+    console.warn('Syncing to Cloud SQL skipped or deferred:', sqlErr);
+  }
+
+  res.status(201).json({
+    success: true,
+    message: 'Product added successfully! It is now live for all customer orders.',
+    product: newProduct
+  });
+});
+
+app.get('/api/v1/seller/products/', (req, res) => {
+  const vendorId = req.query.vendor_id as string;
+  let list = PRODUCTS;
+  if (vendorId) {
+    list = list.filter(p => p.vendor.id === vendorId);
+  }
+  res.json({
+    count: list.length,
+    results: list
+  });
+});
+
+app.patch('/api/v1/seller/products/:id/toggle-stock/', (req, res) => {
+  const product = PRODUCTS.find(p => p.id === req.params.id);
+  if (!product) {
+    return res.status(404).json({ detail: 'Product not found.' });
+  }
+  product.in_stock = !product.in_stock;
+  if (!product.in_stock) {
+    product.stock = 0;
+  } else if (product.stock === 0) {
+    product.stock = 25;
+  }
+  res.json({
+    success: true,
+    in_stock: product.in_stock,
+    product
+  });
+});
+
+app.patch('/api/v1/seller/products/:id/restock/', (req, res) => {
+  const product = PRODUCTS.find(p => p.id === req.params.id);
+  if (!product) {
+    return res.status(404).json({ detail: 'Product not found.' });
+  }
+  const addStock = typeof req.body?.add_stock === 'number' ? req.body.add_stock : 25;
+  const newStock = typeof req.body?.stock === 'number' ? req.body.stock : (product.stock || 0) + addStock;
+  product.stock = Math.max(0, newStock);
+  product.in_stock = product.stock > 0;
+  if (product.variants && product.variants.length > 0) {
+    product.variants[0].stock = product.stock;
+  }
+  res.json({
+    success: true,
+    message: `Restocked ${product.name}. Current stock: ${product.stock} units.`,
+    stock: product.stock,
+    in_stock: product.in_stock,
+    product
+  });
+});
+
+app.delete('/api/v1/seller/products/:id/', (req, res) => {
+  const idx = PRODUCTS.findIndex(p => p.id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ detail: 'Product not found.' });
+  }
+  PRODUCTS.splice(idx, 1);
+  res.json({ success: true, message: 'Product deleted from catalog.' });
 });
 
 // 9. Addresses

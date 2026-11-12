@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import {
@@ -15,11 +16,14 @@ import {
   RotateCcw,
   Sparkles,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  BarChart3,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function SellerDashboardModal() {
+  const navigate = useNavigate();
   const {
     sellerDashboardModalOpen,
     setSellerDashboardModalOpen,
@@ -308,17 +312,29 @@ export default function SellerDashboardModal() {
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 mt-6">
-          <button
-            onClick={() => setSellerDashboardModalOpen(false)}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-          >
-            Switch to Customer View
-          </button>
+        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSellerDashboardModalOpen(false);
+                navigate('/seller');
+              }}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Open Visual Summary & Sales Charts</span>
+            </button>
+            <button
+              onClick={() => setSellerDashboardModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Customer View
+            </button>
+          </div>
 
           <button
             onClick={logoutSeller}
-            className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 px-3 py-1.5 cursor-pointer"
+            className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 px-3 py-1.5 cursor-pointer self-start sm:self-auto"
           >
             Sign Out of Store
           </button>

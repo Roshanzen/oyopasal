@@ -24,6 +24,7 @@ import SearchPage from './pages/SearchPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import AccountPage from './pages/AccountPage';
+import SellerPortalPage from './pages/SellerPortalPage';
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/orders/:id" element={<OrderTrackingPage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/seller" element={<SellerPortalPage />} />
               <Route path="*" element={<HomePage />} />
             </Routes>
           </main>

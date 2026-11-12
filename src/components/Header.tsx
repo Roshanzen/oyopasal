@@ -110,22 +110,26 @@ export default function Header() {
       <div className="bg-emerald-950 text-emerald-100 text-[11px] py-1.5 px-4 font-medium border-b border-emerald-900/60">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="bg-emerald-700/80 text-white font-bold px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">
-              Seller Hub
-            </span>
+            <Link
+              to="/seller"
+              className="bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+            >
+              <span>Seller Hub</span>
+              <ArrowRight className="w-2.5 h-2.5" />
+            </Link>
             <span className="hidden sm:inline text-emerald-200/90">
               Grow your local store with 10-minute deliveries across Kathmandu Valley. 0% commission for 30 days.
             </span>
             <span className="sm:hidden text-emerald-200/90 truncate">Partner with OyoPasal Quick-Commerce</span>
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-3">
-            <button
-              onClick={() => setSellerLoginModalOpen(true)}
+            <Link
+              to="/seller"
               className="text-emerald-300 hover:text-white font-bold flex items-center gap-1 transition-colors cursor-pointer text-xs"
             >
               <LogIn className="w-3 h-3 text-emerald-400" />
               <span>Login as Seller</span>
-            </button>
+            </Link>
             <span className="text-emerald-800">·</span>
             <button
               onClick={() => setBecomeSellerModalOpen(true)}
@@ -329,16 +333,16 @@ export default function Header() {
 
             {/* Active Seller Portal Badge (if logged in as vendor) */}
             {currentSeller && (
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={() => setSellerDashboardModalOpen(true)}
-                className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition-colors cursor-pointer"
-                title="Open Merchant Order Dispatch Portal"
-              >
-                <Store className="w-3.5 h-3.5 text-emerald-200" />
-                <span className="truncate max-w-[120px]">{currentSeller.name}</span>
-              </motion.button>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.94 }}>
+                <Link
+                  to="/seller"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition-colors"
+                  title="Open Merchant Portal Backend"
+                >
+                  <Store className="w-3.5 h-3.5 text-emerald-200" />
+                  <span className="truncate max-w-[120px]">{currentSeller.name}</span>
+                </Link>
+              </motion.div>
             )}
 
             {/* Account Menu */}
@@ -417,28 +421,24 @@ export default function Header() {
                       </span>
 
                       {currentSeller ? (
-                        <button
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            setSellerDashboardModalOpen(true);
-                          }}
+                        <Link
+                          to="/seller"
+                          onClick={() => setUserMenuOpen(false)}
                           className="w-full flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-left mb-1 cursor-pointer"
                         >
                           <div className="flex items-center gap-2 truncate">
                             <Store className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                             <div className="truncate">
                               <span className="block truncate font-bold text-slate-900 dark:text-white">{currentSeller.name}</span>
-                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">Store Dashboard (Active)</span>
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">Store Dashboard & Add Products</span>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        </button>
+                        </Link>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            setSellerLoginModalOpen(true);
-                          }}
+                        <Link
+                          to="/seller"
+                          onClick={() => setUserMenuOpen(false)}
                           className="w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-900 dark:hover:text-emerald-300 transition-colors text-left group cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5">
@@ -450,12 +450,12 @@ export default function Header() {
                                 Login as Seller
                               </span>
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-normal">
-                                Manage orders & inventory
+                                Manage orders & add products
                               </span>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
-                        </button>
+                        </Link>
                       )}
 
                       <button

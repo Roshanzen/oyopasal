@@ -111,6 +111,49 @@ class ApiService {
     return this.request(`/seller/dashboard/${qs}`);
   }
 
+  async createSellerProduct(data: {
+    vendor_id?: string;
+    name: string;
+    category_slug: string;
+    unit: string;
+    original_price: number;
+    discounted_price: number;
+    stock?: number;
+    is_organic?: boolean;
+    description?: string;
+    image_url?: string;
+    sections?: string[];
+  }): Promise<{ success: boolean; message: string; product: Product }> {
+    return this.request('/seller/products/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async getSellerProducts(vendorId?: string): Promise<{ count: number; results: Product[] }> {
+    const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
+    return this.request(`/seller/products/${qs}`);
+  }
+
+  async toggleProductStock(productId: string): Promise<{ success: boolean; in_stock: boolean; product: Product }> {
+    return this.request(`/seller/products/${productId}/toggle-stock/`, {
+      method: 'PATCH'
+    });
+  }
+
+  async restockProduct(productId: string, addStock = 25): Promise<{ success: boolean; message: string; stock: number; in_stock: boolean; product: Product }> {
+    return this.request(`/seller/products/${productId}/restock/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ add_stock: addStock })
+    });
+  }
+
+  async deleteProduct(productId: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/seller/products/${productId}/`, {
+      method: 'DELETE'
+    });
+  }
+
   // Products
   async getProducts(params?: {
     category?: string;

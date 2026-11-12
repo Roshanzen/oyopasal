@@ -105,7 +105,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [becomeSellerModalOpen, setBecomeSellerModalOpen] = useState<boolean>(false);
   const [sellerLoginModalOpen, setSellerLoginModalOpen] = useState<boolean>(false);
   const [sellerDashboardModalOpen, setSellerDashboardModalOpen] = useState<boolean>(false);
-  const [currentSeller, setCurrentSeller] = useState<any | null>(null);
+  const [currentSeller, setCurrentSeller] = useState<any | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('oyopasal_seller_session');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -303,6 +313,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.loginAsSeller(payload);
       setCurrentSeller(res.vendor);
+      localStorage.setItem('oyopasal_seller_session', JSON.stringify(res.vendor));
       setSellerLoginModalOpen(false);
       setSellerDashboardModalOpen(true);
       showToast(`Welcome to Merchant Portal, ${res.vendor.name}!`, 'success');
@@ -315,6 +326,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logoutSeller = () => {
     setCurrentSeller(null);
+    localStorage.removeItem('oyopasal_seller_session');
     setSellerDashboardModalOpen(false);
     showToast('Signed out from Merchant Portal', 'info');
   };
