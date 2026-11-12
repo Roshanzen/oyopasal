@@ -1,0 +1,6 @@
+{
+  "name": "OyoPasal — Quick Commerce",
+  "description": "Fast 10-15 minute grocery and daily essentials delivery from trusted local vendors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
