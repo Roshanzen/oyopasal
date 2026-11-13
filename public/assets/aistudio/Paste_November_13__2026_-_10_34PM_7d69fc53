@@ -1,0 +1,1413 @@
+ # OYOPASAL – MASTER PROMPT
+# COMPLETE MISSING SYSTEM IMPLEMENTATION & PRODUCTION READINESS
+
+## ROLE
+
+Act as a principal software architect, senior full-stack developer, database engineer, security engineer, DevOps engineer and QA automation specialist.
+
+You are responsible for transforming my existing OyoPasal project into a complete, secure, scalable, production-ready multi-vendor grocery delivery platform.
+
+You must work directly inside my existing repository.
+
+This is not a request to create a demo, redesign only the UI, or generate sample code.
+
+Your responsibility is to inspect, implement, integrate, test and complete all missing systems.
+
+---
+
+# PART 1 – EXISTING PROJECT ARCHITECTURE
+
+First inspect the entire existing repository.
+
+The uploaded project currently uses:
+
+Frontend:
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS 4
+- React Router
+
+Backend:
+
+Python
+
+Django
+
+Django REST Framework
+
+Django ORM
+
+Django authentication and permissions
+
+Database:
+
+MySQL
+
+mysqlclient
+Authentication:
+- Firebase Authentication
+
+Additional integrations:
+- Google Gemini
+- Google Maps
+
+IMPORTANT:
+
+1. Preserve this existing technology stack.
+2. Do not migrate to Django or MySQL.
+3. Do not introduce a second competing backend.
+4. Use PostgreSQL as the authoritative business database.
+5. Use Express as the backend API server.
+6. Use Drizzle ORM for database operations.
+7. Use Firebase authentication with proper server-side token verification.
+8. Keep existing working React components and designs.
+9. Reuse existing libraries and dependencies wherever possible.
+
+Do not rewrite working systems unnecessarily.
+
+---
+
+# PART 2 – COMPLETE PROJECT AUDIT
+
+Before implementation, inspect every folder and source file.
+
+Identify:
+
+- Static data.
+- Mock data.
+- In-memory database arrays.
+- Hardcoded products.
+- Hardcoded vendors.
+- Fake customer records.
+- Hardcoded order records.
+- Placeholder payment functionality.
+- Non-functional buttons.
+- Incomplete API endpoints.
+- Missing database relationships.
+- Authentication weaknesses.
+- Missing permissions.
+- Incomplete seller features.
+- Incomplete admin features.
+- Incomplete delivery functionality.
+- Frontend components not connected to APIs.
+
+Prepare an internal implementation checklist.
+
+Do not stop after generating an audit report. Continue implementing the missing systems.
+
+---
+
+# PART 3 – COMPLETE DATABASE SYSTEM
+
+Make PostgreSQL the single source of truth.
+
+Inspect the existing Drizzle schema and improve it without unnecessarily duplicating tables.
+
+Implement the following database modules.
+
+## 3.1 User Management
+
+- Users
+- Customer profiles
+- Seller profiles
+- Admin profiles
+- Delivery agent profiles
+- User roles
+- User permissions
+- Account verification
+- Account status
+- User sessions where applicable
+- Saved addresses
+
+## 3.2 Vendor Management
+
+- Vendor registration
+- Vendor verification
+- Business information
+- Store profile
+- Store logo
+- Store cover image
+- Store location
+- Service areas
+- Business hours
+- Store availability
+- Vendor approval status
+- Vendor commission settings
+
+## 3.3 Product Management
+
+- Products
+- Product categories
+- Subcategories
+- Product variants
+- Product attributes
+- Product images
+- SKU
+- Barcode where applicable
+- Product pricing
+- Discount pricing
+- Stock availability
+- Product tags
+- Product approval
+- Product expiry information where relevant
+
+## 3.4 Inventory Management
+
+- Inventory records
+- Stock adjustments
+- Inventory movements
+- Stock reservations
+- Low-stock alerts
+- Damaged inventory
+- Expired inventory
+- Stock history
+- Inventory audit logs
+
+## 3.5 Shopping and Orders
+
+- Shopping carts
+- Cart items
+- Wishlists
+- Orders
+- Order items
+- Order status history
+- Vendor-specific fulfillment
+- Order cancellations
+- Returns
+- Refunds
+- Customer invoices
+
+## 3.6 Financial Management
+
+- Payments
+- Payment transactions
+- Payment gateway references
+- Refund transactions
+- Vendor commissions
+- Vendor settlements
+- Seller payout records
+- Platform revenue
+- Financial audit records
+
+## 3.7 Other Modules
+
+- Customer reviews
+- Product ratings
+- Coupons
+- Promotions
+- Advertisements
+- Homepage banners
+- Notifications
+- Delivery assignments
+- Delivery tracking events
+- Support tickets
+- Platform settings
+- Audit logs
+
+Use proper foreign keys, indexes, constraints, timestamps and transactions.
+
+Preserve historical order information using price and product snapshots.
+
+Do not store sensitive payment credentials or unnecessary personal information.
+
+---
+
+# PART 4 – REMOVE ALL IN-MEMORY BUSINESS DATA
+
+This is one of the most important tasks.
+
+Inspect server.ts and every backend service.
+
+The current implementation contains in-memory business data and arrays that should not be used as permanent storage.
+
+Replace these with PostgreSQL-backed services.
+
+Remove in-memory business storage for:
+
+- Products
+- Vendors
+- Categories
+- Orders
+- Cart data
+- Notifications
+- Addresses
+- Promotions
+- Customer records
+- Seller records
+- Inventory
+
+All business data must be persisted.
+
+Requirements:
+
+1. Every create operation must save to PostgreSQL.
+2. Every update operation must update PostgreSQL.
+3. Every delete operation must follow appropriate deletion rules.
+4. Every listing operation must read from PostgreSQL.
+5. Every important financial operation must be transactional.
+6. Database errors must be reported correctly.
+7. Do not silently ignore database failures.
+8. Do not report success before the database confirms the operation.
+
+Browser refreshes and server restarts must not destroy customer or seller data.
+
+---
+
+# PART 5 – COMPLETE AUTHENTICATION AND SECURITY
+
+Implement a proper authentication architecture.
+
+Use Firebase Authentication as the identity provider.
+
+Backend requirements:
+
+- Verify Firebase ID tokens server-side.
+- Never trust user IDs sent by the frontend.
+- Derive authenticated identity from verified tokens.
+- Implement customer permissions.
+- Implement seller permissions.
+- Implement admin permissions.
+- Implement delivery-agent permissions.
+- Protect all private endpoints.
+- Implement account status checks.
+- Implement seller approval checks.
+- Implement object-level authorization.
+
+Remove all hardcoded fallback authentication tokens.
+
+Remove global shared-user login behavior.
+
+Remove predefined seller login shortcuts.
+
+Never allow a customer or seller to access another user's records.
+
+Protect:
+- Orders
+- Payments
+- Customer profiles
+- Addresses
+- Seller products
+- Seller orders
+- Financial reports
+- Administrative APIs
+
+Implement login rate limiting, input validation and secure error handling.
+
+---
+
+# PART 6 – COMPLETE ADMIN DASHBOARD
+
+Build a complete administrative management system.
+
+The admin dashboard must be connected to real PostgreSQL data.
+
+## 6.1 Admin Overview
+
+Display:
+
+- Total customers
+- Total sellers
+- Pending seller approvals
+- Active stores
+- Total products
+- Pending product approvals
+- Total orders
+- Pending orders
+- Completed orders
+- Cancelled orders
+- Gross merchandise value
+- Platform revenue
+- Seller commissions
+- Pending payouts
+- Active delivery agents
+
+All statistics must come from actual database queries.
+
+## 6.2 Seller Management
+
+Admin can:
+
+- View sellers
+- Approve sellers
+- Reject seller applications
+- Suspend sellers
+- Reactivate sellers
+- Verify business information
+- View store details
+- View seller products
+- View seller performance
+- Configure commission rates
+- View seller settlements
+
+## 6.3 Product Management
+
+Admin can:
+
+- View all products
+- Approve products
+- Reject products
+- Edit products when authorized
+- Suspend products
+- Manage categories
+- Manage subcategories
+- Manage product attributes
+- Manage featured products
+- Manage product visibility
+
+## 6.4 Banner and Advertisement Management
+
+Create a dynamic CMS.
+
+Admin should be able to:
+
+- Upload banners
+- Add banner titles
+- Add descriptions
+- Add destination links
+- Configure banner placement
+- Schedule campaigns
+- Set campaign start and end dates
+- Activate or deactivate campaigns
+- Configure display priority
+
+Changes should automatically appear on the customer website.
+
+## 6.5 Financial Administration
+
+Display:
+
+- Total sales
+- Platform commission
+- Vendor revenue
+- Payment history
+- Refund history
+- Pending settlements
+- Completed settlements
+- Transaction reports
+
+Provide date filters and exportable reports.
+
+Never calculate financial totals using fake or hardcoded values.
+
+---
+
+# PART 7 – COMPLETE SELLER PORTAL
+
+Create a fully functional independent seller portal.
+
+## 7.1 Seller Dashboard
+
+Show:
+
+- Today's orders
+- Total orders
+- Today's sales
+- Monthly revenue
+- Pending orders
+- Completed orders
+- Best-selling products
+- Low-stock products
+- Store status
+- Recent transactions
+
+## 7.2 Store Management
+
+Seller can:
+
+- Create store
+- Edit store
+- Upload store logo
+- Upload cover image
+- Update contact information
+- Update address
+- Configure business hours
+- Configure store availability
+- Manage service areas
+
+## 7.3 Product Management
+
+Seller can:
+
+- Add products
+- Edit products
+- Archive products
+- Upload multiple images
+- Set product price
+- Configure discounts
+- Configure variants
+- Set product units
+- Manage stock
+- Configure availability
+- View product approval status
+
+Seller products must be linked to the authenticated seller.
+
+## 7.4 Inventory Management
+
+Implement:
+
+- Stock tracking
+- Stock adjustment
+- Inventory history
+- Low-stock alerts
+- Expiry tracking
+- Stock reservation
+- Prevention of overselling
+
+## 7.5 Seller Order Management
+
+Seller can:
+
+- View new orders
+- Accept eligible orders
+- Reject eligible orders
+- Update preparation status
+- Mark ready for pickup
+- View completed orders
+- View cancelled orders
+- View customer delivery information where authorized
+
+Seller must only access orders containing their own products.
+
+For multi-vendor orders, each seller should manage their own fulfillment independently.
+
+---
+
+# PART 8 – COMPLETE CUSTOMER SYSTEM
+
+Implement a complete customer account experience.
+
+Features:
+
+- Customer registration
+- Customer login
+- Customer profile
+- Profile editing
+- Phone verification
+- Saved addresses
+- Default address
+- Multiple delivery addresses
+- Order history
+- Order details
+- Reorder functionality
+- Persistent wishlist
+- Persistent cart
+- Product reviews
+- Notification history
+- Refund requests
+- Customer support
+
+Every customer must see only their own private information.
+
+---
+
+# PART 9 – COMPLETE PRODUCT DISCOVERY
+
+Make the customer-facing homepage fully dynamic.
+
+## Homepage
+
+All sections must use actual backend data.
+
+Implement:
+
+- Dynamic hero banners
+- Dynamic categories
+- Featured products
+- Popular products
+- Best sellers
+- New arrivals
+- Fresh vegetables
+- Fresh fruits
+- Meat and dairy
+- Grocery essentials
+- Household products
+- Special offers
+- Recommended products
+
+Use proper database filters and configurable merchandising rules.
+
+Do not display products randomly just to fill sections.
+
+## Search
+
+Implement:
+
+- Product name search
+- Keyword search
+- Category filtering
+- Vendor filtering
+- Price filtering
+- Availability filtering
+- Sorting
+- Pagination
+- Search suggestions
+- Search history where appropriate
+
+Search must work against actual database records.
+
+## Product Details
+
+Display:
+
+- Product images
+- Product name
+- Description
+- Actual price
+- Discount price
+- Available variants
+- Stock status
+- Seller information
+- Delivery eligibility
+- Verified reviews
+- Related products
+
+Never display invented ratings or stock quantities.
+
+---
+
+# PART 10 – COMPLETE SHOPPING CART
+
+Implement a persistent shopping cart.
+
+Features:
+
+- Add to cart
+- Remove from cart
+- Increase quantity
+- Decrease quantity
+- Update quantity
+- Clear cart
+- Save cart
+- Restore cart after login
+- Display subtotal
+- Display discount
+- Display delivery charges
+- Display final amount
+
+Support multi-vendor carts.
+
+Group items by vendor and create appropriate vendor fulfillment records during checkout.
+
+Validate prices and stock on the backend.
+
+Do not trust frontend calculations.
+
+Use database transactions and appropriate stock reservation rules.
+
+---
+
+# PART 11 – CHECKOUT AND ORDER MANAGEMENT
+
+Implement a complete checkout system.
+
+Checkout steps:
+
+1. Confirm customer identity.
+2. Select delivery address.
+3. Validate serviceability.
+4. Validate all products.
+5. Validate prices.
+6. Validate stock.
+7. Apply valid coupon.
+8. Calculate delivery charges.
+9. Calculate final payable amount.
+10. Create the order transactionally.
+11. Create vendor-specific fulfillment records.
+12. Reserve or deduct stock according to the defined inventory policy.
+13. Initiate payment when applicable.
+14. Return a valid order confirmation.
+
+Never create an order that reports successful payment without verified payment confirmation.
+
+## Order Status Management
+
+Implement explicit order states:
+
+- PENDING
+- CONFIRMED
+- PREPARING
+- READY_FOR_PICKUP
+- ASSIGNED_TO_RIDER
+- PICKED_UP
+- OUT_FOR_DELIVERY
+- DELIVERED
+- CANCELLED
+- FAILED
+- REFUND_PENDING
+- REFUNDED
+
+Define valid transitions and permissions.
+
+Maintain a complete order status history.
+
+---
+
+# PART 12 – PAYMENT GATEWAY INTEGRATION
+
+Implement actual payment integration where credentials and merchant accounts are available.
+
+Supported payment methods:
+
+- Cash on Delivery
+- eSewa
+- Khalti
+- ConnectIPS, if supported and configured
+
+Requirements:
+
+- Secure payment initiation.
+- Server-side payment verification.
+- Signed callbacks and webhooks.
+- Transaction references.
+- Duplicate payment prevention.
+- Payment status tracking.
+- Failed payment handling.
+- Refund workflows.
+- Payment reconciliation.
+- Transaction audit logs.
+
+Never simulate successful payments.
+
+If credentials are unavailable, implement the integration structure and clearly document the remaining configuration required.
+
+Never expose secret keys in React code.
+
+---
+
+# PART 13 – COMPLETE DELIVERY MANAGEMENT
+
+OyoPasal is a quick-commerce platform. Delivery is a core business system.
+
+Build a separate delivery management module.
+
+## Delivery Agent Management
+
+Admin can:
+
+- Register delivery agents.
+- Verify delivery agents.
+- Activate or suspend accounts.
+- View delivery agent availability.
+- View assigned deliveries.
+
+## Rider Dashboard
+
+Delivery agents can:
+
+- Log in.
+- Set availability.
+- View assigned orders.
+- Accept eligible assignments.
+- Confirm store pickup.
+- Update delivery status.
+- Share GPS location with permission.
+- Confirm delivery completion.
+
+## Dispatch Management
+
+Implement:
+
+- Delivery assignment.
+- Rider availability checks.
+- Vendor pickup information.
+- Delivery destination.
+- Delivery status history.
+- Failed delivery management.
+- Delivery performance analytics.
+
+## Live Tracking
+
+Use actual GPS updates.
+
+Customer tracking must display actual rider coordinates and update timestamps.
+
+Do not simulate GPS movement.
+
+If no rider is assigned, show an appropriate order status rather than a fake live map.
+
+---
+
+# PART 14 – DELIVERY ZONES AND LOCATION
+
+Implement configurable delivery geography.
+
+Features:
+
+- Kathmandu Valley service zones.
+- Kathmandu, Lalitpur and Bhaktapur coverage.
+- Vendor service areas.
+- Customer address coordinates.
+- Delivery eligibility.
+- Distance calculation.
+- Configurable delivery charges.
+- Minimum order value.
+- Estimated delivery time.
+
+Allow administrators to configure:
+
+- Delivery zones.
+- Delivery fees.
+- Free delivery thresholds.
+- Minimum orders.
+- Delivery availability.
+- Operational hours.
+
+Do not hardcode New Baneshwor as the permanent customer location.
+
+Use the customer's selected saved address.
+
+Do not guarantee 10–15-minute delivery unless actual operational conditions support that estimate.
+
+---
+
+# PART 15 – FINANCIAL AND COMMISSION MANAGEMENT
+
+Build a complete multi-vendor financial system.
+
+Admin must configure:
+
+- Global commission.
+- Vendor-specific commission.
+- Promotional commission discounts.
+- Commission effective dates.
+- Seller settlement schedules.
+
+Track:
+
+- Order gross amount.
+- Discounts.
+- Taxes where applicable.
+- Delivery fees.
+- Payment fees.
+- Platform commission.
+- Vendor payable amount.
+- Refund adjustments.
+- Settlement status.
+
+Seller dashboard must show:
+
+- Gross sales.
+- Commission deductions.
+- Net earnings.
+- Pending settlements.
+- Completed payouts.
+
+Maintain an immutable financial transaction history with correction and reversal records instead of silently changing completed transactions.
+
+---
+
+# PART 16 – REVIEWS AND CUSTOMER FEEDBACK
+
+Implement:
+
+- Verified purchase reviews.
+- Product ratings.
+- Seller ratings.
+- Review moderation.
+- Review reporting.
+- Review responses where supported.
+- Rating calculations.
+
+Only eligible customers should be allowed to submit reviews.
+
+Prevent duplicate or fraudulent review submissions.
+
+Never generate random product ratings.
+
+---
+
+# PART 17 – PROMOTIONS AND COUPONS
+
+Implement a complete promotional engine.
+
+Admin can:
+
+- Create coupons.
+- Set discount type.
+- Set discount amount.
+- Configure expiration.
+- Configure minimum order.
+- Configure maximum discount.
+- Configure usage limits.
+- Configure eligible vendors.
+- Configure eligible categories.
+- Activate or deactivate promotions.
+
+Support:
+
+- Percentage discounts.
+- Fixed discounts.
+- First-order offers.
+- Vendor-specific offers.
+- Free delivery offers.
+
+Validate all coupon rules on the backend.
+
+Prevent coupon abuse.
+
+---
+
+# PART 18 – NOTIFICATIONS AND COMMUNICATION
+
+Create a persistent notification system.
+
+Notification events:
+
+- Registration confirmation.
+- Seller approval.
+- Seller rejection.
+- New order.
+- Order confirmation.
+- Order preparation.
+- Rider assignment.
+- Order pickup.
+- Order delivery.
+- Payment success.
+- Payment failure.
+- Refund updates.
+- Low-stock alerts.
+- Important administrative announcements.
+
+Implement:
+
+- In-app notifications.
+- Read/unread status.
+- Notification history.
+- User-specific notifications.
+
+Add email, SMS or push notifications only where providers are configured.
+
+Do not claim delivery of a notification unless the provider confirms it.
+
+---
+
+# PART 19 – IMAGE AND MEDIA MANAGEMENT
+
+Implement proper image storage.
+
+Requirements:
+
+- Product image uploads.
+- Category image uploads.
+- Seller logo uploads.
+- Store cover uploads.
+- Advertisement uploads.
+- Banner uploads.
+- Image validation.
+- File size restrictions.
+- Secure storage.
+- Image optimization.
+- WebP/AVIF support where practical.
+- Lazy loading.
+- Image replacement.
+- Image deletion.
+
+Use cloud storage or an appropriate persistent object-storage solution in production.
+
+Do not depend on temporary server filesystem storage for production uploads.
+
+Database records must reference the correct images.
+
+Avoid broken image URLs and stale image caching.
+
+---
+
+# PART 20 – CUSTOMER SUPPORT SYSTEM
+
+Create a customer support module.
+
+Features:
+
+- Support tickets.
+- Complaint categories.
+- Order-related complaints.
+- Payment complaints.
+- Delivery complaints.
+- Refund requests.
+- Ticket status.
+- Admin responses.
+- Customer responses.
+- Ticket history.
+
+Allow administrators to manage and resolve complaints.
+
+Provide proper privacy restrictions.
+
+---
+
+# PART 21 – ANALYTICS AND REPORTING
+
+Create real database-driven analytics.
+
+Admin reports:
+
+- Daily sales.
+- Weekly sales.
+- Monthly sales.
+- Annual sales.
+- Vendor performance.
+- Customer growth.
+- Order trends.
+- Product performance.
+- Commission revenue.
+- Payment methods.
+- Refund reports.
+- Delivery performance.
+
+Seller reports:
+
+- Sales reports.
+- Product performance.
+- Inventory reports.
+- Order reports.
+- Commission reports.
+- Payout reports.
+
+Use real SQL aggregation.
+
+Do not calculate business statistics using hardcoded frontend values.
+
+Support date filters and CSV exports.
+
+---
+
+# PART 22 – API ARCHITECTURE
+
+Organize Express APIs into proper modules.
+
+Suggested architecture:
+
+server/
+  modules/
+    auth/
+    users/
+    customers/
+    vendors/
+    products/
+    categories/
+    inventory/
+    carts/
+    orders/
+    payments/
+    refunds/
+    delivery/
+    coupons/
+    reviews/
+    notifications/
+    settlements/
+    support/
+    analytics/
+    admin/
+  middleware/
+  services/
+  db/
+  utils/
+  config/
+
+Keep the existing structure if it is already well organized.
+
+Implement:
+
+- Request validation.
+- Consistent response formats.
+- Centralized error handling.
+- Authentication middleware.
+- Role authorization.
+- Pagination.
+- Filtering.
+- Sorting.
+- Search.
+- API versioning where appropriate.
+- Structured logging.
+- Request IDs.
+
+Generate accurate API documentation using OpenAPI/Swagger.
+
+Do not create duplicate endpoints.
+
+---
+
+# PART 23 – FRONTEND INTEGRATION
+
+Connect every existing React page to the actual APIs.
+
+Inspect:
+
+- Header
+- Homepage
+- Product cards
+- Product details
+- Search
+- Categories
+- Login
+- Registration
+- Cart
+- Checkout
+- Order tracking
+- Customer dashboard
+- Seller portal
+- Admin portal
+- Notifications
+- Support
+
+Every interactive button must perform its intended operation.
+
+Replace fake business data with backend responses.
+
+Implement:
+
+- Loading states.
+- Skeleton screens.
+- Empty states.
+- Error states.
+- Success messages.
+- Form validation.
+- API error handling.
+- Pagination.
+- Search debouncing.
+- Cache invalidation.
+- Responsive layouts.
+
+Preserve the existing OyoPasal visual identity.
+
+Do not unnecessarily redesign the UI.
+
+---
+
+# PART 24 – REAL-TIME UPDATES
+
+Implement real-time functionality only where useful.
+
+Examples:
+
+- Seller receives a new order.
+- Customer sees order status changes.
+- Admin receives important operational notifications.
+- Inventory availability changes.
+- Rider location updates.
+
+Use WebSockets or server-sent events when justified.
+
+Otherwise use efficient polling and API refetching.
+
+Ensure proper authentication for real-time connections.
+
+Do not create unnecessary infrastructure.
+
+---
+
+# PART 25 – SECURITY AUDIT
+
+Perform a comprehensive security review.
+
+Mandatory requirements:
+
+- Firebase ID token verification.
+- Role-based authorization.
+- Object-level access control.
+- Secure environment configuration.
+- CORS restrictions.
+- CSRF protection where applicable.
+- Rate limiting.
+- Secure HTTP headers.
+- Input validation.
+- SQL injection protection.
+- File upload restrictions.
+- Payment webhook verification.
+- Secret management.
+- Audit logging.
+- Dependency vulnerability checks.
+- Protection against duplicate transactions.
+- Secure database access.
+- Privacy-conscious logging.
+
+Never log passwords, authentication tokens or full payment credentials.
+
+---
+
+# PART 26 – PERFORMANCE AND SCALABILITY
+
+Optimize:
+
+- Database queries.
+- Database indexes.
+- Pagination.
+- API response sizes.
+- Product image sizes.
+- Frontend bundle size.
+- Lazy loading.
+- Caching.
+- Search performance.
+- Server memory usage.
+- Concurrent checkout operations.
+
+Prevent:
+
+- N+1 database queries.
+- Duplicate API requests.
+- Unnecessary React rendering.
+- Overselling.
+- Race conditions.
+- Duplicate orders.
+- Duplicate payment processing.
+
+Use Redis only if justified by actual caching, queueing or coordination requirements.
+
+Do not introduce microservices unnecessarily.
+
+---
+
+# PART 27 – TESTING
+
+Write automated tests.
+
+## Backend Tests
+
+Test:
+
+- Registration.
+- Authentication.
+- Permissions.
+- Product creation.
+- Product editing.
+- Product deletion.
+- Inventory updates.
+- Cart operations.
+- Checkout.
+- Payment verification.
+- Order transitions.
+- Refunds.
+- Vendor isolation.
+- Admin permissions.
+- Delivery assignment.
+
+## Frontend Tests
+
+Test:
+
+- Login forms.
+- Product search.
+- Product filters.
+- Cart operations.
+- Checkout.
+- Order history.
+- Seller product management.
+- Admin operations.
+- Mobile navigation.
+
+## End-to-End Tests
+
+Test the following complete workflows.
+
+### Workflow A – Seller
+
+Register → Verify → Admin approves → Create store → Add product → Upload image → Set price → Publish product.
+
+### Workflow B – Customer
+
+Register → Select address → Search product → Add to cart → Checkout → Make payment → View order.
+
+### Workflow C – Seller Order Fulfillment
+
+Receive order → Accept → Prepare → Mark ready → Rider pickup → Deliver.
+
+### Workflow D – Admin
+
+Login → Approve seller → Approve product → Configure commission → Manage order → Review financial report.
+
+### Workflow E – Refund
+
+Customer submits eligible refund request → Admin reviews → Refund processed through configured payment provider → Financial records updated.
+
+All workflows must use actual database records.
+
+---
+
+# PART 28 – DEPLOYMENT AND DEVOPS
+
+Prepare the project for production deployment.
+
+Implement or document:
+
+- Production environment variables.
+- PostgreSQL production configuration.
+- Database migration procedure.
+- Database backup and restore.
+- Persistent media storage.
+- HTTPS.
+- Domain configuration.
+- CORS configuration.
+- Frontend deployment.
+- Backend deployment.
+- Health check endpoints.
+- Logging.
+- Monitoring.
+- Error reporting.
+- CI/CD pipeline.
+- Staging environment.
+- Production environment.
+- Rollback strategy.
+
+Add proper health checks for:
+
+- Backend.
+- Database.
+- External integrations.
+
+Do not expose development tools or debug information in production.
+
+Do not commit credentials.
+
+---
+
+# PART 29 – PRODUCTION BUSINESS RULES
+
+Implement and verify the following rules:
+
+1. Unapproved sellers cannot publish products.
+2. Suspended sellers cannot accept new orders.
+3. Sellers cannot modify other sellers' products.
+4. Customers cannot view other customers' orders.
+5. Customers cannot manipulate product prices.
+6. Customers cannot order unavailable stock.
+7. Stock cannot become negative.
+8. Payment cannot be marked successful without verification.
+9. Orders cannot skip invalid fulfillment states.
+10. Refunds cannot exceed eligible paid amounts.
+11. Commission calculations must be consistent.
+12. Seller payouts must be traceable.
+13. Delivery agents can access only assigned deliveries.
+14. Admin actions must be recorded.
+15. Deleted products must not corrupt historical orders.
+
+All business rules must be enforced by the backend, not only the frontend.
+
+---
+
+# PART 30 – IMPLEMENTATION STRATEGY
+
+This is a large project. Do not attempt an uncontrolled rewrite.
+
+Work in the following sequence:
+
+PHASE 1: Backend and database foundation.
+
+PHASE 2: Authentication and authorization.
+
+PHASE 3: Admin management system.
+
+PHASE 4: Seller management system.
+
+PHASE 5: Customer and product systems.
+
+PHASE 6: Cart and checkout.
+
+PHASE 7: Orders and payments.
+
+PHASE 8: Delivery and rider management.
+
+PHASE 9: Finance, commission and settlements.
+
+PHASE 10: Reviews, promotions, notifications and support.
+
+PHASE 11: Analytics and reporting.
+
+PHASE 12: Security, performance and deployment.
+
+At the beginning of each phase:
+
+- Inspect existing implementation.
+- Identify missing functionality.
+- Make a checklist.
+- Implement the missing parts.
+- Test the implementation.
+- Fix discovered issues.
+
+Do not move to the next phase while critical failures remain in the current phase.
+
+You may continue working through phases without waiting for approval for ordinary, reversible development changes.
+
+However, never perform destructive database operations, overwrite production data, deploy to production, or make real financial transactions without explicit approval.
+
+---
+
+# PART 31 – FINAL ACCEPTANCE CRITERIA
+
+The project will be considered functionally ready for production review only when:
+
+- No business-critical in-memory storage remains.
+- All business data persists in PostgreSQL.
+- All private APIs have proper authentication.
+- All roles have correct permissions.
+- Sellers are properly isolated.
+- Admin can manage the complete platform.
+- Sellers can independently manage stores.
+- Customers can complete actual purchases.
+- Cart and checkout work correctly.
+- Payments are verified.
+- Orders follow valid states.
+- Inventory remains consistent.
+- Delivery management works.
+- Financial reports use actual transactions.
+- Images use persistent storage.
+- Notifications persist.
+- API documentation exists.
+- Automated tests pass.
+- Frontend production build succeeds.
+- Backend checks pass.
+- Deployment and backup procedures are documented.
+
+Do not claim production readiness merely because the frontend looks complete.
+
+---
+
+# PART 32 – FINAL REPORT
+
+When implementation is complete, provide:
+
+1. Project architecture summary.
+2. All database tables created or modified.
+3. All APIs implemented.
+4. All frontend components connected.
+5. All static data removed.
+6. All authentication improvements.
+7. Admin functionality completed.
+8. Seller functionality completed.
+9. Customer functionality completed.
+10. Delivery functionality completed.
+11. Payment integration status.
+12. Financial system status.
+13. Security improvements.
+14. Performance improvements.
+15. Automated testing results.
+16. Deployment instructions.
+17. Remaining external credentials and dependencies.
+18. Known limitations.
+19. Final production-readiness assessment.
+
+Use these statuses:
+
+- COMPLETED AND TESTED
+- IMPLEMENTED BUT NOT VERIFIED
+- BLOCKED BY EXTERNAL CONFIGURATION
+- NOT IMPLEMENTED
+
+Never report an untested feature as completed.
+
+# FINAL INSTRUCTION
+
+I want a real, functioning multi-vendor grocery delivery business platform, not a collection of attractive frontend screens.
+
+Customers must be able to buy products.
+
+Sellers must be able to manage their businesses.
+
+Delivery agents must be able to fulfill orders.
+
+Administrators must be able to control the entire platform.
+
+All business data must be persistent, consistent, secure and auditable.
+
+**Start by inspecting my actual repository. Fix the existing architecture and complete the missing systems module by module. Preserve working functionality, maintain the existing OyoPasal design, run tests after every major implementation and continue until every feasible system is implemented and verified.**
