@@ -248,6 +248,7 @@ class ApiService {
 
   async createOrder(payload: {
     address_id: string;
+    delivery_address?: Address;
     payment_method: string;
     delivery_option: string;
     notes?: string;

@@ -100,6 +100,7 @@ export default function CheckoutPage() {
       // 2. Authoritative Order Creation on Server
       const newOrder = await api.createOrder({
         address_id: currentAddress.id,
+        delivery_address: currentAddress,
         payment_method: paymentMethod,
         delivery_option: deliveryOption,
         notes: orderNotes
@@ -118,8 +119,8 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] py-8 pb-24">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#090D16] py-8 pb-24">
+      <div className="w-full px-4 sm:px-6 lg:px-10">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-200 dark:border-slate-800">

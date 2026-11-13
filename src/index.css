@@ -7,17 +7,26 @@
 }
 
 html {
+  width: 100%;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
   font-family: var(--font-sans);
   background-color: #F8FAFC;
   color: #0F172A;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
 }
 
 html.dark body {

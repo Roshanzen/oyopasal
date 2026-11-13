@@ -56,7 +56,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-10 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-pulse">
           <div className="aspect-square bg-slate-200 dark:bg-slate-800 rounded-3xl" />
           <div className="space-y-4">
@@ -107,7 +107,7 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
       
       {/* Back button & Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
@@ -384,7 +384,7 @@ export default function ProductDetailPage() {
           <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display mb-4">
             Frequently Bought Together & Similar Items
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
             {similarProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

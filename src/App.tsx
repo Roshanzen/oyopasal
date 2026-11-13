@@ -30,7 +30,7 @@ export default function App() {
   return (
     <AppProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+        <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
           {/* Header */}
           <Header />
 
@@ -38,7 +38,7 @@ export default function App() {
           <CategoryBar />
 
           {/* Main Routed Content */}
-          <main className="flex-1">
+          <main className="flex-1 w-full">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/product/:id" element={<ProductDetailPage />} />

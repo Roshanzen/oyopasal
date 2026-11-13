@@ -166,7 +166,7 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-8 pb-24">
       
       {/* Title */}
       <div className="pb-6 mb-6 border-b border-slate-200 dark:border-slate-800">
@@ -272,7 +272,7 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleSaveProfile} className="space-y-4 max-w-lg">
+              <form onSubmit={handleSaveProfile} className="space-y-4 max-w-2xl">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Full Name

@@ -319,8 +319,8 @@ export default function SellerPortalPage() {
   // ----------------------------------------------------
   if (!currentSeller) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen w-full bg-slate-900 text-slate-100 py-8 px-4 sm:px-6 lg:px-10">
+        <div className="w-full">
           {/* Breadcrumb / Top Bar */}
           <div className="flex items-center justify-between pb-6 border-b border-slate-800 mb-8">
             <Link
@@ -464,8 +464,8 @@ export default function SellerPortalPage() {
   const healthyItems = sellerProducts.filter(p => p.stock > 5 && p.in_stock);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-10">
+      <div className="w-full">
         {/* Top Control Header */}
         <div className="bg-slate-900/90 rounded-2xl p-4 sm:p-6 border border-slate-800 shadow-xl mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1253,7 +1253,7 @@ export default function SellerPortalPage() {
                               key={prod.id}
                               className={`transition-colors ${
                                 isLowStock
-                                  ? 'bg-red-950/25 hover:bg-red-950/45 border-l-4 border-red-500'
+                                  ? 'bg-red-950/30 hover:bg-red-950/50 ring-1 ring-inset ring-red-500/40'
                                   : 'hover:bg-slate-800/40'
                               }`}
                             >

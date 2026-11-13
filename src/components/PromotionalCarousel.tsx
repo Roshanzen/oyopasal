@@ -85,8 +85,8 @@ export default function PromotionalCarousel() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <div className="w-full h-48 sm:h-64 bg-slate-200/80 dark:bg-slate-800/80 rounded-3xl animate-pulse" />
+      <div className="w-full px-4 sm:px-6 lg:px-10 pt-4">
+        <div className="w-full h-48 sm:h-64 lg:h-72 bg-slate-200/80 dark:bg-slate-800/80 rounded-3xl animate-pulse" />
       </div>
     );
   }
@@ -107,11 +107,11 @@ export default function PromotionalCarousel() {
 
   return (
     <div
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 select-none"
+      className="w-full px-4 sm:px-6 lg:px-10 pt-4 select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/80 dark:border-slate-800 bg-slate-950 text-white min-h-[230px] sm:min-h-[270px] flex items-center">
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/80 dark:border-slate-800 bg-slate-950 text-white min-h-[240px] sm:min-h-[290px] lg:min-h-[330px] flex items-center">
         
         {/* Animated Banner Slide with Gestures */}
         <AnimatePresence initial={false} custom={direction} mode="popLayout">

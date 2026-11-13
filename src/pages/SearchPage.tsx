@@ -90,7 +90,7 @@ export default function SearchPage() {
   const hasActiveFilters = Boolean(selectedCategory || selectedVendor || inStockOnly || ordering !== 'popularity');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
       
       {/* Title & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -133,7 +133,7 @@ export default function SearchPage() {
       </div>
 
       {/* Main Layout: Filters Sidebar + Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 pt-6">
         
         {/* Left Filter Sidebar */}
         <div className="hidden lg:block space-y-6">
@@ -215,7 +215,7 @@ export default function SearchPage() {
         </div>
 
         {/* Right: Products Grid */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-4">
           {/* Active Filter Badges */}
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-1.5 mb-4">
@@ -243,13 +243,13 @@ export default function SearchPage() {
 
           {/* Grid or Empty State */}
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
+              {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="bg-white dark:bg-[#111726] rounded-2xl p-3 h-64 border border-slate-100 dark:border-slate-800 animate-pulse" />
               ))}
             </div>
           ) : products.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
               {products.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}

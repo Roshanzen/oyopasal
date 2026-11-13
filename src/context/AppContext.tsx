@@ -95,11 +95,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const [user, setUser] = useState<UserProfile | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [currentAddress, setCurrentAddress] = useState<Address | null>(null);
+  const [currentAddress, setCurrentAddressState] = useState<Address | null>(null);
   const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number; lng: number }>({
-    lat: 27.6915,
-    lng: 85.3420 // New Baneshwor, Kathmandu (default)
+    lat: 27.6986,
+    lng: 85.3292 // Home - New Baneshwor, Kathmandu (default)
   });
+
+  const setCurrentAddress = useCallback((addr: Address) => {
+    setCurrentAddressState(addr);
+    if (typeof addr.lat === 'number' && typeof addr.lng === 'number') {
+      setCurrentCoordinates({ lat: addr.lat, lng: addr.lng });
+    }
+  }, []);
   const [wishlistIds, setWishlistIds] = useState<string[]>(['prod-sourdough', 'prod-cherry-tomatoes']);
   const [locationModalOpen, setLocationModalOpen] = useState<boolean>(false);
   const [becomeSellerModalOpen, setBecomeSellerModalOpen] = useState<boolean>(false);
@@ -175,7 +182,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAddresses(resp.results);
       if (resp.results.length > 0) {
         const defaultAddr = resp.results.find(a => a.is_default) || resp.results[0];
-        setCurrentAddress(defaultAddr);
+        setCurrentAddressState(defaultAddr);
+        if (typeof defaultAddr.lat === 'number' && typeof defaultAddr.lng === 'number') {
+          setCurrentCoordinates({ lat: defaultAddr.lat, lng: defaultAddr.lng });
+        }
       }
     } catch (err) {
       console.error('Failed to load addresses', err);
@@ -379,7 +389,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lng: coords.lng
     };
 
-    setCurrentAddress(mappedAddress);
+    setCurrentAddressState(mappedAddress);
     showToast(`Delivery location set to ${computedArea}`, 'success');
   }, [user, showToast]);
 

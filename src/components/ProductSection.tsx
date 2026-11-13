@@ -25,7 +25,7 @@ export default function ProductSection({
 
   return (
     <section className="py-5 sm:py-7">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-10">
         
         {/* Section Header */}
         <div className="flex items-end justify-between mb-4">
@@ -55,8 +55,8 @@ export default function ProductSection({
 
         {/* Product Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
+            {Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
                 className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-100 dark:border-slate-800 p-3 h-64 animate-pulse space-y-3"
@@ -68,7 +68,7 @@ export default function ProductSection({
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

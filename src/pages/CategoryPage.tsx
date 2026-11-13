@@ -43,7 +43,7 @@ export default function CategoryPage() {
 
   if (isBrowseAll) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+      <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
         <div className="mb-6">
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white font-display">
             All Categories & Departments
@@ -53,7 +53,7 @@ export default function CategoryPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {categories.map((cat) => (
             <div
               key={cat.id}
@@ -82,7 +82,7 @@ export default function CategoryPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
       
       {/* Top Banner */}
       <div className="p-6 sm:p-8 rounded-3xl bg-emerald-900 dark:bg-[#062519] border border-emerald-800/40 text-white mb-6 flex flex-col justify-between relative overflow-hidden shadow-md">
@@ -106,13 +106,13 @@ export default function CategoryPage() {
 
       {/* Products Grid */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="h-64 rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
           ))}
         </div>
       ) : products.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
           {products.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}

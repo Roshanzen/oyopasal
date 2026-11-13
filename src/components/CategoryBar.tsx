@@ -64,7 +64,7 @@ export default function CategoryBar() {
 
   return (
     <div className="bg-white dark:bg-[#0b0f19] border-b border-slate-200/80 dark:border-slate-800 py-3 relative shadow-2xs transition-colors duration-200 select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div className="w-full px-4 sm:px-6 lg:px-10 relative">
         
         {/* Scroll Left Button */}
         <motion.button

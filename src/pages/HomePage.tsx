@@ -87,7 +87,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 select-none"
+        className="w-full px-4 sm:px-6 lg:px-10 pt-6 select-none"
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <motion.div
@@ -168,7 +168,7 @@ export default function HomePage() {
 
       {/* 7. Shop by Category (Visual Grid) */}
       <section className="py-6 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200/70 dark:border-slate-800 my-2 select-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="flex items-end justify-between mb-4">
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
@@ -257,7 +257,7 @@ export default function HomePage() {
 
       {/* 8. Popular Nearby Vendors */}
       <section className="py-6 sm:py-8 bg-white dark:bg-[#0b0f19] border-t border-slate-200/80 dark:border-slate-800 transition-colors duration-200 select-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="flex items-end justify-between mb-4">
             <div>
               <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
@@ -353,7 +353,7 @@ export default function HomePage() {
 
       {/* OyoPasal Guarantee Footer Strip */}
       <footer className="mt-8 border-t border-slate-200 dark:border-slate-800 bg-slate-900 dark:bg-[#060911] text-slate-300 dark:text-slate-400 py-10 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">

@@ -720,6 +720,32 @@ interface Address {
   city: string;
   landmark: string;
   is_default: boolean;
+  lat?: number;
+  lng?: number;
+}
+
+const AREA_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  'new baneshwor': { lat: 27.6948, lng: 85.3352 },
+  'baneshwor': { lat: 27.6915, lng: 85.3420 },
+  'jhamsikhel': { lat: 27.6830, lng: 85.3090 },
+  'pulchowk': { lat: 27.6740, lng: 85.3180 },
+  'patan': { lat: 27.6725, lng: 85.3250 },
+  'thamel': { lat: 27.7150, lng: 85.3120 },
+  'lazimpat': { lat: 27.7210, lng: 85.3210 },
+  'koteshwor': { lat: 27.6780, lng: 85.3500 },
+  'baluwatar': { lat: 27.7280, lng: 85.3300 },
+  'maharajgunj': { lat: 27.7380, lng: 85.3340 },
+  'boudha': { lat: 27.7215, lng: 85.3620 }
+};
+
+function inferCoordinatesForArea(area?: string): { lat: number; lng: number } {
+  const lower = (area || '').toLowerCase();
+  for (const key of Object.keys(AREA_COORDINATES)) {
+    if (lower.includes(key)) {
+      return AREA_COORDINATES[key];
+    }
+  }
+  return { lat: 27.6948, lng: 85.3352 };
 }
 
 let SAVED_ADDRESSES: Address[] = [
@@ -732,7 +758,9 @@ let SAVED_ADDRESSES: Address[] = [
     area: 'New Baneshwor',
     city: 'Kathmandu',
     landmark: 'Opposite Everest Bank ATM',
-    is_default: true
+    is_default: true,
+    lat: 27.6986,
+    lng: 85.3292
   },
   {
     id: 'addr-2',
@@ -743,7 +771,9 @@ let SAVED_ADDRESSES: Address[] = [
     area: 'Jhamsikhel',
     city: 'Lalitpur',
     landmark: 'Near British School',
-    is_default: false
+    is_default: false,
+    lat: 27.6830,
+    lng: 85.3090
   }
 ];
 
@@ -809,6 +839,52 @@ interface Order {
 }
 
 let ORDERS: Order[] = [
+  {
+    id: 'ord-live-902',
+    order_number: 'OP-90248',
+    created_at: new Date(Date.now() - 60000 * 6).toISOString(),
+    status: 'OUT_FOR_DELIVERY',
+    estimated_delivery_mins: 6,
+    delivery_address: SAVED_ADDRESSES[0],
+    delivery_option: 'EXPRESS_12_MINS',
+    payment_method: 'ESEWA',
+    payment_status: 'PAID',
+    items_by_vendor: [
+      {
+        vendor: { id: 'v-himalayan', name: 'Himalayan Fresh Farms' },
+        items: [
+          {
+            product_name: 'Organic Hass Avocados',
+            unit: '2 pcs',
+            quantity: 1,
+            unit_price: 295,
+            total: 295,
+            image_url: '/src/assets/images/hero_groceries_fresh_1794407355931.jpg'
+          },
+          {
+            product_name: 'Farm Fresh Whole Milk',
+            unit: '1 Litre',
+            quantity: 2,
+            unit_price: 115,
+            total: 230,
+            image_url: '/src/assets/images/dairy_artisan_bakery_1794407372003.jpg'
+          }
+        ],
+        vendor_delivery_fee: 0
+      }
+    ],
+    subtotal: 525,
+    delivery_fee: 0,
+    handling_fee: 15,
+    coupon_discount: 0,
+    total_amount: 540,
+    tracking_updates: [
+      { timestamp: '6 mins ago', title: 'Order Confirmed', description: 'Your order was verified and sent to Himalayan Fresh Farms', done: true },
+      { timestamp: '4 mins ago', title: 'Packed with Care', description: 'Items packed in biodegradable temperature-sealed bag', done: true },
+      { timestamp: '2 mins ago', title: 'Rider Dispatched', description: 'Rider Ramesh Pandey picked up order on EV Scooter (NIU NQi)', done: true },
+      { timestamp: 'Arriving soon', title: 'Arriving at Saved Address', description: 'En route to House #42, Shanti Marga, New Baneshwor', done: false }
+    ]
+  },
   {
     id: 'ord-84721',
     order_number: 'OP-84721',
@@ -1273,13 +1349,20 @@ app.post('/api/v1/checkout/validate/', (req, res) => {
 });
 
 app.post('/api/v1/orders/', async (req, res) => {
-  const { address_id, payment_method = 'CASH_ON_DELIVERY', delivery_option = 'EXPRESS_12_MINS', notes = '' } = req.body;
+  const { address_id, delivery_address: customAddress, payment_method = 'CASH_ON_DELIVERY', delivery_option = 'EXPRESS_12_MINS', notes = '' } = req.body;
 
   if (CART_ITEMS.length === 0) {
     return res.status(400).json({ detail: 'Cannot place order with empty cart.' });
   }
 
-  const selectedAddress = SAVED_ADDRESSES.find(a => a.id === address_id) || SAVED_ADDRESSES[0];
+  const matchedSaved = SAVED_ADDRESSES.find(a => a.id === address_id);
+  const rawAddress: Address = matchedSaved || (customAddress && customAddress.area ? customAddress : SAVED_ADDRESSES[0]);
+  const inferred = inferCoordinatesForArea(rawAddress.area);
+  const selectedAddress: Address = {
+    ...rawAddress,
+    lat: typeof rawAddress.lat === 'number' ? rawAddress.lat : inferred.lat,
+    lng: typeof rawAddress.lng === 'number' ? rawAddress.lng : inferred.lng,
+  };
   const cartSummary = calculateCartPayload();
 
   const orderNum = `OP-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -1289,7 +1372,7 @@ app.post('/api/v1/orders/', async (req, res) => {
     id: orderId,
     order_number: orderNum,
     created_at: new Date().toISOString(),
-    status: 'ORDER_PLACED',
+    status: 'OUT_FOR_DELIVERY',
     estimated_delivery_mins: 12,
     delivery_address: selectedAddress,
     delivery_option,
@@ -1668,7 +1751,8 @@ app.get('/api/v1/account/addresses/', (req, res) => {
 });
 
 app.post('/api/v1/account/addresses/', (req, res) => {
-  const { title = 'Home', recipient_name, phone, street, area, city = 'Kathmandu', landmark = '', is_default = false } = req.body;
+  const { title = 'Home', recipient_name, phone, street, area, city = 'Kathmandu', landmark = '', is_default = false, lat, lng } = req.body;
+  const inferred = inferCoordinatesForArea(area);
   const newAddr: Address = {
     id: `addr-${Date.now()}`,
     title,
@@ -1678,7 +1762,9 @@ app.post('/api/v1/account/addresses/', (req, res) => {
     area,
     city,
     landmark,
-    is_default
+    is_default,
+    lat: typeof lat === 'number' ? lat : inferred.lat,
+    lng: typeof lng === 'number' ? lng : inferred.lng
   };
   if (is_default) {
     SAVED_ADDRESSES.forEach(a => { a.is_default = false; });

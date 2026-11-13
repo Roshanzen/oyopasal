@@ -107,8 +107,8 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors duration-200">
       {/* Top Utility Announcement & Merchant Partner Link */}
-      <div className="bg-emerald-950 text-emerald-100 text-[11px] py-1.5 px-4 font-medium border-b border-emerald-900/60">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="bg-emerald-950 text-emerald-100 text-[11px] py-1.5 px-4 sm:px-6 lg:px-10 font-medium border-b border-emerald-900/60">
+        <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link
               to="/seller"
@@ -143,7 +143,7 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-10">
         <div className="flex items-center justify-between h-18 gap-3 sm:gap-6">
           
           {/* Left: Brand Identity & Location */}
@@ -188,7 +188,7 @@ export default function Header() {
           </div>
 
           {/* Center: Search Field */}
-          <div ref={searchContainerRef} className="flex-1 max-w-xl relative">
+          <div ref={searchContainerRef} className="flex-1 max-w-3xl relative">
             <form onSubmit={handleSearchSubmit} className="relative">
               <div className="relative flex items-center">
                 <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 pointer-events-none" />
