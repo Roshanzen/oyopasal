@@ -112,7 +112,7 @@ export default function BecomeSellerModal() {
                 <Store className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
               </div>
               <div>
-                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                   Partner with OyoPasal
                 </span>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-display">
@@ -121,38 +121,38 @@ export default function BecomeSellerModal() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Connect your brick-and-mortar grocery, farm, bakery, or retail mart to thousands of active neighborhood buyers with our EV courier network.
             </p>
 
             {/* Value Proposition Strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-              <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 text-left">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-200 mb-1">
-                  <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 text-left">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-900 dark:text-emerald-200 mb-1">
+                  <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>10-15 Min Reach</span>
                 </div>
-                <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-tight">
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-snug">
                   Reach customers within 3 km in under 15 minutes without maintaining delivery staff.
                 </p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/60 text-left">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 mb-1">
-                  <Percent className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/60 text-left">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-amber-900 dark:text-amber-200 mb-1">
+                  <Percent className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>0% Commission (30 Days)</span>
                 </div>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-tight">
+                <p className="text-xs text-amber-800 dark:text-amber-300 leading-snug">
                   Zero setup fees, transparent low commission, and next-day automated payouts.
                 </p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/60 text-left">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900 dark:text-teal-200 mb-1">
-                  <Truck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <div className="p-3.5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/60 text-left">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-teal-900 dark:text-teal-200 mb-1">
+                  <Truck className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                   <span>Pickup by EV Couriers</span>
                 </div>
-                <p className="text-[11px] text-teal-800 dark:text-teal-300 leading-tight">
+                <p className="text-xs text-teal-800 dark:text-teal-300 leading-snug">
                   Just pack the items when alerted; our verified rider picks up from your counter.
                 </p>
               </div>
@@ -162,30 +162,30 @@ export default function BecomeSellerModal() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Store / Business Name *
                   </label>
                   <div className="relative">
-                    <Building className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Building className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="text"
                       required
                       value={storeName}
                       onChange={(e) => setStoreName(e.target.value)}
                       placeholder="e.g. Kathmandu Fresh Bakes"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Store Category *
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
                     <option value="Grocery & Staples">Grocery & Staples</option>
                     <option value="Fruits & Vegetables">Fruits & Vegetables / Organics</option>
@@ -200,13 +200,13 @@ export default function BecomeSellerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     City / Municipality *
                   </label>
                   <select
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
                     <option value="Kathmandu">Kathmandu</option>
                     <option value="Lalitpur">Lalitpur</option>
@@ -216,18 +216,18 @@ export default function BecomeSellerModal() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Area / Street / Ward *
                   </label>
                   <div className="relative">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="text"
                       required
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
                       placeholder="e.g. New Baneshwor, Ward 10"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -235,35 +235,35 @@ export default function BecomeSellerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Owner / Contact Person *
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="text"
                       required
                       value={contactPerson}
                       onChange={(e) => setContactPerson(e.target.value)}
                       placeholder="e.g. Ramesh Shrestha"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Phone Number (for Courier & Order Alerts) *
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Phone Number (for Order Alerts) *
                   </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="tel"
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="e.g. +977 9841234567"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -271,29 +271,29 @@ export default function BecomeSellerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Email Address (Optional)
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="contact@store.com"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Expected Daily Orders Capacity
                   </label>
                   <select
                     value={dailyOrders}
                     onChange={(e) => setDailyOrders(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
                     <option value="10-20">10 - 20 orders / day</option>
                     <option value="20-50">20 - 50 orders / day</option>
@@ -303,9 +303,9 @@ export default function BecomeSellerModal() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>Verified seller agreement & secure onboarding</span>
                 </div>
 
@@ -313,17 +313,17 @@ export default function BecomeSellerModal() {
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <span>{submitting ? 'Submitting Application...' : 'Submit Seller Application'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -340,10 +340,10 @@ export default function BecomeSellerModal() {
               <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                 Application Received
               </span>
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white font-display mt-1">
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white font-display mt-1">
                 Welcome to OyoPasal Seller Network!
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
                 Your store <strong>"{submittedData.vendor?.name}"</strong> has been registered with ID{' '}
                 <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-200 font-mono font-bold">
                   {submittedData.vendor?.id}
@@ -351,12 +351,12 @@ export default function BecomeSellerModal() {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 max-w-md mx-auto text-left text-xs space-y-2">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 max-w-md mx-auto text-left text-sm space-y-2">
               <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
                 <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Next Onboarding Steps:</span>
               </div>
-              <ul className="space-y-1.5 text-slate-600 dark:text-slate-300 list-disc pl-4 text-[11px]">
+              <ul className="space-y-1.5 text-slate-600 dark:text-slate-300 list-disc pl-4 text-xs">
                 <li>Our Merchant Area Manager will call you at <strong>{phone}</strong> to confirm your shop coordinates.</li>
                 <li>We'll provide you with OyoPasal biodegradable packaging bags & thermal merchant tablet.</li>
                 <li>Your products will be listed live on the app within 24 hours!</li>
@@ -365,7 +365,7 @@ export default function BecomeSellerModal() {
 
             <button
               onClick={handleClose}
-              className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-colors cursor-pointer"
             >
               Back to Marketplace
             </button>

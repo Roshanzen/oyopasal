@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
     <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
       
       {/* Back button & Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-6">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 mr-2 cursor-pointer"
@@ -125,7 +125,7 @@ export default function ProductDetailPage() {
           {product.category.name}
         </Link>
         <span>/</span>
-        <span className="text-slate-900 dark:text-white font-bold truncate max-w-[200px]">{product.name}</span>
+        <span className="text-slate-900 dark:text-white font-bold truncate max-w-[260px]">{product.name}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
@@ -175,13 +175,13 @@ export default function ProductDetailPage() {
           )}
 
           {/* Guarantee Badges */}
-          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 space-y-2">
-            <div className="flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-200 font-bold">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 space-y-2.5">
+            <div className="flex items-center gap-2.5 text-sm text-emerald-900 dark:text-emerald-200 font-bold">
+              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>OyoPasal Freshness Promise: 100% money back if not fresh</span>
             </div>
-            <div className="flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-200 font-bold">
-              <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-2.5 text-sm text-emerald-900 dark:text-emerald-200 font-bold">
+              <Truck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Express delivery from neighborhood hub in 10-15 minutes</span>
             </div>
           </div>
@@ -211,29 +211,29 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight leading-tight">
               {product.name}
             </h1>
 
             {/* Rating & Reviews */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-lg font-bold text-xs">
-                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-lg font-bold text-sm">
+                <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
                 <span>{product.rating}</span>
               </div>
-              <span className="text-xs text-slate-400 dark:text-slate-500">
+              <span className="text-sm text-slate-400 dark:text-slate-500">
                 Based on {product.reviews_count} verified buyer ratings
               </span>
             </div>
 
             {/* Price section */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
               <div className="flex items-baseline gap-3 mb-1">
-                <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums font-display">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tabular-nums font-display">
                   Rs. {currentPrice}
                 </span>
                 {originalPrice > currentPrice && (
-                  <span className="text-base text-slate-400 dark:text-slate-500 line-through tabular-nums">
+                  <span className="text-lg text-slate-400 dark:text-slate-500 line-through tabular-nums">
                     Rs. {originalPrice}
                   </span>
                 )}
@@ -243,11 +243,11 @@ export default function ProductDetailPage() {
                   </span>
                 )}
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-800 mt-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 mt-2.5 text-sm">
                 <span className="text-slate-500 dark:text-slate-400">
                   Unit: {selectedVariant ? selectedVariant.unit : product.unit}
                 </span>
-                <span className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md">
+                <span className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/70 px-2.5 py-1 rounded-md text-xs">
                   <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>{distanceInfo.distanceText} away from {currentAddress?.area || 'Kathmandu'}</span>
                 </span>
@@ -271,8 +271,8 @@ export default function ProductDetailPage() {
                           : 'bg-white dark:bg-[#111726] border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
-                      <p className="text-xs font-bold">{v.name}</p>
-                      <p className="text-xs font-extrabold text-slate-900 dark:text-white tabular-nums mt-0.5">
+                      <p className="text-sm font-bold">{v.name}</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums mt-0.5">
                         Rs. {v.price}
                       </p>
                     </button>
@@ -282,7 +282,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* Stock status & distance */}
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span className="font-bold text-emerald-700 dark:text-emerald-400">In Stock</span>
@@ -293,29 +293,29 @@ export default function ProductDetailPage() {
 
             {/* Vendor Details Card */}
             <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#111726]">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
                     Sold by: {product.vendor.name}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded">
-                  <Clock className="w-3 h-3" />
+                <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2.5 py-1 rounded shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
                   <span>{distanceInfo.etaText} ({distanceInfo.distanceText})</span>
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Fulfillment store located in {product.origin || 'Kathmandu'}. Express 10-15 min dispatch directly to your chosen delivery pin.
               </p>
             </div>
 
             {/* Description */}
             <div className="pt-2">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1.5">
                 Product Details
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                 {product.description}
               </p>
             </div>
@@ -325,22 +325,22 @@ export default function ProductDetailPage() {
           {/* Action Button Strip */}
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-4 mt-6">
             {quantityInCart > 0 ? (
-              <div className="flex-1 flex items-center justify-between bg-emerald-600 text-white p-2.5 rounded-2xl shadow-md">
+              <div className="flex-1 flex items-center justify-between bg-emerald-600 text-white p-3 rounded-2xl shadow-md">
                 <button
                   onClick={() => updateCartQuantity(cartItem!.id, quantityInCart - 1)}
                   className="p-2 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer"
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-5 h-5" />
                 </button>
                 <div className="text-center">
                   <span className="text-xs font-medium text-emerald-100 block">Quantity in Basket</span>
-                  <span className="text-base font-extrabold tabular-nums">{quantityInCart}</span>
+                  <span className="text-lg font-extrabold tabular-nums">{quantityInCart}</span>
                 </div>
                 <button
                   onClick={() => updateCartQuantity(cartItem!.id, quantityInCart + 1)}
                   className="p-2 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5" />
                 </button>
               </div>
             ) : (
@@ -348,26 +348,26 @@ export default function ProductDetailPage() {
                 <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-1">
                   <button
                     onClick={() => setBuyQuantity(Math.max(1, buyQuantity - 1))}
-                    className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                    className="p-2.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <span className="px-3 text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+                  <span className="px-3.5 text-sm font-bold tabular-nums text-slate-900 dark:text-white">
                     {buyQuantity}
                   </span>
                   <button
                     onClick={() => setBuyQuantity(buyQuantity + 1)}
-                    className="p-2 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors cursor-pointer"
+                    className="p-2.5 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
 
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-base shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5" />
                   <span>Add to Basket · Rs. {currentPrice * buyQuantity}</span>
                 </button>
               </div>
@@ -381,7 +381,7 @@ export default function ProductDetailPage() {
       {/* Similar Products Shelf */}
       {similarProducts.length > 0 && (
         <div className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white font-display mb-4">
             Frequently Bought Together & Similar Items
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">

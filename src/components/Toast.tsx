@@ -12,7 +12,7 @@ export default function ToastContainer() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-2xl shadow-xl border backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in duration-200 text-xs font-semibold ${
+          className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-2xl shadow-xl border backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in duration-200 text-sm font-semibold ${
             toast.type === 'error'
               ? 'bg-rose-900/90 text-white border-rose-700'
               : toast.type === 'info'

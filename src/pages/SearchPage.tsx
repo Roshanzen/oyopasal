@@ -95,22 +95,22 @@ export default function SearchPage() {
       {/* Title & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
             {query ? `Search results for "${query}"` : sectionParam ? `Browsing ${sectionParam.replace('_', ' ')}` : 'Product Catalog'}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {loading ? 'Searching marketplace...' : `Found ${products.length} matching items`}
           </p>
         </div>
 
         {/* Sort & Filter Controls */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 shadow-2xs">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-700 dark:text-slate-300 shadow-2xs">
+            <ArrowUpDown className="w-4 h-4 text-slate-400" />
             <select
               value={ordering}
               onChange={(e) => setOrdering(e.target.value)}
-              className="bg-transparent border-none text-xs font-semibold focus:outline-none cursor-pointer dark:bg-[#111726] dark:text-slate-200"
+              className="bg-transparent border-none text-sm font-semibold focus:outline-none cursor-pointer dark:bg-[#111726] dark:text-slate-200"
             >
               <option value="popularity">Featured & Popular</option>
               <option value="price_asc">Price: Low to High</option>
@@ -120,12 +120,12 @@ export default function SearchPage() {
             </select>
           </div>
 
-          <label className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 shadow-2xs cursor-pointer select-none">
+          <label className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-700 dark:text-slate-300 shadow-2xs cursor-pointer select-none">
             <input
               type="checkbox"
               checked={inStockOnly}
               onChange={(e) => setInStockOnly(e.target.checked)}
-              className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+              className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
             />
             <span className="font-semibold">In Stock Only</span>
           </label>
@@ -139,14 +139,14 @@ export default function SearchPage() {
         <div className="hidden lg:block space-y-6">
           <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              <div className="flex items-center gap-2 font-bold text-sm uppercase tracking-wider text-slate-800 dark:text-slate-200">
                 <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Filters</span>
               </div>
               {hasActiveFilters && (
                 <button
                   onClick={handleClearFilters}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                  className="text-sm text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
                 >
                   Reset
                 </button>
@@ -161,7 +161,7 @@ export default function SearchPage() {
               <div className="space-y-1">
                 <button
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-between cursor-pointer ${
                     !selectedCategory ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                   }`}
                 >
@@ -171,12 +171,12 @@ export default function SearchPage() {
                   <button
                     key={c.id}
                     onClick={() => setSelectedCategory(c.slug)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                       selectedCategory === c.slug ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                     }`}
                   >
-                    <span>{c.name}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">{c.item_count}</span>
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums shrink-0">{c.item_count}</span>
                   </button>
                 ))}
               </div>
@@ -190,7 +190,7 @@ export default function SearchPage() {
               <div className="space-y-1">
                 <button
                   onClick={() => setSelectedVendor('')}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-between cursor-pointer ${
                     !selectedVendor ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                   }`}
                 >
@@ -200,12 +200,12 @@ export default function SearchPage() {
                   <button
                     key={v.id}
                     onClick={() => setSelectedVendor(v.id)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                       selectedVendor === v.id ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                     }`}
                   >
                     <span className="truncate">{v.name}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{v.delivery_time_mins}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{v.delivery_time_mins}</span>
                   </button>
                 ))}
               </div>
@@ -219,23 +219,23 @@ export default function SearchPage() {
           {/* Active Filter Badges */}
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-1.5 mb-4">
-              <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold mr-1">Active:</span>
+              <span className="text-sm text-slate-400 dark:text-slate-500 font-semibold mr-1">Active:</span>
               {selectedCategory && (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-lg font-bold">
                   Category: {categories.find(c => c.slug === selectedCategory)?.name || selectedCategory}
-                  <button onClick={() => setSelectedCategory('')} className="cursor-pointer"><X className="w-3 h-3" /></button>
+                  <button onClick={() => setSelectedCategory('')} className="cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </span>
               )}
               {selectedVendor && (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-lg font-bold">
                   Store: {vendors.find(v => v.id === selectedVendor)?.name || selectedVendor}
-                  <button onClick={() => setSelectedVendor('')} className="cursor-pointer"><X className="w-3 h-3" /></button>
+                  <button onClick={() => setSelectedVendor('')} className="cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </span>
               )}
               {inStockOnly && (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-lg font-bold">
                   In Stock Only
-                  <button onClick={() => setInStockOnly(false)} className="cursor-pointer"><X className="w-3 h-3" /></button>
+                  <button onClick={() => setInStockOnly(false)} className="cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </span>
               )}
             </div>
@@ -260,14 +260,14 @@ export default function SearchPage() {
                 <PackageX className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No products match your criteria</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">No products match your criteria</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
                   Try adjusting filters, clearing search keywords, or browse our daily fresh arrivals.
                 </p>
               </div>
               <button
                 onClick={handleClearFilters}
-                className="px-5 py-2.5 rounded-full bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 cursor-pointer"
+                className="px-6 py-3 rounded-full bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 cursor-pointer"
               >
                 Clear All Filters
               </button>

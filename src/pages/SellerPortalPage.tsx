@@ -325,13 +325,13 @@ export default function SellerPortalPage() {
           <div className="flex items-center justify-between pb-6 border-b border-slate-800 mb-8">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 text-base text-slate-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Customer Store</span>
             </Link>
-            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/60">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/60">
+              <ShieldCheck className="w-4 h-4" />
               <span>OyoPasal Merchant Hub</span>
             </div>
           </div>
@@ -343,7 +343,7 @@ export default function SellerPortalPage() {
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               Merchant Backend Portal
             </h1>
-            <p className="mt-2 text-slate-400 max-w-lg mx-auto text-sm sm:text-base">
+            <p className="mt-2 text-slate-400 max-w-lg mx-auto text-base">
               Sign in to manage your inventory, set instant delivery stock, and publish new products directly to customers across Kathmandu Valley.
             </p>
           </div>
@@ -352,13 +352,13 @@ export default function SellerPortalPage() {
             {/* Quick Demo Switcher */}
             <div className="bg-slate-800/90 rounded-2xl p-6 border border-slate-700 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-amber-400" />
                   <span>1-Click Merchant Login</span>
                 </h2>
-                <span className="text-xs text-slate-400">Demo Accounts</span>
+                <span className="text-sm text-slate-400">Demo Accounts</span>
               </div>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-sm text-slate-400 mb-4">
                 Select any verified local vendor to instantly access their dashboard and publish products to the customer store:
               </p>
 
@@ -372,15 +372,15 @@ export default function SellerPortalPage() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white group-hover:text-emerald-400 transition-colors">
+                        <span className="font-bold text-base text-white group-hover:text-emerald-400 transition-colors">
                           {v.name}
                         </span>
-                        <span className="text-[10px] bg-emerald-900/60 text-emerald-300 font-mono px-1.5 py-0.5 rounded">
+                        <span className="text-xs bg-emerald-900/60 text-emerald-300 font-mono px-1.5 py-0.5 rounded">
                           ★ {v.rating}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{v.category}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">{v.area}</p>
+                      <p className="text-sm text-slate-400 mt-0.5">{v.category}</p>
+                      <p className="text-xs text-slate-500 mt-1">{v.area}</p>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                       <ChevronRight className="w-4 h-4" />
@@ -392,14 +392,14 @@ export default function SellerPortalPage() {
 
             {/* Custom Merchant ID Form */}
             <div className="bg-slate-800/90 rounded-2xl p-6 border border-slate-700 shadow-xl">
-              <h2 className="text-lg font-bold text-white mb-2">Merchant Account Login</h2>
-              <p className="text-xs text-slate-400 mb-5">
+              <h2 className="text-xl font-bold text-white mb-2">Merchant Account Login</h2>
+              <p className="text-sm text-slate-400 mb-5">
                 Log in with your registered merchant store ID or phone number.
               </p>
 
               <form onSubmit={handleCustomLogin} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-sm font-semibold text-slate-300 mb-1.5">
                     Store ID / Mobile Number
                   </label>
                   <input
@@ -412,7 +412,7 @@ export default function SellerPortalPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-sm font-semibold text-slate-300 mb-1.5">
                     Password / Secret PIN
                   </label>
                   <input
@@ -427,7 +427,7 @@ export default function SellerPortalPage() {
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-950/40 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-md shadow-emerald-950/40 transition-colors cursor-pointer flex items-center justify-center gap-2"
                 >
                   {loginLoading ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -441,11 +441,11 @@ export default function SellerPortalPage() {
               </form>
 
               <div className="mt-6 pt-5 border-t border-slate-700/80 text-center">
-                <p className="text-xs text-slate-400 mb-2">Want to sell your farm or bakery goods on OyoPasal?</p>
+                <p className="text-sm text-slate-400 mb-2">Want to sell your farm or bakery goods on OyoPasal?</p>
                 <button
                   type="button"
                   onClick={() => setBecomeSellerModalOpen(true)}
-                  className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                  className="text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                 >
                   Apply to Become a Partner Store →
                 </button>
@@ -475,18 +475,18 @@ export default function SellerPortalPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                     {currentSeller.name}
                   </h1>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/80 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/80 px-2.5 py-0.5 rounded-full">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     Verified Vendor
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-sm text-slate-400 font-mono">
                     ID: {currentSeller.id}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-400 mt-0.5">
                   {currentSeller.location || 'Kathmandu Valley'} · Quick-Commerce 10-15 Min Dispatch
                 </p>
               </div>
@@ -496,20 +496,20 @@ export default function SellerPortalPage() {
               {/* Direct Link to Customer Store */}
               <Link
                 to="/"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-sm font-semibold transition-colors"
                 title="View how customer storefront appears"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                <ExternalLink className="w-4 h-4 text-emerald-400" />
                 <span>View Customer Store</span>
               </Link>
 
               {/* Logout button */}
               <button
                 onClick={logoutSeller}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 text-xs font-semibold transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 text-sm font-semibold transition-colors cursor-pointer"
                 title="Sign out from this merchant account"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
@@ -518,8 +518,8 @@ export default function SellerPortalPage() {
           {/* Quick Metrics Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-5 pt-4 border-t border-slate-800">
             <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Live Catalog</span>
-              <span className="text-lg font-bold text-white font-mono tabular-nums">
+              <span className="text-xs text-slate-400 uppercase tracking-wider block">Live Catalog</span>
+              <span className="text-xl font-bold text-white font-mono tabular-nums">
                 {sellerProducts.length} Products
               </span>
             </div>
@@ -539,16 +539,16 @@ export default function SellerPortalPage() {
               title="Click to filter low stock items"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 uppercase tracking-wider block font-semibold">
+                <span className="text-xs text-slate-400 uppercase tracking-wider block font-semibold">
                   Low Stock
                 </span>
                 {lowStockItems.length > 0 && (
-                  <span className="text-[9px] bg-red-600 text-white font-bold px-1.5 py-0.2 rounded uppercase">
+                  <span className="text-xs bg-red-600 text-white font-bold px-1.5 py-0.5 rounded uppercase">
                     Alert
                   </span>
                 )}
               </div>
-              <span className={`text-lg font-bold font-mono tabular-nums ${
+              <span className={`text-xl font-bold font-mono tabular-nums ${
                 lowStockItems.length > 0 ? 'text-red-400' : 'text-emerald-400'
               }`}>
                 {lowStockItems.length} {lowStockItems.length === 1 ? 'Item' : 'Items'}
@@ -556,20 +556,20 @@ export default function SellerPortalPage() {
             </button>
 
             <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
-              <span className="text-lg font-bold text-emerald-400 font-mono tabular-nums">
+              <span className="text-xs text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono tabular-nums">
                 Rs. 18,450
               </span>
             </div>
             <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Completed Orders</span>
-              <span className="text-lg font-bold text-white font-mono tabular-nums">
+              <span className="text-xs text-slate-400 uppercase tracking-wider block">Completed Orders</span>
+              <span className="text-xl font-bold text-white font-mono tabular-nums">
                 42 Dispatches
               </span>
             </div>
             <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Avg Packing Time</span>
-              <span className="text-lg font-bold text-amber-400 font-mono tabular-nums">
+              <span className="text-xs text-slate-400 uppercase tracking-wider block">Avg Packing Time</span>
+              <span className="text-xl font-bold text-amber-400 font-mono tabular-nums">
                 4.8 mins
               </span>
             </div>
@@ -611,8 +611,8 @@ export default function SellerPortalPage() {
             <Package className="w-4 h-4" />
             <span>Catalog & Inventory ({sellerProducts.length})</span>
             {lowStockItems.length > 0 && (
-              <span className="text-[10px] bg-red-600 text-white font-mono px-2 py-0.5 rounded-full font-bold ml-1 flex items-center gap-1 shadow-xs animate-pulse">
-                <AlertTriangle className="w-2.5 h-2.5" />
+              <span className="text-xs bg-red-600 text-white font-mono px-2 py-0.5 rounded-full font-bold ml-1 flex items-center gap-1 shadow-xs animate-pulse">
+                <AlertTriangle className="w-3 h-3" />
                 <span>{lowStockItems.length} Low</span>
               </span>
             )}
@@ -640,20 +640,20 @@ export default function SellerPortalPage() {
             {/* Quick action bar */}
             <div className="bg-slate-900/80 rounded-2xl p-4 sm:p-5 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-bold text-white">Ready to expand your store catalog?</h4>
-                <p className="text-xs text-slate-400">Publish high-margin produce or bakery products to capture more Kathmandu customer orders.</p>
+                <h4 className="text-base font-bold text-white">Ready to expand your store catalog?</h4>
+                <p className="text-sm text-slate-400">Publish high-margin produce or bakery products to capture more Kathmandu customer orders.</p>
               </div>
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setActiveTab('add')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
+                  <PlusCircle className="w-4 h-4" />
                   <span>Add New Product Now</span>
                 </button>
                 <Link
                   to="/"
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs border border-slate-700 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-sm border border-slate-700 transition-colors"
                 >
                   View Customer Store
                 </Link>
@@ -679,10 +679,10 @@ export default function SellerPortalPage() {
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-sm">
+                    <h3 className="font-bold text-white text-base">
                       Product Published to Customer Store!
                     </h3>
-                    <p className="text-xs text-emerald-300">
+                    <p className="text-sm text-emerald-300">
                       "{lastAddedProduct.name}" (Rs. {lastAddedProduct.discounted_price}) is now live for search, homepage feeds, and cart checkout.
                     </p>
                   </div>
@@ -691,14 +691,14 @@ export default function SellerPortalPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     to={`/product/${lastAddedProduct.id}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors"
                   >
                     <span>View Product Page</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <ExternalLink className="w-4 h-4" />
                   </Link>
                   <Link
                     to="/"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
                   >
                     <span>Customer Home</span>
                   </Link>
@@ -711,10 +711,10 @@ export default function SellerPortalPage() {
               <div className="lg:col-span-7 bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-800">
                   <div>
-                    <h2 className="text-lg font-bold text-white">Create New Catalog Product</h2>
-                    <p className="text-xs text-slate-400">Fill in product details to syndicate immediately to customer app.</p>
+                    <h2 className="text-xl font-bold text-white">Create New Catalog Product</h2>
+                    <p className="text-sm text-slate-400">Fill in product details to syndicate immediately to customer app.</p>
                   </div>
-                  <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                  <span className="text-xs text-emerald-400 font-semibold bg-emerald-950 px-2.5 py-0.5 rounded border border-emerald-800">
                     Direct Sync
                   </span>
                 </div>
@@ -722,7 +722,7 @@ export default function SellerPortalPage() {
                 <form onSubmit={handleCreateProduct} className="space-y-4">
                   {/* Product Title */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                    <label className="block text-sm font-bold text-slate-300 mb-1">
                       Product Name <span className="text-red-400">*</span>
                     </label>
                     <input
@@ -738,7 +738,7 @@ export default function SellerPortalPage() {
                   {/* Category & Pack Size */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                      <label className="block text-sm font-bold text-slate-300 mb-1">
                         Category <span className="text-red-400">*</span>
                       </label>
                       <select
@@ -756,7 +756,7 @@ export default function SellerPortalPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                      <label className="block text-sm font-bold text-slate-300 mb-1">
                         Unit / Pack Size <span className="text-red-400">*</span>
                       </label>
                       <input
@@ -768,13 +768,13 @@ export default function SellerPortalPage() {
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                       />
                       {/* Quick preset chips */}
-                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {PRESET_UNITS.map(u => (
                           <button
                             key={u}
                             type="button"
                             onClick={() => setUnit(u)}
-                            className={`text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                            className={`text-xs px-2.5 py-0.5 rounded cursor-pointer transition-colors ${
                               unit === u ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
                             }`}
                           >
@@ -788,11 +788,11 @@ export default function SellerPortalPage() {
                   {/* Pricing: MRP & Selling Price */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                      <label className="block text-sm font-bold text-slate-300 mb-1">
                         Selling Price (Rs.) <span className="text-red-400">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-bold">Rs.</span>
+                        <span className="absolute left-3 top-2.5 text-sm text-slate-500 font-bold">Rs.</span>
                         <input
                           type="number"
                           min="1"
@@ -800,30 +800,30 @@ export default function SellerPortalPage() {
                           value={discountedPrice}
                           onChange={e => setDiscountedPrice(e.target.value ? Number(e.target.value) : '')}
                           placeholder="95"
-                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono tabular-nums"
+                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono tabular-nums"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                      <label className="block text-sm font-bold text-slate-300 mb-1">
                         MRP / Original (Rs.)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-bold">Rs.</span>
+                        <span className="absolute left-3 top-2.5 text-sm text-slate-500 font-bold">Rs.</span>
                         <input
                           type="number"
                           min="1"
                           value={originalPrice}
                           onChange={e => setOriginalPrice(e.target.value ? Number(e.target.value) : '')}
                           placeholder="120"
-                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono tabular-nums"
+                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono tabular-nums"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                      <label className="block text-sm font-bold text-slate-300 mb-1">
                         Stock Inventory
                       </label>
                       <input
@@ -839,7 +839,7 @@ export default function SellerPortalPage() {
 
                   {/* Organic & Certified check */}
                   <div className="flex items-center gap-3 pt-1">
-                    <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-300">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-300">
                       <input
                         type="checkbox"
                         checked={isOrganic}
@@ -852,7 +852,7 @@ export default function SellerPortalPage() {
 
                   {/* Product Image Selection */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-2">
+                    <label className="block text-sm font-bold text-slate-300 mb-2">
                       Product Image
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
@@ -876,7 +876,7 @@ export default function SellerPortalPage() {
                             referrerPolicy="no-referrer"
                             className="w-full h-16 object-cover"
                           />
-                          <div className="p-1 bg-slate-950 text-[10px] text-slate-300 truncate">
+                          <div className="p-1.5 bg-slate-950 text-xs text-slate-300 truncate">
                             {img.label}
                           </div>
                         </button>
@@ -889,14 +889,14 @@ export default function SellerPortalPage() {
                         value={customImageUrl}
                         onChange={e => setCustomImageUrl(e.target.value)}
                         placeholder="Or enter custom image URL (https://...)"
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* Storefront Section Placements */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    <label className="block text-sm font-bold text-slate-300 mb-1.5">
                       Showcase Placement Sections
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -911,7 +911,7 @@ export default function SellerPortalPage() {
                           key={sec.id}
                           type="button"
                           onClick={() => toggleSection(sec.id)}
-                          className={`px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all border cursor-pointer flex items-center justify-between ${
+                          className={`px-3 py-2 rounded-xl text-sm font-semibold text-left transition-all border cursor-pointer flex items-center justify-between ${
                             selectedSections.includes(sec.id)
                               ? 'bg-emerald-950/60 border-emerald-600 text-emerald-200'
                               : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -919,7 +919,7 @@ export default function SellerPortalPage() {
                         >
                           <span>{sec.label}</span>
                           {selectedSections.includes(sec.id) && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-1" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-1" />
                           )}
                         </button>
                       ))}
@@ -928,7 +928,7 @@ export default function SellerPortalPage() {
 
                   {/* Description */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                    <label className="block text-sm font-bold text-slate-300 mb-1">
                       Product Description
                     </label>
                     <textarea
@@ -936,7 +936,7 @@ export default function SellerPortalPage() {
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       placeholder="Brief notes on harvesting, freshness, storage recommendations..."
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                     />
                   </div>
 
@@ -945,7 +945,7 @@ export default function SellerPortalPage() {
                     <button
                       type="submit"
                       disabled={submittingProduct}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-base shadow-lg shadow-emerald-950/50 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submittingProduct ? (
                         <>
@@ -964,22 +964,22 @@ export default function SellerPortalPage() {
               </div>
 
               {/* Live Customer Preview Card (5 cols on lg) */}
-              <div className="lg:col-span-5 sticky top-24">
+              <div className="lg:col-span-5 sticky top-36">
                 <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
+                    <span className="text-sm font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4" />
                       Live Customer Card Preview
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">Realtime</span>
+                    <span className="text-xs text-slate-500 font-mono">Realtime</span>
                   </div>
 
-                  <p className="text-xs text-slate-400 mb-4">
+                  <p className="text-sm text-slate-400 mb-4">
                     This is exactly how customers in Kathmandu Valley will see your product card on the homepage and search results:
                   </p>
 
                   {/* Simulated Product Card */}
-                  <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-md max-w-xs mx-auto">
+                  <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-md max-w-sm mx-auto">
                     {/* Image Box */}
                     <div className="relative aspect-4/3 w-full bg-slate-800 overflow-hidden">
                       <img
@@ -989,30 +989,30 @@ export default function SellerPortalPage() {
                         className="w-full h-full object-cover"
                       />
                       {discountPercent > 0 && (
-                        <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs">
+                        <div className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-0.5 rounded shadow-xs">
                           {discountPercent}% OFF
                         </div>
                       )}
                       {isOrganic && (
-                        <div className="absolute bottom-2 left-2 bg-emerald-950/90 text-emerald-300 border border-emerald-700/80 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <div className="absolute bottom-2 left-2 bg-emerald-950/90 text-emerald-300 border border-emerald-700/80 text-xs font-bold px-2.5 py-0.5 rounded-full">
                           🌱 100% Organic
                         </div>
                       )}
                     </div>
 
                     {/* Card Content */}
-                    <div className="p-3.5">
+                    <div className="p-4">
                       {/* Distance & Vendor */}
-                      <div className="flex items-center justify-between text-[11px] text-emerald-400 mb-1">
-                        <span className="font-semibold truncate max-w-[140px]">{currentSeller.name}</span>
+                      <div className="flex items-center justify-between text-xs text-emerald-400 mb-1">
+                        <span className="font-semibold truncate max-w-[160px]">{currentSeller.name}</span>
                         <span className="font-mono">⚡ 10-12 mins</span>
                       </div>
 
-                      <h4 className="font-bold text-white text-sm line-clamp-1">
+                      <h4 className="font-bold text-white text-base line-clamp-1">
                         {productName.trim() || 'Your Product Title'}
                       </h4>
 
-                      <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                      <p className="text-sm text-slate-400 mt-0.5 font-medium">
                         {unit || '500g'}
                       </p>
 
@@ -1020,11 +1020,11 @@ export default function SellerPortalPage() {
                       <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-800/80">
                         <div>
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-base font-extrabold text-white font-mono tabular-nums">
+                            <span className="text-lg font-extrabold text-white font-mono tabular-nums">
                               Rs. {disc || 95}
                             </span>
                             {orig > disc && (
-                              <span className="text-xs text-slate-500 line-through font-mono tabular-nums">
+                              <span className="text-sm text-slate-500 line-through font-mono tabular-nums">
                                 Rs. {orig}
                               </span>
                             )}
@@ -1033,9 +1033,9 @@ export default function SellerPortalPage() {
 
                         <button
                           type="button"
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-xs hover:bg-emerald-500 transition-colors flex items-center gap-1"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-xs hover:bg-emerald-500 transition-colors flex items-center gap-1"
                         >
-                          <PlusCircle className="w-3.5 h-3.5" />
+                          <PlusCircle className="w-4 h-4" />
                           <span>ADD</span>
                         </button>
                       </div>
@@ -1043,9 +1043,9 @@ export default function SellerPortalPage() {
                   </div>
 
                   {/* Summary Tips */}
-                  <div className="mt-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                  <div className="mt-4 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-1">
                     <p className="flex items-center gap-1.5 text-slate-300 font-semibold">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       Instant Syndication Guarantee
                     </p>
                     <p>
@@ -1072,14 +1072,14 @@ export default function SellerPortalPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-extrabold text-white text-sm sm:text-base tracking-tight">
+                      <h3 className="font-extrabold text-white text-base sm:text-lg tracking-tight">
                         Low Inventory Alert
                       </h3>
-                      <span className="text-[10px] bg-red-800 text-red-100 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      <span className="text-xs bg-red-800 text-red-100 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
                         {lowStockItems.length} {lowStockItems.length === 1 ? 'Product Critical' : 'Products Critical'}
                       </span>
                     </div>
-                    <p className="text-xs text-red-200 mt-1">
+                    <p className="text-sm text-red-200 mt-1">
                       {lowStockItems.length} product{lowStockItems.length > 1 ? 's have' : ' has'} ≤ 5 units in stock. Items depleted to 0 units are automatically marked out-of-stock on customer quick-delivery storefronts.
                     </p>
                   </div>
@@ -1089,7 +1089,7 @@ export default function SellerPortalPage() {
                   <button
                     onClick={handleRestockAllLow}
                     disabled={restockingAll}
-                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-red-950 font-extrabold text-xs shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-red-950 font-extrabold text-sm shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     {restockingAll ? (
                       <RefreshCw className="w-4 h-4 animate-spin text-red-700" />
@@ -1100,7 +1100,7 @@ export default function SellerPortalPage() {
                   </button>
                   <button
                     onClick={() => setInventoryFilter(inventoryFilter === 'low' ? 'all' : 'low')}
-                    className="px-3.5 py-2.5 rounded-xl bg-red-900/80 hover:bg-red-800 text-white font-semibold text-xs border border-red-700/80 transition-colors cursor-pointer"
+                    className="px-3.5 py-2.5 rounded-xl bg-red-900/80 hover:bg-red-800 text-white font-semibold text-sm border border-red-700/80 transition-colors cursor-pointer"
                   >
                     {inventoryFilter === 'low' ? 'Show All Products' : 'Filter Low Only'}
                   </button>
@@ -1111,11 +1111,11 @@ export default function SellerPortalPage() {
             {/* Inventory Header, Search & Filter Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Package className="w-5 h-5 text-emerald-400" />
                   <span>Store Inventory & Catalog</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-400 mt-0.5">
                   Monitor live inventory levels, execute quick restocks, or modify availability status.
                 </p>
               </div>
@@ -1123,21 +1123,21 @@ export default function SellerPortalPage() {
               {/* Search & Refresh */}
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                   <input
                     type="text"
                     value={searchCatalogQuery}
                     onChange={e => setSearchCatalogQuery(e.target.value)}
                     placeholder="Search by product name..."
-                    className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-48 sm:w-60"
+                    className="pl-9 pr-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-52 sm:w-64"
                   />
                 </div>
                 <button
                   onClick={loadSellerCatalog}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
                   title="Refresh catalog list"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingProducts ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${loadingProducts ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
@@ -1146,7 +1146,7 @@ export default function SellerPortalPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setInventoryFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   inventoryFilter === 'all'
                     ? 'bg-slate-800 text-white border border-slate-700'
                     : 'text-slate-400 hover:text-white bg-slate-950/60'
@@ -1157,7 +1157,7 @@ export default function SellerPortalPage() {
 
               <button
                 onClick={() => setInventoryFilter('low')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   inventoryFilter === 'low'
                     ? 'bg-red-600 text-white shadow-md shadow-red-950/50'
                     : lowStockItems.length > 0
@@ -1165,13 +1165,13 @@ export default function SellerPortalPage() {
                     : 'text-slate-400 hover:text-white bg-slate-950/60'
                 }`}
               >
-                <AlertTriangle className="w-3 h-3 text-red-400" />
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
                 <span>Low Inventory & Depleted ({lowStockItems.length})</span>
               </button>
 
               <button
                 onClick={() => setInventoryFilter('healthy')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   inventoryFilter === 'healthy'
                     ? 'bg-slate-800 text-white border border-slate-700'
                     : 'text-slate-400 hover:text-white bg-slate-950/60'
@@ -1182,7 +1182,7 @@ export default function SellerPortalPage() {
             </div>
 
             {loadingProducts ? (
-              <div className="py-16 text-center text-slate-400 text-sm flex items-center justify-center gap-2">
+              <div className="py-16 text-center text-slate-400 text-base flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
                 <span>Loading your store's live catalog...</span>
               </div>
@@ -1203,8 +1203,8 @@ export default function SellerPortalPage() {
                   return (
                     <div className="py-16 text-center">
                       <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                      <h3 className="text-base font-bold text-white">No products found</h3>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      <h3 className="text-lg font-bold text-white">No products found</h3>
+                      <p className="text-sm text-slate-400 mt-1 max-w-md mx-auto">
                         {inventoryFilter === 'low'
                           ? 'Great job! No products currently have critically low inventory.'
                           : searchCatalogQuery
@@ -1214,14 +1214,14 @@ export default function SellerPortalPage() {
                       {inventoryFilter !== 'all' ? (
                         <button
                           onClick={() => setInventoryFilter('all')}
-                          className="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                          className="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition-colors cursor-pointer"
                         >
                           View All Inventory
                         </button>
                       ) : (
                         <button
                           onClick={() => setActiveTab('add')}
-                          className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer"
+                          className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors cursor-pointer"
                         >
                           Add First Product Now
                         </button>
@@ -1232,9 +1232,9 @@ export default function SellerPortalPage() {
 
                 return (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
+                        <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-xs">
                           <th className="pb-3 font-semibold">Product</th>
                           <th className="pb-3 font-semibold">Category</th>
                           <th className="pb-3 font-semibold">Price</th>
@@ -1270,16 +1270,16 @@ export default function SellerPortalPage() {
                                       }`}
                                     />
                                     {isLowStock && (
-                                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-600 text-white text-[9px] flex items-center justify-center font-bold">
+                                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-bold">
                                         !
                                       </span>
                                     )}
                                   </div>
                                   <div>
-                                    <span className={`font-bold text-sm block ${isLowStock ? 'text-red-100' : 'text-white'}`}>
+                                    <span className={`font-bold text-base block ${isLowStock ? 'text-red-100' : 'text-white'}`}>
                                       {prod.name}
                                     </span>
-                                    <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                                       <span>{prod.unit}</span>
                                       {prod.is_organic && (
                                         <span className="text-emerald-400 font-semibold">· Organic</span>
@@ -1304,7 +1304,7 @@ export default function SellerPortalPage() {
                                 <div className="font-mono tabular-nums">
                                   <span className="font-bold text-white">Rs. {prod.discounted_price}</span>
                                   {prod.original_price > prod.discounted_price && (
-                                    <span className="text-slate-500 line-through text-[11px] ml-1.5">
+                                    <span className="text-slate-500 line-through text-xs ml-1.5">
                                       Rs. {prod.original_price}
                                     </span>
                                   )}
@@ -1314,18 +1314,18 @@ export default function SellerPortalPage() {
                               {/* Stock Status Badge (Highlighted in Red for Low Inventory) */}
                               <td className="py-3.5 pr-4">
                                 {isOut ? (
-                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-950 text-red-300 border border-red-700 shadow-2xs">
-                                    <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-950 text-red-300 border border-red-700 shadow-2xs">
+                                    <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                                     <span>Out of Stock (0)</span>
                                   </div>
                                 ) : isLowStock ? (
-                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-950/90 text-red-300 border border-red-600 shadow-2xs">
-                                    <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-950/90 text-red-300 border border-red-600 shadow-2xs">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                                     <span>Low Stock: Only {prod.stock} left</span>
                                   </div>
                                 ) : (
-                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                                     <span>In Stock ({prod.stock})</span>
                                   </div>
                                 )}
@@ -1337,7 +1337,7 @@ export default function SellerPortalPage() {
                                   <button
                                     onClick={() => handleRestock(prod.id, 25)}
                                     disabled={restockingId === prod.id}
-                                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                                    className={`px-3.5 py-1.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                                       isLowStock
                                         ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-95 text-white shadow-red-950/60 ring-1 ring-red-400/40'
                                         : 'bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-300 hover:text-white border border-slate-700'
@@ -1345,9 +1345,9 @@ export default function SellerPortalPage() {
                                     title="Quickly add 25 units to product inventory"
                                   >
                                     {restockingId === prod.id ? (
-                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
                                     ) : (
-                                      <PlusCircle className="w-3.5 h-3.5" />
+                                      <PlusCircle className="w-4 h-4" />
                                     )}
                                     <span>Quick Restock (+25)</span>
                                   </button>
@@ -1356,7 +1356,7 @@ export default function SellerPortalPage() {
                                   <button
                                     onClick={() => handleRestock(prod.id, 50)}
                                     disabled={restockingId === prod.id}
-                                    className="px-2 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700/60"
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-xs font-mono text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700/60"
                                     title="Add 50 units"
                                   >
                                     +50
@@ -1409,10 +1409,10 @@ export default function SellerPortalPage() {
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
               <div>
-                <h2 className="text-lg font-bold text-white">Live Customer Order Dispatches</h2>
-                <p className="text-xs text-slate-400">Incoming 10-minute grocery delivery orders requiring store packing.</p>
+                <h2 className="text-xl font-bold text-white">Live Customer Order Dispatches</h2>
+                <p className="text-sm text-slate-400">Incoming 10-minute grocery delivery orders requiring store packing.</p>
               </div>
-              <span className="text-xs font-mono text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-800">
+              <span className="text-sm font-mono text-emerald-400 bg-emerald-950 px-3 py-1 rounded-full border border-emerald-800">
                 🟢 Live Dispatch Queue
               </span>
             </div>
@@ -1456,23 +1456,23 @@ export default function SellerPortalPage() {
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-sm">{ord.id}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">· {ord.time}</span>
-                      <span className="text-[11px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-semibold">
+                      <span className="font-bold text-white text-base">{ord.id}</span>
+                      <span className="text-xs text-slate-400 font-mono">· {ord.time}</span>
+                      <span className="text-xs bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-semibold">
                         {ord.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-1 font-medium">{ord.items}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-sm text-slate-300 mt-1 font-medium">{ord.items}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Customer: {ord.customer} · {ord.location}
                     </p>
                   </div>
 
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
-                    <span className="font-bold text-emerald-400 text-sm font-mono tabular-nums">
+                    <span className="font-bold text-emerald-400 text-base font-mono tabular-nums">
                       Rs. {ord.total}
                     </span>
-                    <span className="text-[11px] text-slate-400 mt-0.5">
+                    <span className="text-xs text-slate-400 mt-0.5">
                       Rider: <strong className="text-slate-200">{ord.riderEta}</strong>
                     </span>
                   </div>

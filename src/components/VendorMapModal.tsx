@@ -60,14 +60,14 @@ export const VendorMapModal: React.FC<VendorMapModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white font-display">
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white font-display">
                   Nearby Merchant Vendors Map
                 </h3>
-                <span className="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs font-bold px-2.5 py-0.5 rounded-full">
                   10-15 Min Express
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 Explore local neighborhood farms, artisan bakeries, and organic pantries in Kathmandu Valley
               </p>
             </div>
@@ -119,11 +119,11 @@ export const VendorMapModal: React.FC<VendorMapModalProps> = ({
                 >
                   <div className="p-1 max-w-[240px] text-slate-800">
                     <h4 className="font-bold text-sm text-slate-900">{selectedVendor.name}</h4>
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>{selectedVendor.location}</span>
                     </p>
-                    <div className="flex items-center gap-3 mt-2 text-[11px]">
+                    <div className="flex items-center gap-3 mt-2 text-xs">
                       <span className="flex items-center gap-1 text-amber-600 font-bold">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         {selectedVendor.rating}
@@ -167,10 +167,10 @@ export const VendorMapModal: React.FC<VendorMapModalProps> = ({
                   <Store className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-900 dark:text-white leading-tight truncate max-w-[140px]">
+                  <h5 className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate max-w-[160px]">
                     {v.name}
                   </h5>
-                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                     {v.delivery_time_mins} • {v.distance_km} km
                   </p>
                 </div>

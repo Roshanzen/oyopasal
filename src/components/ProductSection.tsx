@@ -28,13 +28,13 @@ export default function ProductSection({
       <div className="w-full px-4 sm:px-6 lg:px-10">
         
         {/* Section Header */}
-        <div className="flex items-end justify-between mb-4">
+        <div className="flex items-end justify-between mb-5">
           <div>
-            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
               {title}
             </h2>
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
                 {subtitle}
               </p>
             )}
@@ -44,10 +44,10 @@ export default function ProductSection({
             <motion.div whileHover={{ x: 2 }} whileTap={{ scale: 0.95 }}>
               <Link
                 to={viewAllLink}
-                className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 group pb-0.5 cursor-pointer"
+                className="text-sm font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1.5 group pb-0.5 cursor-pointer shrink-0"
               >
                 <span>See All</span>
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </motion.div>
           )}

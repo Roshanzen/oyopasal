@@ -87,7 +87,7 @@ export default function CategoryBar() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.94 }}
             onClick={() => navigate('/')}
-            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
+            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0 cursor-pointer ${
               currentPath === '/'
                 ? 'text-white'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700'
@@ -107,7 +107,7 @@ export default function CategoryBar() {
             Array.from({ length: 8 }).map((_, idx) => (
               <div
                 key={idx}
-                className="h-9 w-28 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse shrink-0"
+                className="h-10 w-32 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse shrink-0"
               />
             ))
           ) : (
@@ -121,7 +121,7 @@ export default function CategoryBar() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.94 }}
                   onClick={() => navigate(`/category/${cat.slug}`)}
-                  className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     isActive
                       ? 'text-white'
                       : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
@@ -135,7 +135,7 @@ export default function CategoryBar() {
                     />
                   )}
                   <IconComp
-                    className={`relative z-10 w-3.5 h-3.5 transition-colors ${
+                    className={`relative z-10 w-4 h-4 transition-colors ${
                       isActive ? 'text-white' : 'text-emerald-700 dark:text-emerald-400'
                     }`}
                   />

@@ -206,10 +206,10 @@ export default function LocationModal() {
               <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white font-display">
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white font-display">
                 Choose Delivery Location
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 Pin your doorstep on the map to see real-time distance and 10–15 min store delivery
               </p>
             </div>
@@ -226,37 +226,37 @@ export default function LocationModal() {
         <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 pt-2 gap-2 bg-slate-50/60 dark:bg-slate-900/60 shrink-0">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex items-center gap-1.5 py-2.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'map'
                 ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            <Compass className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Pin on Geo Map</span>
           </button>
 
           <button
             onClick={() => setActiveTab('saved')}
-            className={`flex items-center gap-1.5 py-2.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'saved'
                 ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            <Home className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+            <Home className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Saved Addresses ({addresses.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('manual')}
-            className={`flex items-center gap-1.5 py-2.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'manual'
                 ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            <Plus className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+            <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Manual Form</span>
           </button>
         </div>
@@ -329,15 +329,15 @@ export default function LocationModal() {
                 </APIProvider>
 
                 {/* Map Guidance Hint Overlay */}
-                <div className="absolute top-2.5 left-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs text-[11px] font-medium text-slate-600 dark:text-slate-300 pointer-events-none flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <div className="absolute top-2.5 left-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs text-xs font-medium text-slate-600 dark:text-slate-300 pointer-events-none flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Click or drag pin to set delivery location</span>
                 </div>
               </div>
 
               {/* Popular Area Chips */}
               <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1.5">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
                   Or select a neighborhood in Kathmandu Valley:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -346,7 +346,7 @@ export default function LocationModal() {
                       key={idx}
                       type="button"
                       onClick={() => handleSelectPreset(preset)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         pickedAreaName.includes(preset.name)
                           ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                           : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-800 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
@@ -360,11 +360,11 @@ export default function LocationModal() {
 
               {/* Real-time Distance preview to nearest local marts */}
               <div className="p-4 bg-white dark:bg-[#0f1422] border-t border-slate-100 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                     Calculated Distance to Local Hubs:
                   </span>
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded">
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded">
                     10-15 Min Express Delivery Available
                   </span>
                 </div>
@@ -375,12 +375,12 @@ export default function LocationModal() {
                     return (
                       <div
                         key={key}
-                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col justify-between"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col justify-between"
                       >
                         <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate" title={vendor.name}>
                           {vendor.name}
                         </span>
-                        <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/60 dark:border-slate-700 text-[11px]">
+                        <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/60 dark:border-slate-700 text-xs">
                           <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
                             {dist.toFixed(1)} km
                           </span>
@@ -397,7 +397,7 @@ export default function LocationModal() {
                 <button
                   type="button"
                   onClick={handleConfirmMapLocation}
-                  className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <CheckCircle2 className="w-5 h-5 text-white" />
                   <span>Deliver to {pickedAreaName}</span>
@@ -439,20 +439,20 @@ export default function LocationModal() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          <span className="font-bold text-base text-slate-900 dark:text-white">
                             {addr.title}
                           </span>
                           {addr.is_default && (
-                            <span className="text-[10px] bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-semibold">
+                            <span className="text-xs bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-semibold">
                               Default
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
                           {addr.street}, {addr.area}, {addr.city}
                         </p>
                         {addr.landmark && (
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                             Landmark: {addr.landmark}
                           </p>
                         )}
@@ -514,7 +514,7 @@ export default function LocationModal() {
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                   placeholder="e.g. House #28, Maitidevi Road"
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -528,7 +528,7 @@ export default function LocationModal() {
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
                   placeholder="e.g. New Baneshwor, Kathmandu"
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -541,7 +541,7 @@ export default function LocationModal() {
                   value={landmark}
                   onChange={(e) => setLandmark(e.target.value)}
                   placeholder="e.g. Opposite Standard Chartered Bank"
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -549,14 +549,14 @@ export default function LocationModal() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('map')}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !street.trim() || !area.trim()}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {submitting ? 'Saving...' : 'Save & Deliver Here'}
                 </button>

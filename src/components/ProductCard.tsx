@@ -56,12 +56,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="flex items-center justify-between absolute top-4 left-4 right-4 z-10 pointer-events-none">
         <div className="flex flex-col gap-1 items-start">
           {(product.discount_percentage || 0) > 0 && (
-            <span className="bg-emerald-600 text-white font-extrabold text-[10px] tracking-tight px-2 py-0.5 rounded-md shadow-xs">
+            <span className="bg-emerald-600 text-white font-extrabold text-xs tracking-tight px-2.5 py-0.5 rounded-md shadow-xs">
               {product.discount_percentage}% OFF
             </span>
           )}
           {product.is_organic && (
-            <span className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-1.5 py-0.5 rounded-md">
+            <span className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold text-xs px-2 py-0.5 rounded-md">
               Organic
             </span>
           )}
@@ -72,14 +72,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           whileTap={{ scale: 0.75 }}
           onClick={handleToggleWishlist}
           aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          className="pointer-events-auto w-7 h-7 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs shadow-xs border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+          className="pointer-events-auto w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs shadow-xs border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
         >
           <motion.div
             animate={wishlisted ? { scale: [1, 1.4, 1] } : { scale: 1 }}
             transition={{ duration: 0.3 }}
           >
             <Heart
-              className={`w-3.5 h-3.5 ${
+              className={`w-4 h-4 ${
                 wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
               }`}
             />
@@ -106,8 +106,8 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Quick speed label */}
-        <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
-          <Clock className="w-2.5 h-2.5 text-emerald-400" />
+        <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+          <Clock className="w-3 h-3 text-emerald-400" />
           <span>{distanceInfo?.etaText || '10-15 mins'}</span>
         </div>
       </div>
@@ -115,65 +115,65 @@ export default function ProductCard({ product }: ProductCardProps) {
       {/* Product Information */}
       <div className="flex-1 flex flex-col">
         {/* Unit & Vendor */}
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-          <span className="font-semibold text-slate-600 dark:text-slate-300">{product.unit || 'Standard'}</span>
-          <span className="text-[11px] truncate max-w-[120px]" title={product.vendor?.name || 'Local Mart'}>
+        <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+          <span className="font-semibold text-slate-600 dark:text-slate-300 shrink-0">{product.unit || 'Standard'}</span>
+          <span className="text-xs flex-1 min-w-0 truncate text-right" title={product.vendor?.name || 'Local Mart'}>
             {product.vendor?.name || 'Local Mart'}
           </span>
         </div>
 
         {/* Title */}
-        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors mb-2">
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors mb-2">
           {product.name}
         </h3>
 
         {/* Rating and Reviews */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
-          <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded-sm font-bold text-[11px]">
-            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-3">
+          <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-sm font-bold text-xs">
+            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             <span>{product.rating || 4.8}</span>
           </div>
           <span className="text-slate-400 dark:text-slate-500">({product.reviews_count || 12})</span>
         </div>
 
         {/* Price & Add to Cart Container */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-auto flex items-center justify-between gap-2">
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-extrabold text-slate-900 dark:text-white tabular-nums">
+        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 mt-auto flex items-center justify-between gap-2">
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
                 Rs. {product.discounted_price}
               </span>
               {(product.original_price || 0) > (product.discounted_price || 0) && (
-                <span className="text-xs text-slate-400 dark:text-slate-500 line-through tabular-nums">
+                <span className="text-sm text-slate-400 dark:text-slate-500 line-through tabular-nums">
                   Rs. {product.original_price}
                 </span>
               )}
             </div>
 
             {/* Distance from chosen location */}
-            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
-              <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{distanceInfo?.distanceText || '0.8 km'} away</span>
+            <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
+              <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">{distanceInfo?.distanceText || '0.8 km'} away</span>
             </div>
 
             {product.stock <= 5 && product.stock > 0 && (
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
                 Only {product.stock} left!
               </span>
             )}
             {!product.in_stock && (
-              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">
                 Out of Stock
               </span>
             )}
           </div>
 
           {/* Stepper or Add Button with Spring Taps */}
-          <div>
+          <div className="shrink-0">
             {!product.in_stock ? (
               <button
                 disabled
-                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed"
+                className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed"
               >
                 Sold Out
               </button>
@@ -187,9 +187,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                   whileTap={{ scale: 0.8 }}
                   onClick={handleDecrement}
                   aria-label="Decrease quantity"
-                  className="p-1.5 px-2 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
+                  className="p-2 px-2.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
                 >
-                  <Minus className="w-3.5 h-3.5" />
+                  <Minus className="w-4 h-4" />
                 </motion.button>
                 <AnimatePresence mode="popLayout">
                   <motion.span
@@ -198,7 +198,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 6, opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                    className="px-2 text-xs font-extrabold tabular-nums select-none min-w-[20px] text-center"
+                    className="px-2 text-sm font-extrabold tabular-nums select-none min-w-[22px] text-center"
                   >
                     {quantityInCart}
                   </motion.span>
@@ -207,9 +207,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                   whileTap={{ scale: 0.8 }}
                   onClick={handleIncrement}
                   aria-label="Increase quantity"
-                  className="p-1.5 px-2 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
+                  className="p-2 px-2.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                 </motion.button>
               </motion.div>
             ) : (
@@ -217,9 +217,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleIncrement}
-                className="px-3.5 py-1.5 rounded-xl border border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold text-xs bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-600 dark:hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold text-sm bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-600 dark:hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 <span>ADD</span>
               </motion.button>
             )}

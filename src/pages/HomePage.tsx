@@ -99,50 +99,50 @@ export default function HomePage() {
               <Zap className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">10-15 Min Delivery</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">From local neighborhood hubs</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">10-15 Min Delivery</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">From local neighborhood hubs</p>
             </div>
           </motion.div>
 
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.18 } }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
           >
-            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">Local Multi-Vendor</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Kathmandu & Lalitpur artisans</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">Local Multi-Vendor</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Kathmandu & Lalitpur artisans</p>
             </div>
           </motion.div>
 
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.18 } }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
           >
-            <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">100% Fresh & Genuine</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Daily quality inspection</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">100% Fresh & Genuine</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Daily quality inspection</p>
             </div>
           </motion.div>
 
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.18 } }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
           >
-            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 flex items-center justify-center shrink-0">
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">Free Delivery</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">On all orders above Rs. 499</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">Free Delivery</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">On all orders above Rs. 499</p>
             </div>
           </motion.div>
         </div>
@@ -171,20 +171,20 @@ export default function HomePage() {
         <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
                 Shop by Category
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 Explore our full department range
               </p>
             </div>
             <motion.div whileHover={{ x: 2 }} whileTap={{ scale: 0.95 }}>
               <Link
                 to="/categories"
-                className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1"
+                className="text-sm font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1"
               >
                 <span>All Categories</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </motion.div>
           </div>
@@ -196,22 +196,22 @@ export default function HomePage() {
                 whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => navigate(`/category/${cat.slug}`)}
-                className="bg-white dark:bg-[#111726] rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-colors cursor-pointer group flex flex-col justify-between"
+                className="bg-white dark:bg-[#111726] rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-colors cursor-pointer group flex flex-col justify-between"
               >
                 <div>
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold mb-2 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold mb-2.5 transition-colors">
                     <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <h3 className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                     {cat.name}
                   </h3>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
                     {cat.description}
                   </p>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
+                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-bold">
                   <span>{cat.item_count}+ items</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </motion.div>
             ))}
@@ -264,10 +264,10 @@ export default function HomePage() {
                 <Store className="w-4 h-4" />
                 <span>Hyperlocal Fulfilment</span>
               </div>
-              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
                 Popular Nearby Vendors
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 Authentic local bakeries, organic farms, and dairies near you
               </p>
             </div>
@@ -276,11 +276,11 @@ export default function HomePage() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setVendorMapOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer shadow-2xs"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer shadow-2xs"
             >
-              <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Explore on Google Maps</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-4 h-4" />
             </motion.button>
           </div>
 
@@ -295,7 +295,7 @@ export default function HomePage() {
                   onClick={() => navigate(`/search?vendor=${vendor.id}`)}
                   className="rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 p-4 transition-colors hover:shadow-lg cursor-pointer bg-slate-50/50 dark:bg-[#111726] hover:bg-white dark:hover:bg-slate-800/80 group"
                 >
-                  <div className="relative h-32 rounded-xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-800">
+                  <div className="relative h-36 rounded-xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-800">
                     {vendor.image && (
                       <img
                         src={vendor.image}
@@ -304,18 +304,18 @@ export default function HomePage() {
                         className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-500"
                       />
                     )}
-                    <div className="absolute top-2 right-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs text-slate-900 dark:text-white text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs border border-slate-100 dark:border-slate-800">
-                      <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                    <div className="absolute top-2 right-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs text-slate-900 dark:text-white text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs border border-slate-100 dark:border-slate-800">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                       <span>{vendor.rating}</span>
                     </div>
-                    <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-emerald-400" />
+                    <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
                       <span>{vDist.etaText}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">
+                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">
                       {vendor.name}
                     </h3>
                     {vendor.verified && (
@@ -323,21 +323,21 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-semibold mb-2">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-semibold mb-2">
+                    <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{vDist.distanceText} away from {currentAddress?.area ? currentAddress.area.split(',')[0] : 'you'}</span>
                   </div>
 
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mb-2.5">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-2.5">
                     {vendor.location}
                   </p>
 
                   {vendor.tags && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {vendor.tags.map((tag, idx) => (
                         <span
                           key={idx}
-                          className="text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-md"
+                          className="text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-md"
                         >
                           {tag}
                         </span>
@@ -364,16 +364,16 @@ export default function HomePage() {
                   Oyo<span className="text-emerald-400">Pasal</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-sm text-slate-400 leading-relaxed">
                 Kathmandu's premium quick-commerce network. Delivering farm-fresh groceries, bakery delights, and daily necessities in 10-15 minutes.
               </p>
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">
                 Categories
               </h4>
-              <ul className="space-y-1.5 text-xs">
+              <ul className="space-y-2 text-sm">
                 <li><Link to="/category/fruits-vegetables" className="hover:text-emerald-400">Fruits & Vegetables</Link></li>
                 <li><Link to="/category/dairy-bakery" className="hover:text-emerald-400">Dairy & Fresh Bakery</Link></li>
                 <li><Link to="/category/grocery" className="hover:text-emerald-400">Grocery & Pantry Staples</Link></li>
@@ -382,10 +382,10 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">
                 Customer Care
               </h4>
-              <ul className="space-y-1.5 text-xs">
+              <ul className="space-y-2 text-sm">
                 <li><Link to="/account?tab=orders" className="hover:text-emerald-400">Track Active Orders</Link></li>
                 <li><Link to="/account?tab=addresses" className="hover:text-emerald-400">Delivery Locations</Link></li>
                 <li><span className="text-slate-400">Helpdesk: support@oyopasal.com</span></li>
@@ -394,14 +394,14 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">
                 Our Delivery Zones
               </h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-sm text-slate-400 leading-relaxed">
                 Currently operating across Baneshwor, Jhamsikhel, Patan, Thamel, Lazimpat, Koteshwor, Maharajgunj & Pulchowk.
               </p>
-              <div className="mt-3 flex items-center gap-2 text-xs text-emerald-400 font-bold">
-                <Clock className="w-3.5 h-3.5" />
+              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-400 font-bold">
+                <Clock className="w-4 h-4" />
                 <span>6:00 AM - 11:30 PM Daily</span>
               </div>
             </div>

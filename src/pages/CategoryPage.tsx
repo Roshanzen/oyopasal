@@ -45,10 +45,10 @@ export default function CategoryPage() {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-10 py-6 pb-20">
         <div className="mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
             All Categories & Departments
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Choose a department to browse freshly stocked quick-commerce items
           </p>
         </div>
@@ -64,14 +64,14 @@ export default function CategoryPage() {
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold mb-3 group-hover:scale-105 transition-transform">
                   <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                   {cat.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                   {cat.description}
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-sm font-bold text-emerald-700 dark:text-emerald-400">
                 {cat.item_count}+ Items Available
               </div>
             </div>
@@ -89,7 +89,7 @@ export default function CategoryPage() {
         <div className="relative z-10 max-w-xl">
           <Link
             to="/categories"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300 hover:text-white mb-3"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-300 hover:text-white mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>All Departments</span>
@@ -97,7 +97,7 @@ export default function CategoryPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold font-display">
             {currentCategory ? currentCategory.name : 'Category'}
           </h1>
-          <p className="text-xs sm:text-sm text-emerald-200/90 mt-1 max-w-md">
+          <p className="text-sm sm:text-base text-emerald-200/90 mt-1 max-w-md">
             {currentCategory ? currentCategory.description : 'Explore freshly stocked goods'}
           </p>
         </div>
@@ -119,8 +119,8 @@ export default function CategoryPage() {
         </div>
       ) : (
         <div className="py-20 text-center bg-white dark:bg-[#111726] rounded-3xl border border-slate-200 dark:border-slate-800">
-          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No items available in this category</h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Please check back soon as local vendors restock.</p>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">No items available in this category</h3>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Please check back soon as local vendors restock.</p>
         </div>
       )}
 

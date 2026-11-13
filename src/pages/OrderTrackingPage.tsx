@@ -482,13 +482,13 @@ export default function OrderTrackingPage() {
   if (!order) {
     return (
       <div className="w-full py-24 px-4 text-center">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Order Not Found</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-6">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Order Not Found</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 mb-6">
           The requested order ID could not be retrieved.
         </p>
         <button
           onClick={() => navigate('/')}
-          className="px-6 py-2.5 rounded-full bg-emerald-600 text-white font-bold text-xs cursor-pointer"
+          className="px-6 py-2.5 rounded-full bg-emerald-600 text-white font-bold text-sm cursor-pointer"
         >
           Return to Home
         </button>
@@ -512,11 +512,11 @@ export default function OrderTrackingPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-display">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
                 Order {order.order_number}
               </h1>
               <span
-                className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-md ${
+                className={`text-xs font-extrabold px-2.5 py-0.5 rounded-md ${
                   isDelivered
                     ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
                     : isCancelled
@@ -527,7 +527,7 @@ export default function OrderTrackingPage() {
                 {isDelivered && order.status !== 'DELIVERED' ? 'ARRIVED AT ADDRESS' : order.status.replace(/_/g, ' ')}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Placed on {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · Real-Time Courier GPS Active
             </p>
           </div>
@@ -537,16 +537,16 @@ export default function OrderTrackingPage() {
           {!isCancelled && (
             <button
               onClick={handleReplaySimulation}
-              className="text-xs font-bold text-emerald-700 dark:text-emerald-300 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="text-sm font-bold text-emerald-700 dark:text-emerald-300 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-4 h-4" />
               <span>Replay Live Route</span>
             </button>
           )}
           {!isDelivered && !isCancelled && (
             <button
               onClick={() => setShowCancelModal(true)}
-              className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              className="text-sm font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
             >
               Cancel Order
             </button>
@@ -562,14 +562,14 @@ export default function OrderTrackingPage() {
           {!isDelivered && !isCancelled ? (
             <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-100 font-bold uppercase tracking-wider mb-1">
+                <div className="flex items-center gap-1.5 text-sm text-emerald-100 font-bold uppercase tracking-wider mb-1">
                   <Clock className="w-4 h-4" />
                   <span>Live Estimated Arrival</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold font-display tabular-nums">
+                <h2 className="text-2xl sm:text-4xl font-extrabold font-display tabular-nums">
                   {etaDisplay} · {remainingDistanceKm.toFixed(2)} km away
                 </h2>
-                <p className="text-xs text-emerald-100 mt-1">
+                <p className="text-sm text-emerald-100 mt-1">
                   Delivery agent Ramesh Pandey is moving toward{' '}
                   <strong className="text-white">
                     {targetSavedAddress?.title} ({targetSavedAddress?.area})
@@ -578,8 +578,8 @@ export default function OrderTrackingPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
-                  <span className="text-[11px] uppercase tracking-wider text-emerald-200 block">Progress</span>
-                  <span className="text-lg font-extrabold tabular-nums">{Math.round(progress * 100)}%</span>
+                  <span className="text-xs uppercase tracking-wider text-emerald-200 block">Progress</span>
+                  <span className="text-xl font-extrabold tabular-nums">{Math.round(progress * 100)}%</span>
                 </div>
                 <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center shrink-0">
                   <Truck className="w-7 h-7 text-white" />
@@ -589,29 +589,29 @@ export default function OrderTrackingPage() {
           ) : isDelivered ? (
             <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-950 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">
+                <div className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Completed</span>
                 </div>
-                <h2 className="text-2xl font-extrabold font-display text-emerald-900 dark:text-white">
+                <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-emerald-900 dark:text-white">
                   Delivered to {targetSavedAddress?.title || 'Saved Address'}!
                 </h2>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
                   Your delivery agent arrived at {targetSavedAddress?.street}, {targetSavedAddress?.area}. Click "Replay Live Route" anytime to watch the GPS path.
                 </p>
               </div>
               <button
                 onClick={handleReplaySimulation}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
-                <Play className="w-3.5 h-3.5" />
+                <Play className="w-4 h-4" />
                 <span>Simulate Live Rider</span>
               </button>
             </div>
           ) : (
             <div className="p-6 rounded-3xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-950 dark:text-rose-200">
-              <h2 className="text-xl font-extrabold text-rose-900 dark:text-rose-200">Order Cancelled</h2>
-              <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">
+              <h2 className="text-2xl font-extrabold text-rose-900 dark:text-rose-200">Order Cancelled</h2>
+              <p className="text-sm text-rose-700 dark:text-rose-300 mt-1">
                 This order was cancelled. Any pre-authorized charges will be refunded.
               </p>
             </div>
@@ -624,10 +624,10 @@ export default function OrderTrackingPage() {
               <div className="flex items-center gap-2.5">
                 <div className={`w-2.5 h-2.5 rounded-full ${isLiveMoving ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500'}`} />
                 <div>
-                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white block">
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white block">
                     Live Delivery Agent Map (Google Maps)
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Real-time courier GPS relative to {targetSavedAddress?.title || 'Saved Address'} ({destinationCoords.lat.toFixed(4)}, {destinationCoords.lng.toFixed(4)})
                   </span>
                 </div>
@@ -638,13 +638,13 @@ export default function OrderTrackingPage() {
                   <button
                     type="button"
                     onClick={() => setIsLiveMoving((v) => !v)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-sm font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                       isLiveMoving
                         ? 'bg-emerald-600 text-white border-emerald-500'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    {isLiveMoving ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    {isLiveMoving ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     <span>{isLiveMoving ? 'Live GPS On' : 'Resume GPS'}</span>
                   </button>
                 )}
@@ -652,13 +652,13 @@ export default function OrderTrackingPage() {
                 <button
                   type="button"
                   onClick={() => setFollowRider((v) => !v)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-sm font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                     followRider
                       ? 'bg-sky-600 text-white border-sky-500'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Crosshair className="w-3.5 h-3.5" />
+                  <Crosshair className="w-4 h-4" />
                   <span>{followRider ? 'Following Agent' : 'Center on Agent'}</span>
                 </button>
 
@@ -668,9 +668,9 @@ export default function OrderTrackingPage() {
                     setFollowRider(false);
                     setFitTrigger((c) => c + 1);
                   }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-sm font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <Maximize2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Maximize2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Fit Full Route</span>
                 </button>
               </div>
@@ -678,7 +678,7 @@ export default function OrderTrackingPage() {
 
             {/* Quota / Missing API Key Warning Banner (Non-blocking) */}
             {(mapsQuotaError || !apiKey) && (
-              <div className="px-4 py-2.5 bg-amber-950/60 border-b border-amber-800/70 text-amber-200 text-xs flex items-center gap-2">
+              <div className="px-4 py-2.5 bg-amber-950/60 border-b border-amber-800/70 text-amber-200 text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>
                   {!apiKey
@@ -716,7 +716,7 @@ export default function OrderTrackingPage() {
                     title={hubInfo.name}
                   >
                     <div className="flex flex-col items-center cursor-pointer">
-                      <div className="px-2 py-0.5 mb-1 rounded-md bg-slate-950/90 text-emerald-300 border border-emerald-500/60 text-[10px] font-bold whitespace-nowrap shadow-md">
+                      <div className="px-2.5 py-0.5 mb-1 rounded-md bg-slate-950/90 text-emerald-300 border border-emerald-500/60 text-xs font-bold whitespace-nowrap shadow-md">
                         {hubInfo.name}
                       </div>
                       <Pin background="#059669" borderColor="#064e3b" glyphColor="#ffffff" scale={1.1} />
@@ -732,7 +732,7 @@ export default function OrderTrackingPage() {
                       zIndex={50}
                     >
                       <div className="relative flex flex-col items-center cursor-pointer group">
-                        <div className="px-2 py-0.5 mb-1 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold shadow-lg border border-white/60 whitespace-nowrap flex items-center gap-1">
+                        <div className="px-2.5 py-0.5 mb-1 rounded-full bg-emerald-600 text-white text-xs font-extrabold shadow-lg border border-white/60 whitespace-nowrap flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                           <span>Agent · {remainingDistanceKm === 0 ? 'Arrived' : `${remainingDistanceKm.toFixed(2)} km`}</span>
                         </div>
@@ -759,7 +759,7 @@ export default function OrderTrackingPage() {
                     zIndex={40}
                   >
                     <div className="flex flex-col items-center cursor-pointer">
-                      <div className="px-2 py-0.5 mb-1 rounded-md bg-orange-600 text-white text-[10px] font-extrabold whitespace-nowrap shadow-md border border-white/40">
+                      <div className="px-2.5 py-0.5 mb-1 rounded-md bg-orange-600 text-white text-xs font-extrabold whitespace-nowrap shadow-md border border-white/40">
                         {targetSavedAddress?.title || 'Saved Address'} ({targetSavedAddress?.area})
                       </div>
                       <Pin background="#ea580c" borderColor="#9a3412" glyphColor="#ffffff" scale={1.25} />
@@ -772,13 +772,13 @@ export default function OrderTrackingPage() {
                       position={hubInfo.coords}
                       onCloseClick={() => setActiveMarkerInfo(null)}
                     >
-                      <div className="p-1 text-slate-900 max-w-[220px]">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                      <div className="p-1.5 text-slate-900 max-w-[260px]">
+                        <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
                           Fulfillment Hub
                         </p>
-                        <h4 className="font-bold text-sm">{hubInfo.name}</h4>
-                        <p className="text-xs text-slate-600 mt-0.5">{hubInfo.area}</p>
-                        <p className="text-[11px] text-slate-500 mt-1">
+                        <h4 className="font-bold text-base">{hubInfo.name}</h4>
+                        <p className="text-sm text-slate-600 mt-0.5">{hubInfo.area}</p>
+                        <p className="text-xs text-slate-500 mt-1">
                           Total route distance: {totalRouteKm.toFixed(2)} km
                         </p>
                       </div>
@@ -790,18 +790,18 @@ export default function OrderTrackingPage() {
                       position={riderTelemetry.position}
                       onCloseClick={() => setActiveMarkerInfo(null)}
                     >
-                      <div className="p-1.5 text-slate-900 max-w-[240px]">
+                      <div className="p-1.5 text-slate-900 max-w-[270px]">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                          <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
                             Live Delivery Agent
                           </span>
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                          <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
                             {isLiveMoving ? `${liveSpeedKmh} km/h` : progress >= 1 ? 'Arrived' : 'Paused'}
                           </span>
                         </div>
-                        <h4 className="font-bold text-sm mt-0.5">Ramesh Pandey</h4>
-                        <p className="text-xs text-slate-600">EV Scooter · Ba 98 Pa 4412</p>
-                        <div className="mt-2 pt-1.5 border-t border-slate-200 text-xs space-y-0.5">
+                        <h4 className="font-bold text-base mt-0.5">Ramesh Pandey</h4>
+                        <p className="text-sm text-slate-600">EV Scooter · Ba 98 Pa 4412</p>
+                        <div className="mt-2 pt-1.5 border-t border-slate-200 text-sm space-y-0.5">
                           <p>
                             Distance to <strong>{targetSavedAddress?.title || 'Saved Address'}</strong>:{' '}
                             <strong className="text-emerald-700">{remainingDistanceKm.toFixed(2)} km</strong>
@@ -819,22 +819,22 @@ export default function OrderTrackingPage() {
                       position={destinationCoords}
                       onCloseClick={() => setActiveMarkerInfo(null)}
                     >
-                      <div className="p-1.5 text-slate-900 max-w-[240px]">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-700">
+                      <div className="p-1.5 text-slate-900 max-w-[270px]">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-orange-700">
                           User Saved Delivery Address
                         </span>
-                        <h4 className="font-bold text-sm mt-0.5">
+                        <h4 className="font-bold text-base mt-0.5">
                           {targetSavedAddress?.title} · {targetSavedAddress?.recipient_name}
                         </h4>
-                        <p className="text-xs text-slate-600 mt-0.5">
+                        <p className="text-sm text-slate-600 mt-0.5">
                           {targetSavedAddress?.street}, {targetSavedAddress?.area}, {targetSavedAddress?.city}
                         </p>
                         {targetSavedAddress?.landmark && (
-                          <p className="text-[11px] text-slate-500 mt-0.5">
+                          <p className="text-xs text-slate-500 mt-0.5">
                             Landmark: {targetSavedAddress.landmark}
                           </p>
                         )}
-                        <p className="text-[11px] font-bold text-emerald-700 mt-1.5">
+                        <p className="text-xs font-bold text-emerald-700 mt-1.5">
                           Courier is {remainingDistanceKm.toFixed(2)} km away
                         </p>
                       </div>
@@ -844,7 +844,7 @@ export default function OrderTrackingPage() {
               </APIProvider>
 
               {/* Floating Top-Left Route Legend */}
-              <div className="absolute top-3 left-3 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-lg flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-800 dark:text-slate-200 pointer-events-none">
+              <div className="absolute top-3 left-3 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-lg flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-800 dark:text-slate-200 pointer-events-none">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-1 rounded-full bg-emerald-500 inline-block" />
                   <span>Covered</span>
@@ -859,34 +859,34 @@ export default function OrderTrackingPage() {
             {/* Live Telemetry Footer Bar inside Map Card */}
             <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
               <div className="p-3.5 sm:p-4">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-400 block">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">
                   Away From Saved Address
                 </span>
-                <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5 block">
+                <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5 block">
                   {remainingDistanceKm === 0 ? '0.00 km (Here)' : `${remainingDistanceKm.toFixed(2)} km`}
                 </span>
               </div>
               <div className="p-3.5 sm:p-4">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-400 block">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">
                   Live ETA Countdown
                 </span>
-                <span className="text-base font-extrabold text-slate-900 dark:text-white tabular-nums mt-0.5 block">
+                <span className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums mt-0.5 block">
                   {etaDisplay}
                 </span>
               </div>
               <div className="p-3.5 sm:p-4">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-400 block">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">
                   Courier Speed
                 </span>
-                <span className="text-base font-extrabold text-sky-600 dark:text-sky-400 tabular-nums mt-0.5 block">
+                <span className="text-lg font-extrabold text-sky-600 dark:text-sky-400 tabular-nums mt-0.5 block">
                   {isLiveMoving ? `${liveSpeedKmh} km/h` : isDelivered ? '0 km/h (Arrived)' : 'Paused'}
                 </span>
               </div>
               <div className="p-3.5 sm:p-4">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-400 block">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">
                   Agent GPS Coordinates
                 </span>
-                <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 tabular-nums mt-1 block">
+                <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300 tabular-nums mt-1 block">
                   {riderTelemetry.position.lat.toFixed(4)}, {riderTelemetry.position.lng.toFixed(4)}
                 </span>
               </div>
@@ -895,7 +895,7 @@ export default function OrderTrackingPage() {
 
           {/* Tracking Timeline */}
           <div className="bg-white dark:bg-[#111726] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-2xs">
-            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wide mb-5">
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white uppercase tracking-wide mb-5">
               Live Delivery Milestones
             </h3>
 
@@ -918,12 +918,12 @@ export default function OrderTrackingPage() {
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">{step.title}</h4>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{step.title}</h4>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                         {step.timestamp}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{step.description}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{step.description}</p>
                   </div>
                 </div>
               ))}
@@ -934,14 +934,14 @@ export default function OrderTrackingPage() {
           {!isCancelled && (
             <div className="p-5 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-extrabold text-sm flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-extrabold text-base flex items-center justify-center shrink-0">
                   RP
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white">
                     Ramesh Pandey (EV Courier Rider)
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     NIU NQi EV Scooter · Ba 98 Pa 4412 · 4.9★ (1,240+ deliveries)
                   </p>
                 </div>
@@ -949,9 +949,9 @@ export default function OrderTrackingPage() {
 
               <button
                 onClick={() => showToast('Connecting secure voice bridge to rider Ramesh...', 'info')}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
               >
-                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Call Rider</span>
               </button>
             </div>
@@ -963,16 +963,16 @@ export default function OrderTrackingPage() {
           {/* User's Saved Address Relative Tracking Switcher */}
           <div className="bg-white dark:bg-[#111726] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-2xs space-y-3.5">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wide flex items-center gap-1.5">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wide flex items-center gap-1.5">
                 <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Track Relative to Saved Address</span>
               </h3>
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-full">
                 Live GPS
               </span>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Compare the delivery agent&apos;s real-time distance against your order destination or any saved address:
             </p>
 
@@ -992,15 +992,15 @@ export default function OrderTrackingPage() {
                 <div className="flex items-start gap-2.5 min-w-0">
                   <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
                       Order Address ({order.delivery_address.title})
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
                       {order.delivery_address.street}, {order.delivery_address.area}
                     </span>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums shrink-0 ml-2">
+                <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums shrink-0 ml-2">
                   {(() => {
                     const c = resolveAddressCoords(order.delivery_address, currentCoordinates);
                     return `${calculateDistanceInKm(riderTelemetry.position.lat, riderTelemetry.position.lng, c.lat, c.lng).toFixed(2)} km`;
@@ -1039,21 +1039,21 @@ export default function OrderTrackingPage() {
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">
                             {addr.title}
                           </span>
                           {addr.is_default && (
-                            <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.2 rounded font-bold uppercase">
+                            <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-bold uppercase">
                               Default
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
                           {addr.street}, {addr.area}
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums shrink-0 ml-2">
+                    <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums shrink-0 ml-2">
                       {distFromRider.toFixed(2)} km
                     </span>
                   </button>
@@ -1064,12 +1064,12 @@ export default function OrderTrackingPage() {
 
           {/* Destination Details */}
           <div className="bg-white dark:bg-[#111726] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-2xs space-y-2">
-            <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wide">
+            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wide">
               Active Pin Destination
             </h3>
             <div className="flex items-start gap-2.5 pt-1">
               <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-              <div className="text-xs">
+              <div className="text-sm">
                 <p className="font-bold text-slate-800 dark:text-slate-200">
                   {targetSavedAddress?.title} ({targetSavedAddress?.recipient_name})
                 </p>
@@ -1077,11 +1077,11 @@ export default function OrderTrackingPage() {
                   {targetSavedAddress?.street}, {targetSavedAddress?.area}, {targetSavedAddress?.city}
                 </p>
                 {targetSavedAddress?.landmark && (
-                  <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-0.5">
+                  <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">
                     Landmark: {targetSavedAddress.landmark}
                   </p>
                 )}
-                <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-0.5">
+                <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">
                   Phone: {targetSavedAddress?.phone}
                 </p>
               </div>
@@ -1090,14 +1090,14 @@ export default function OrderTrackingPage() {
 
           {/* Itemized Receipt */}
           <div className="bg-white dark:bg-[#111726] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wide pb-2 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wide pb-2 border-b border-slate-100 dark:border-slate-800">
               Order Receipt
             </h3>
 
             {order.items_by_vendor.map((vendorGroup, idx) => (
-              <div key={idx} className="space-y-2 text-xs">
+              <div key={idx} className="space-y-2 text-sm">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                  <Store className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>{vendorGroup.vendor.name}</span>
                 </div>
                 {vendorGroup.items.map((item, i) => (
@@ -1113,7 +1113,7 @@ export default function OrderTrackingPage() {
               </div>
             ))}
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-sm">
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal</span>
                 <span className="tabular-nums text-slate-800 dark:text-slate-200">Rs. {order.subtotal}</span>
@@ -1134,15 +1134,15 @@ export default function OrderTrackingPage() {
                   <span className="tabular-nums">- Rs. {order.coupon_discount}</span>
                 </div>
               )}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between font-extrabold text-sm text-slate-900 dark:text-white">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between font-extrabold text-base text-slate-900 dark:text-white">
                 <span>Total Paid</span>
-                <span className="text-base text-emerald-700 dark:text-emerald-400 tabular-nums">
+                <span className="text-lg text-emerald-700 dark:text-emerald-400 tabular-nums">
                   Rs. {order.total_amount}
                 </span>
               </div>
             </div>
 
-            <div className="pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="pt-1 text-xs text-slate-500 dark:text-slate-400">
               Payment: <strong className="text-slate-800 dark:text-slate-200">{order.payment_method.replace(/_/g, ' ')}</strong> ({order.payment_status})
             </div>
           </div>
@@ -1156,27 +1156,27 @@ export default function OrderTrackingPage() {
             onClick={() => setShowCancelModal(false)}
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
           />
-          <div className="relative bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full z-10 shadow-2xl space-y-4">
+          <div className="relative bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full z-10 shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
               <XCircle className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Cancel this Order?</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Cancel this Order?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Are you sure you want to cancel order {order.order_number}? Local sellers have already prepared your items.
               </p>
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Keep Order
               </button>
               <button
                 onClick={handleCancelOrder}
                 disabled={cancelling}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm cursor-pointer"
               >
                 {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
               </button>

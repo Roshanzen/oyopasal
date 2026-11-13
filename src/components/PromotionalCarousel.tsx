@@ -111,7 +111,7 @@ export default function PromotionalCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/80 dark:border-slate-800 bg-slate-950 text-white min-h-[240px] sm:min-h-[290px] lg:min-h-[330px] flex items-center">
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/80 dark:border-slate-800 bg-slate-950 text-white min-h-[260px] sm:min-h-[320px] lg:min-h-[360px] flex items-center">
         
         {/* Animated Banner Slide with Gestures */}
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -140,14 +140,14 @@ export default function PromotionalCarousel() {
             </div>
 
             {/* Content Container */}
-            <div className="relative z-10 p-6 sm:p-10 max-w-xl pointer-events-auto">
+            <div className="relative z-10 p-6 sm:p-10 max-w-2xl pointer-events-auto">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold tracking-wide mb-3 backdrop-blur-xs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold tracking-wide mb-3 backdrop-blur-xs"
               >
-                <Zap className="w-3.5 h-3.5 animate-pulse" />
+                <Zap className="w-4 h-4 animate-pulse" />
                 <span>{currentPromo.badge}</span>
               </motion.div>
 
@@ -155,7 +155,7 @@ export default function PromotionalCarousel() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="text-xl sm:text-3xl font-extrabold tracking-tight font-display mb-2 text-white leading-tight"
+                className="text-2xl sm:text-4xl font-extrabold tracking-tight font-display mb-2.5 text-white leading-tight"
               >
                 {currentPromo.title}
               </motion.h2>
@@ -164,7 +164,7 @@ export default function PromotionalCarousel() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
-                className="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed line-clamp-2 max-w-md"
+                className="text-sm sm:text-base text-slate-200 mb-6 leading-relaxed line-clamp-2 max-w-xl"
               >
                 {currentPromo.subtitle}
               </motion.p>
@@ -179,18 +179,18 @@ export default function PromotionalCarousel() {
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.93 }}
                   onClick={() => navigate(`/category/${currentPromo.cta_category}`)}
-                  className="px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm transition-colors shadow-lg shadow-emerald-950/40 flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm sm:text-base transition-colors shadow-lg shadow-emerald-950/40 flex items-center gap-2 cursor-pointer"
                 >
                   <span>{currentPromo.cta_text}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4.5 h-4.5" />
                 </motion.button>
 
                 {currentPromo.code && (
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/10 backdrop-blur-xs border border-white/20 text-xs font-mono font-semibold text-emerald-200"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-xs border border-white/20 text-xs sm:text-sm font-mono font-semibold text-emerald-200"
                   >
-                    <Tag className="w-3.5 h-3.5 text-emerald-400" />
+                    <Tag className="w-4 h-4 text-emerald-400" />
                     <span>Use code: <strong className="text-white">{currentPromo.code}</strong></span>
                   </motion.div>
                 )}

@@ -88,10 +88,10 @@ export default function CartDrawer() {
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white font-display">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display">
                       My Shopping Basket
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
                     </p>
                   </div>
@@ -185,7 +185,7 @@ export default function CartDrawer() {
                               {group.vendor.name}
                             </span>
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             {group.delivery_fee === 0 ? (
                               <span className="text-emerald-700 dark:text-emerald-400 font-bold">Free Delivery</span>
                             ) : (
@@ -205,16 +205,16 @@ export default function CartDrawer() {
                                 src={item.product.image_url}
                                 alt={item.product.name}
                                 referrerPolicy="no-referrer"
-                                className="w-12 h-12 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 shrink-0"
+                                className="w-13 h-13 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
                                   {item.product.name}
                                 </h4>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
                                   {item.product.unit}
                                 </p>
-                                <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums">
+                                <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">
                                   Rs. {item.unit_price}
                                 </span>
                               </div>
@@ -225,11 +225,11 @@ export default function CartDrawer() {
                                   whileTap={{ scale: 0.8 }}
                                   onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                                   aria-label="Decrease quantity"
-                                  className="p-1 rounded-md hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
                                 >
-                                  <Minus className="w-3 h-3" />
+                                  <Minus className="w-3.5 h-3.5" />
                                 </motion.button>
-                                <span className="px-2 text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+                                <span className="px-2 text-sm font-bold tabular-nums text-slate-900 dark:text-white">
                                   {item.quantity}
                                 </span>
                                 <motion.button
@@ -272,7 +272,7 @@ export default function CartDrawer() {
                           <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                           <div>
                             <span className="font-bold">{cart.coupon.code}</span>
-                            <p className="text-[11px] text-emerald-800 dark:text-emerald-300">{cart.coupon.description}</p>
+                            <p className="text-xs text-emerald-800 dark:text-emerald-300">{cart.coupon.description}</p>
                           </div>
                         </div>
                         <button
@@ -289,13 +289,13 @@ export default function CartDrawer() {
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                           placeholder="Enter code (e.g. OYOFRESH20)"
-                          className="flex-1 px-3 py-1.5 text-xs uppercase bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-emerald-500 focus:outline-none"
+                          className="flex-1 px-3 py-2 text-sm uppercase bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-emerald-500 focus:outline-none"
                         />
                         <motion.button
                           whileTap={{ scale: 0.94 }}
                           type="submit"
                           disabled={couponApplying || !couponCode.trim()}
-                          className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white font-bold text-xs hover:bg-slate-800 dark:hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+                          className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white font-bold text-sm hover:bg-slate-800 dark:hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
                         >
                           {couponApplying ? 'Applying...' : 'Apply'}
                         </motion.button>
@@ -303,11 +303,11 @@ export default function CartDrawer() {
                     )}
 
                     {couponError && (
-                      <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1 font-medium">{couponError}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium">{couponError}</p>
                     )}
 
-                    <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded">
                         WELCOME50
                       </span>
                       <span>Rs. 50 off on first order</span>
@@ -317,8 +317,8 @@ export default function CartDrawer() {
 
                 {/* Bill Details */}
                 {cart && cart.items.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider">
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-sm">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
                       Bill Summary
                     </span>
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
@@ -338,7 +338,7 @@ export default function CartDrawer() {
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
                       <span className="flex items-center gap-1">
                         Handling & Packaging Fee
-                        <Info className="w-3 h-3 text-slate-400" />
+                        <Info className="w-3.5 h-3.5 text-slate-400" />
                       </span>
                       <span className="tabular-nums font-semibold text-slate-800 dark:text-slate-200">Rs. {cart.handling_fee}</span>
                     </div>
@@ -348,9 +348,9 @@ export default function CartDrawer() {
                         <span className="tabular-nums">- Rs. {cart.coupon.discount_amount}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm font-extrabold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex justify-between text-base font-extrabold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-800">
                       <span>Total Payable</span>
-                      <span className="tabular-nums text-base text-emerald-700 dark:text-emerald-400">
+                      <span className="tabular-nums text-lg text-emerald-700 dark:text-emerald-400">
                         Rs. {cart.total}
                       </span>
                     </div>
@@ -365,19 +365,19 @@ export default function CartDrawer() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={handleProceedToCheckout}
-                    className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-between cursor-pointer"
+                    className="w-full py-3.5 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-between cursor-pointer"
                   >
                     <div className="flex flex-col text-left leading-tight">
-                      <span className="text-[11px] font-medium text-emerald-100">
+                      <span className="text-xs font-medium text-emerald-100">
                         {totalItems} {totalItems === 1 ? 'item' : 'items'}
                       </span>
-                      <span className="text-base font-extrabold tabular-nums">
+                      <span className="text-lg font-extrabold tabular-nums">
                         Rs. {cart.total}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 font-extrabold tracking-wide text-xs uppercase">
+                    <div className="flex items-center gap-1.5 font-extrabold tracking-wide text-sm uppercase">
                       <span>Proceed to Checkout</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-4.5 h-4.5" />
                     </div>
                   </motion.button>
                 </div>
