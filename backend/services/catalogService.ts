@@ -493,7 +493,7 @@ export async function calculateAndSerializeCart(sessionKey: string, userId?: num
   };
 }
 
-export async function getCartItemCountMapByCategory() {
+export async function getApprovedProductCountMapByCategory() {
   const rows = await db
     .select({
       categoryId: products.categoryId,

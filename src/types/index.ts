@@ -7,3 +7,4 @@ export * from './address';
 export * from './vendor';
 export * from './customer';
 export * from './common';
+export * from './admin';

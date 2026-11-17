@@ -145,7 +145,7 @@ export default function PromotionalCarousel({
     navigate(`/category/${currentPromo.cta_category}`);
   };
 
-  const handleDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
+  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
     const swipeThreshold = 50;
     const velocityThreshold = 400;
     if (info.offset.x < -swipeThreshold || info.velocity.x < -velocityThreshold) {

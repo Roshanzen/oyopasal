@@ -109,3 +109,55 @@ export interface InventoryMovementItem {
   note?: string | null;
   created_at: string;
 }
+
+export interface SellerDashboardStats {
+  total_products: number;
+  in_stock_count: number;
+  low_stock_count: number;
+  total_orders: number;
+  pending_orders: number;
+  total_revenue: number;
+  total_commission: number;
+  net_earnings: number;
+  commission_rate: number;
+}
+
+export interface SellerTopProduct {
+  productId: number | null;
+  productName: string;
+  qty: number;
+  rev: number;
+}
+
+export interface SellerLedgerEntry {
+  id: number;
+  vendorId: number;
+  orderId: number | null;
+  settlementId: number | null;
+  entryType: string;
+  amount: number;
+  description: string;
+  createdAt: string | null;
+}
+
+export interface SellerSettlementItem {
+  id: number;
+  vendorId: number;
+  grossSales: number;
+  commissionTotal: number;
+  netPayout: number;
+  status: string;
+  payoutReference: string | null;
+  paidAt: string | null;
+  createdAt: string | null;
+}
+
+export interface SellerDashboardResponse {
+  vendor: Vendor;
+  approval_status: string;
+  stats: SellerDashboardStats;
+  top_products: SellerTopProduct[];
+  recent_ledger: SellerLedgerEntry[];
+  products: import('./product').Product[];
+}
+

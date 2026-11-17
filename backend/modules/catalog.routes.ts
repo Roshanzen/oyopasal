@@ -18,7 +18,7 @@ import {
 } from '../../src/db/schema.ts';
 import { AuthRequest, optionalAuth, requireAuth } from '../middleware/auth.ts';
 import {
-  getCartItemCountMapByCategory,
+  getApprovedProductCountMapByCategory,
   getPublicSettings,
   hydrateProducts,
   resolveProductByIdentifier,
@@ -28,8 +28,9 @@ import {
   serializeVendor,
 } from '../services/catalogService.ts';
 import { createNotification, recordAuditLog } from '../utils/audit.ts';
-import { hashPassword } from '../utils/crypto.ts';
+import { hashPassword, verifyPassword } from '../utils/crypto.ts';
 import { ApiError, asyncHandler } from '../utils/errors.ts';
+import { parseNumericId } from '../utils/validation.ts';
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get(
         .from(categories)
         .where(eq(categories.isActive, true))
         .orderBy(asc(categories.displayOrder), asc(categories.id)),
-      getCartItemCountMapByCategory(),
+      getApprovedProductCountMapByCategory(),
     ]);
 
     const results = catRows.map((c) => serializeCategory(c, countsMap.get(c.id) || 0));
@@ -120,13 +121,11 @@ router.get(
 router.post(
   '/advertisements/:id/click/',
   asyncHandler(async (req, res) => {
-    const idNum = parseInt(String(req.params.id).replace(/^ad-/, ''), 10);
-    if (!Number.isNaN(idNum)) {
-      await db
-        .update(advertisements)
-        .set({ clicksCount: sql`${advertisements.clicksCount} + 1` })
-        .where(eq(advertisements.id, idNum));
-    }
+    const idNum = parseNumericId(req.params.id, 'advertisement id', 'INVALID_AD_ID', /^ad-/);
+    await db
+      .update(advertisements)
+      .set({ clicksCount: sql`${advertisements.clicksCount} + 1` })
+      .where(eq(advertisements.id, idNum));
     res.json({ success: true });
   })
 );
@@ -281,6 +280,13 @@ router.post(
           .limit(1);
 
         if (existingUser.length > 0) {
+          if (!password || !verifyPassword(password, existingUser[0].passwordHash)) {
+            throw new ApiError(
+              409,
+              'An account with this email or phone already exists. Please sign in first or provide the matching account password.',
+              'ACCOUNT_EXISTS'
+            );
+          }
           ownerUserId = existingUser[0].id;
           if (existingUser[0].role === 'customer') {
             await tx
@@ -502,36 +508,48 @@ router.get(
       conditions.push(and(eq(products.inStock, true), gte(products.stockCount, 1)));
     }
 
+    if (section) {
+      const sectionJsonCondition = sql`${products.sections} @> ${JSON.stringify([section])}::jsonb`;
+      if (section === 'best_sellers') {
+        conditions.push(or(sectionJsonCondition, eq(products.isBestSeller, true)));
+      } else if (section === 'trending') {
+        conditions.push(or(sectionJsonCondition, eq(products.isTrending, true)));
+      } else if (section === 'fresh_arrivals') {
+        conditions.push(or(sectionJsonCondition, eq(products.isFresh, true)));
+      } else if (section === 'top_deals') {
+        conditions.push(or(sectionJsonCondition, eq(products.isDeal, true)));
+      } else if (section === 'recommended') {
+        conditions.push(or(sectionJsonCondition, eq(products.isRecommended, true)));
+      } else {
+        conditions.push(sectionJsonCondition);
+      }
+    }
+
     let orderExpr: any = desc(products.id);
     if (ordering === 'price' || ordering === 'price_asc') orderExpr = asc(products.price);
     else if (ordering === '-price' || ordering === 'price_desc') orderExpr = desc(products.price);
     else if (ordering === '-rating' || ordering === 'rating') orderExpr = desc(products.rating);
-    else if (ordering === '-discount') orderExpr = desc(products.discountPercent);
+    else if (ordering === '-discount' || ordering === 'discount') orderExpr = desc(products.discountPercent);
     else if (ordering === 'newest') orderExpr = desc(products.createdAt);
 
-    let allRows = await db
-      .select()
-      .from(products)
-      .where(and(...conditions))
-      .orderBy(orderExpr);
-
-    if (section) {
-      allRows = allRows.filter((p) => {
-        const secs = Array.isArray(p.sections) ? p.sections : [];
-        return (
-          secs.includes(section) ||
-          (section === 'best_sellers' && p.isBestSeller) ||
-          (section === 'trending' && p.isTrending) ||
-          (section === 'fresh_arrivals' && p.isFresh) ||
-          (section === 'top_deals' && p.isDeal) ||
-          (section === 'recommended' && p.isRecommended)
-        );
-      });
-    }
-
-    const totalCount = allRows.length;
+    const whereClause = and(...conditions);
     const offset = (page - 1) * pageSize;
-    const paged = allRows.slice(offset, offset + pageSize);
+
+    const [countResult, paged] = await Promise.all([
+      db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(products)
+        .where(whereClause),
+      db
+        .select()
+        .from(products)
+        .where(whereClause)
+        .orderBy(orderExpr)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
+
+    const totalCount = Number(countResult[0]?.total || 0);
     const serialized = await hydrateProducts(paged);
 
     res.json({

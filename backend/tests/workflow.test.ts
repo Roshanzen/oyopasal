@@ -799,3 +799,112 @@ test('8. AI Shopping Concierge full-catalog best-seller ranking & direct purchas
   assert.equal(cancelRes.status, 200);
 });
 
+test('9. Security & validation hardening: hijack block, demo login allowlist, numeric 400s, ordering=discount & price bounds', async () => {
+  const runId = crypto.randomBytes(3).toString('hex');
+  const existingEmail = `sec.cust.${runId}@oyopasal.np`;
+
+  // 1) Existing customer cannot be hijacked via unauthenticated POST /vendors/register/
+  const regCust = await apiJson('/api/v1/auth/register/', {
+    method: 'POST',
+    body: JSON.stringify({
+      full_name: 'Existing Customer',
+      phone_or_email: existingEmail,
+      password: 'CustPassword@123',
+    }),
+  });
+  assert.equal(regCust.status, 201);
+  cleanupState.userIds.push(regCust.data.user.db_id);
+
+  const hijackAttempt = await apiJson('/api/v1/vendors/register/', {
+    method: 'POST',
+    body: JSON.stringify({
+      store_name: `Hijack Attempt ${runId}`,
+      area: 'Thamel',
+      contact_person: 'Attacker',
+      phone: '+977 9800099988',
+      email: existingEmail,
+    }),
+  });
+  assert.equal(hijackAttempt.status, 409);
+  assert.equal(hijackAttempt.data.code, 'ACCOUNT_EXISTS');
+
+  // 2) Create a new private store and verify passwordless demo_quick_login is blocked (403)
+  const privEmail = `priv.seller.${runId}@oyopasal.np`;
+  const privApply = await apiJson('/api/v1/vendors/register/', {
+    method: 'POST',
+    body: JSON.stringify({
+      store_name: `Private Store ${runId}`,
+      area: 'Patan',
+      contact_person: 'Private Owner',
+      phone: `+977 9844${Math.floor(100000 + Math.random() * 899999)}`,
+      email: privEmail,
+      password: 'StrongPassword@123',
+    }),
+  });
+  assert.equal(privApply.status, 201);
+  cleanupState.vendorIds.push(privApply.data.vendor.db_id);
+  const vRows = await db.select().from(vendors).where(eq(vendors.id, privApply.data.vendor.db_id)).limit(1);
+  if (vRows[0]?.ownerUserId) cleanupState.userIds.push(vRows[0].ownerUserId);
+
+  const blockedDemoLogin = await apiJson('/api/v1/auth/seller/login/', {
+    method: 'POST',
+    body: JSON.stringify({ vendor_id: privApply.data.vendor.id, demo_quick_login: true }),
+  });
+  assert.equal(blockedDemoLogin.status, 403);
+  assert.equal(blockedDemoLogin.data.code, 'DEMO_LOGIN_RESTRICTED');
+
+  // 3) ordering=discount returns descending discount_percentage
+  const discRes = await apiJson('/api/v1/products/?ordering=discount&page_size=6');
+  assert.equal(discRes.status, 200);
+  assert.ok(discRes.data.results.length >= 2);
+  for (let i = 1; i < discRes.data.results.length; i++) {
+    assert.ok(
+      discRes.data.results[i - 1].discount_percentage >= discRes.data.results[i].discount_percentage
+    );
+  }
+
+  // 4) Non-numeric :id params return 400 instead of 500
+  const adminLogin = await apiJson('/api/v1/auth/login/', {
+    method: 'POST',
+    body: JSON.stringify({ phone_or_email: 'admin@oyopasal.np', demo_quick_login: true }),
+  });
+  assert.equal(adminLogin.status, 200);
+  const adminToken = adminLogin.data.token;
+
+  const badAdminUser = await apiJson('/api/v1/admin/users/not-a-number/', {
+    method: 'PATCH',
+    token: adminToken,
+    body: JSON.stringify({ is_active: true }),
+  });
+  assert.equal(badAdminUser.status, 400);
+
+  const badTicket = await apiJson('/api/v1/support/tickets/abc/reply/', {
+    method: 'POST',
+    token: adminToken,
+    body: JSON.stringify({ message: 'test' }),
+  });
+  assert.equal(badTicket.status, 400);
+
+  const badDelivery = await apiJson('/api/v1/delivery/assignments/invalid-id/status/', {
+    method: 'PATCH',
+    token: adminToken,
+    body: JSON.stringify({ status: 'delivered' }),
+  });
+  assert.equal(badDelivery.status, 400);
+
+  // 5) Negative seller product price rejected with 400 INVALID_PRICE
+  const sellerLogin = await apiJson('/api/v1/auth/seller/login/', {
+    method: 'POST',
+    body: JSON.stringify({ vendor_id: 'v-himalayan', demo_quick_login: true }),
+  });
+  assert.equal(sellerLogin.status, 200);
+  const negPriceRes = await apiJson('/api/v1/seller/products/prod-avocado/', {
+    method: 'PUT',
+    token: sellerLogin.data.token,
+    body: JSON.stringify({ discounted_price: -50 }),
+  });
+  assert.equal(negPriceRes.status, 400);
+  assert.equal(negPriceRes.data.code, 'INVALID_PRICE');
+});
+
+

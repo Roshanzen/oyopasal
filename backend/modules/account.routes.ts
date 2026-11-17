@@ -19,6 +19,7 @@ import {
 import { hydrateProducts, resolveProductByIdentifier } from '../services/catalogService.ts';
 import { createNotification } from '../utils/audit.ts';
 import { ApiError, asyncHandler } from '../utils/errors.ts';
+import { parseNumericId } from '../utils/validation.ts';
 
 const router = Router();
 
@@ -136,10 +137,7 @@ router.put(
   '/account/addresses/:id/',
   requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
-    const idNum = parseInt(req.params.id.replace(/^addr-/, ''), 10);
-    if (Number.isNaN(idNum)) {
-      throw new ApiError(400, 'Invalid address id.', 'INVALID_ADDRESS_ID');
-    }
+    const idNum = parseNumericId(req.params.id, 'address id', 'INVALID_ADDRESS_ID', /^addr-/);
 
     const existing = await db
       .select()
@@ -185,10 +183,7 @@ router.delete(
   '/account/addresses/:id/',
   requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
-    const idNum = parseInt(req.params.id.replace(/^addr-/, ''), 10);
-    if (Number.isNaN(idNum)) {
-      throw new ApiError(400, 'Invalid address id.', 'INVALID_ADDRESS_ID');
-    }
+    const idNum = parseNumericId(req.params.id, 'address id', 'INVALID_ADDRESS_ID', /^addr-/);
 
     const existing = await db
       .select()
@@ -322,10 +317,7 @@ router.patch(
   '/notifications/:id/read/',
   requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
-    const idNum = parseInt(req.params.id.replace(/^notif-/, ''), 10);
-    if (Number.isNaN(idNum)) {
-      throw new ApiError(400, 'Invalid notification id.', 'INVALID_ID');
-    }
+    const idNum = parseNumericId(req.params.id, 'notification id', 'INVALID_ID', /^notif-/);
     await db
       .update(notifications)
       .set({ isRead: true })
@@ -358,31 +350,40 @@ router.get(
       .where(eq(supportTickets.userId, req.authUser!.id))
       .orderBy(desc(supportTickets.updatedAt));
 
-    const results = await Promise.all(
-      tickets.map(async (tk) => {
-        const msgs = await db
-          .select()
-          .from(ticketMessages)
-          .where(eq(ticketMessages.ticketId, tk.id))
-          .orderBy(ticketMessages.id);
-        return {
-          id: tk.id,
-          ticket_number: tk.ticketNumber,
-          category: tk.category,
-          subject: tk.subject,
-          status: tk.status,
-          priority: tk.priority,
-          order_id: tk.orderId,
-          created_at: tk.createdAt?.toISOString() || new Date().toISOString(),
-          messages: msgs.map((m) => ({
-            id: m.id,
-            sender_role: m.senderRole,
-            message: m.message,
-            created_at: m.createdAt?.toISOString() || new Date().toISOString(),
-          })),
-        };
-      })
-    );
+    if (tickets.length === 0) {
+      return res.json({ count: 0, results: [] });
+    }
+
+    const ticketIds = tickets.map((t) => t.id);
+    const allMsgs = await db
+      .select()
+      .from(ticketMessages)
+      .where(inArray(ticketMessages.ticketId, ticketIds))
+      .orderBy(ticketMessages.id);
+
+    const msgsByTicket = new Map<number, (typeof ticketMessages.$inferSelect)[]>();
+    for (const msg of allMsgs) {
+      const list = msgsByTicket.get(msg.ticketId) || [];
+      list.push(msg);
+      msgsByTicket.set(msg.ticketId, list);
+    }
+
+    const results = tickets.map((tk) => ({
+      id: tk.id,
+      ticket_number: tk.ticketNumber,
+      category: tk.category,
+      subject: tk.subject,
+      status: tk.status,
+      priority: tk.priority,
+      order_id: tk.orderId,
+      created_at: tk.createdAt?.toISOString() || new Date().toISOString(),
+      messages: (msgsByTicket.get(tk.id) || []).map((m) => ({
+        id: m.id,
+        sender_role: m.senderRole,
+        message: m.message,
+        created_at: m.createdAt?.toISOString() || new Date().toISOString(),
+      })),
+    }));
 
     res.json({ count: results.length, results });
   })
@@ -451,7 +452,7 @@ router.post(
   '/support/tickets/:id/reply/',
   requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
-    const ticketId = parseInt(req.params.id, 10);
+    const ticketId = parseNumericId(req.params.id, 'ticket id', 'INVALID_TICKET_ID');
     const { message } = req.body as { message?: string };
     if (!message?.trim()) {
       throw new ApiError(400, 'Reply message cannot be empty.', 'MISSING_MESSAGE');

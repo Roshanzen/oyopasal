@@ -11,7 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../../context';
-import { api } from '../../services';
+import { sellerService } from '../../services';
 import { translateCategoryName } from '../../i18n';
 import { SellerAnalyticsResponse } from '../../types';
 
@@ -40,7 +40,7 @@ export default function SellerVisualSummary({
         setLoading(true);
         setError(null);
         const months = timeframe === '12m' ? 12 : 6;
-        const data = await api.getSellerAnalytics(vendorId, months);
+        const data = await sellerService.getSellerAnalytics(vendorId, months);
         if (active) setAnalytics(data);
       } catch (err) {
         console.error('Failed to load seller analytics:', err);

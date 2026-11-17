@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context';
 import { calculateDistanceInKm } from '../../utils';
 import { addressService } from '../../services';
-import { DeliveryZoneItem } from '../../types';
+import { Address, DeliveryZoneItem } from '../../types';
 import {
   X,
   MapPin,
@@ -58,8 +58,8 @@ export default function LocationModal() {
     try {
       const res = await addressService.getZones();
       setZones(res.results);
-    } catch (err: any) {
-      setZonesError(err?.message || 'Could not load delivery zones');
+    } catch (err: unknown) {
+      setZonesError(err instanceof Error ? err.message : 'Could not load delivery zones');
     } finally {
       setZonesLoading(false);
     }
@@ -100,7 +100,7 @@ export default function LocationModal() {
     [zones]
   );
 
-  const handleMapClick = (e: any) => {
+  const handleMapClick = (e: { detail?: { latLng?: { lat: number; lng: number } | null } }) => {
     if (e.detail?.latLng) {
       const newLat = e.detail.latLng.lat;
       const newLng = e.detail.latLng.lng;
@@ -109,7 +109,7 @@ export default function LocationModal() {
     }
   };
 
-  const handleMarkerDragEnd = (e: any) => {
+  const handleMarkerDragEnd = (e: { latLng?: { lat: () => number; lng: () => number } | null }) => {
     if (e.latLng) {
       const newLat = e.latLng.lat();
       const newLng = e.latLng.lng();
@@ -153,7 +153,7 @@ export default function LocationModal() {
     setLocationModalOpen(false);
   };
 
-  const handleSelectSavedAddress = (addr: any) => {
+  const handleSelectSavedAddress = (addr: Address) => {
     setCurrentAddress(addr);
     if (addr.lat && addr.lng) {
       setDeliveryLocationFromMap({ lat: addr.lat, lng: addr.lng }, addr.area, addr.street);

@@ -1,4 +1,12 @@
-import { Address, CartSummary, DeliveryTrackingTelemetry, DRFPaginatedResponse, Order } from '../types';
+import {
+  Address,
+  CartSummary,
+  DeliveryAgentProfile,
+  DeliveryAssignmentItem,
+  DeliveryTrackingTelemetry,
+  DRFPaginatedResponse,
+  Order,
+} from '../types';
 import { httpClient } from './httpClient';
 
 export const orderService = {
@@ -53,25 +61,27 @@ export const orderService = {
     return httpClient.request<DeliveryTrackingTelemetry>(`/delivery/orders/${orderId}/tracking/`);
   },
 
-  getDeliveryProfile(): Promise<unknown> {
-    return httpClient.request('/delivery/agent/profile/');
+  getDeliveryProfile(): Promise<DeliveryAgentProfile> {
+    return httpClient.request<DeliveryAgentProfile>('/delivery/agent/profile/');
   },
 
-  updateDeliveryAvailability(availability_status: 'offline' | 'available' | 'busy'): Promise<unknown> {
+  updateDeliveryAvailability(
+    availability_status: 'offline' | 'available' | 'busy'
+  ): Promise<{ success: boolean; availability_status: string }> {
     return httpClient.request('/delivery/agent/availability/', {
       method: 'PATCH',
       body: JSON.stringify({ availability_status }),
     });
   },
 
-  getDeliveryAssignments(): Promise<{ count: number; results: unknown[] }> {
+  getDeliveryAssignments(): Promise<{ count: number; results: DeliveryAssignmentItem[] }> {
     return httpClient.request('/delivery/assignments/');
   },
 
   pushDeliveryLocation(
     assignmentId: number,
     payload: { lat: number; lng: number; speed_kmh?: number; eta_minutes?: number; status_note?: string }
-  ): Promise<unknown> {
+  ): Promise<{ success: boolean; lat: number; lng: number }> {
     return httpClient.request(`/delivery/assignments/${assignmentId}/location/`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -82,7 +92,7 @@ export const orderService = {
     assignmentId: number,
     status: 'accepted' | 'picked_up' | 'in_transit' | 'delivered' | 'failed',
     proof_note?: string
-  ): Promise<unknown> {
+  ): Promise<{ success: boolean; status: string; order_status: string | null }> {
     return httpClient.request(`/delivery/assignments/${assignmentId}/status/`, {
       method: 'PATCH',
       body: JSON.stringify({ status, proof_note }),

@@ -81,9 +81,10 @@ class HttpClient {
       ...((options.headers as Record<string, string>) || {}),
     };
 
+    const usedSellerToken = useSellerTokenIfAvailable && Boolean(this.sellerToken);
     const effectiveToken = useSellerTokenIfAvailable
       ? this.sellerToken || this.token
-      : this.token || this.sellerToken;
+      : this.token;
 
     if (effectiveToken) {
       headers['Authorization'] = `Bearer ${effectiveToken}`;
@@ -96,7 +97,7 @@ class HttpClient {
 
     if (!response.ok) {
       if (response.status === 401 && effectiveToken && this.unauthorizedHandler) {
-        this.unauthorizedHandler(useSellerTokenIfAvailable);
+        this.unauthorizedHandler(usedSellerToken);
       }
 
       let errorDetail = `HTTP ${response.status}: ${response.statusText}`;

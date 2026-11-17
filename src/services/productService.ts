@@ -1,4 +1,11 @@
-import { DRFPaginatedResponse, Product, ReviewItem } from '../types';
+import {
+  AutocompleteCategory,
+  AutocompleteSuggestion,
+  DbStatusResponse,
+  DRFPaginatedResponse,
+  Product,
+  ReviewItem,
+} from '../types';
 import { httpClient } from './httpClient';
 
 export interface ProductQueryParams {
@@ -15,6 +22,10 @@ export interface ProductQueryParams {
 }
 
 export const productService = {
+  getDbStatus(): Promise<DbStatusResponse> {
+    return httpClient.request<DbStatusResponse>('/db/status/');
+  },
+
   getProducts(params?: ProductQueryParams): Promise<DRFPaginatedResponse<Product>> {
     const query = new URLSearchParams();
     if (params) {
@@ -51,8 +62,8 @@ export const productService = {
   },
 
   getAutocomplete(query: string): Promise<{
-    suggestions: { id: string; name: string; category: string; price: number; image_url: string; unit: string }[];
-    categories: { id: string; name: string; slug: string }[];
+    suggestions: AutocompleteSuggestion[];
+    categories: AutocompleteCategory[];
   }> {
     return httpClient.request(`/products/autocomplete/?q=${encodeURIComponent(query)}`);
   },

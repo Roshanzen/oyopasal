@@ -52,236 +52,290 @@ export async function resolveOrderByIdentifier(identifier: string) {
   return null;
 }
 
-export async function serializeOrder(orderRow: typeof orders.$inferSelect) {
-  const [itemRows, fulfillmentRows, historyRows, assignmentRows, trackingRows, refundRows, paymentRows] =
-    await Promise.all([
-      db.select().from(orderItems).where(eq(orderItems.orderId, orderRow.id)),
-      db.select().from(vendorFulfillments).where(eq(vendorFulfillments.orderId, orderRow.id)),
-      db
-        .select()
-        .from(orderStatusHistory)
-        .where(eq(orderStatusHistory.orderId, orderRow.id))
-        .orderBy(orderStatusHistory.id),
-      db.select().from(deliveryAssignments).where(eq(deliveryAssignments.orderId, orderRow.id)).limit(1),
-      db
-        .select()
-        .from(deliveryTrackingEvents)
-        .where(eq(deliveryTrackingEvents.orderId, orderRow.id))
-        .orderBy(desc(deliveryTrackingEvents.id))
-        .limit(20),
-      db.select().from(refunds).where(eq(refunds.orderId, orderRow.id)),
-      db.select().from(payments).where(eq(payments.orderId, orderRow.id)).limit(1),
-    ]);
+export async function serializeOrdersBatch(
+  orderRows: (typeof orders.$inferSelect)[]
+) {
+  if (orderRows.length === 0) return [];
+
+  const orderIds = orderRows.map((o) => o.id);
+
+  const [
+    allItems,
+    allFulfillments,
+    allHistory,
+    allAssignments,
+    allTracking,
+    allRefunds,
+    allPayments,
+  ] = await Promise.all([
+    db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds)),
+    db.select().from(vendorFulfillments).where(inArray(vendorFulfillments.orderId, orderIds)),
+    db
+      .select()
+      .from(orderStatusHistory)
+      .where(inArray(orderStatusHistory.orderId, orderIds))
+      .orderBy(orderStatusHistory.id),
+    db.select().from(deliveryAssignments).where(inArray(deliveryAssignments.orderId, orderIds)),
+    db
+      .select()
+      .from(deliveryTrackingEvents)
+      .where(inArray(deliveryTrackingEvents.orderId, orderIds))
+      .orderBy(desc(deliveryTrackingEvents.id)),
+    db.select().from(refunds).where(inArray(refunds.orderId, orderIds)),
+    db.select().from(payments).where(inArray(payments.orderId, orderIds)),
+  ]);
 
   const vendorIds = Array.from(
-    new Set(
-      [
-        ...fulfillmentRows.map((f) => f.vendorId),
-        ...itemRows.map((i) => i.vendorId).filter((v): v is number => v !== null),
-      ]
-    )
+    new Set([
+      ...allFulfillments.map((f) => f.vendorId),
+      ...allItems.map((i) => i.vendorId).filter((v): v is number => v !== null),
+    ])
   );
-  const vendorRows =
-    vendorIds.length > 0 ? await db.select().from(vendors).where(inArray(vendors.id, vendorIds)) : [];
+  const agentIds = Array.from(
+    new Set(allAssignments.map((a) => a.agentId).filter((a): a is number => a !== null))
+  );
+
+  const [vendorRows, agentRows] = await Promise.all([
+    vendorIds.length > 0 ? db.select().from(vendors).where(inArray(vendors.id, vendorIds)) : Promise.resolve([]),
+    agentIds.length > 0
+      ? db.select().from(deliveryAgents).where(inArray(deliveryAgents.id, agentIds))
+      : Promise.resolve([]),
+  ]);
+
   const vendorMap = new Map(vendorRows.map((v) => [v.id, v]));
+  const agentMap = new Map(agentRows.map((a) => [a.id, a]));
 
-  const itemsByVendorMap = new Map<
-    string,
-    {
-      vendor: { id: string; name: string; lat?: number; lng?: number; area?: string };
-      fulfillment_status: string;
-      fulfillment_id?: number;
-      items: {
-        id: number;
-        product_id: string | null;
-        product_name: string;
-        unit: string;
-        quantity: number;
-        unit_price: number;
-        total: number;
-        image_url: string;
-      }[];
-      vendor_delivery_fee: number;
+  const groupByOrderId = <T extends { orderId: number }>(rows: T[]) => {
+    const map = new Map<number, T[]>();
+    for (const row of rows) {
+      const list = map.get(row.orderId) || [];
+      list.push(row);
+      map.set(row.orderId, list);
     }
-  >();
+    return map;
+  };
 
-  for (const item of itemRows) {
-    const vRow = item.vendorId ? vendorMap.get(item.vendorId) : undefined;
-    const vExtId = vRow?.externalKey || (item.vendorId ? `v-${item.vendorId}` : 'v-himalayan');
-    const vName = vRow?.name || orderRow.vendorName || 'OyoPasal Partner';
-    const matchingFulfillment = fulfillmentRows.find((f) => f.id === item.vendorFulfillmentId || f.vendorId === item.vendorId);
+  const itemsByOrder = groupByOrderId(allItems);
+  const fulfillmentsByOrder = groupByOrderId(allFulfillments);
+  const historyByOrder = groupByOrderId(allHistory);
+  const assignmentsByOrder = groupByOrderId(allAssignments);
+  const trackingByOrder = groupByOrderId(allTracking);
+  const refundsByOrder = groupByOrderId(allRefunds);
+  const paymentsByOrder = groupByOrderId(allPayments);
 
-    if (!itemsByVendorMap.has(vExtId)) {
-      itemsByVendorMap.set(vExtId, {
-        vendor: {
-          id: vExtId,
-          name: vName,
-          lat: vRow ? parseFloat(vRow.lat) : undefined,
-          lng: vRow ? parseFloat(vRow.lng) : undefined,
-          area: vRow?.area,
-        },
-        fulfillment_status: matchingFulfillment?.status || orderRow.status,
-        fulfillment_id: matchingFulfillment?.id,
-        items: [],
-        vendor_delivery_fee: matchingFulfillment?.deliveryFee || 0,
+  const timelineSteps = [
+    'ORDER_PLACED',
+    'PACKED_BY_VENDOR',
+    'RIDER_ASSIGNED',
+    'OUT_FOR_DELIVERY',
+    'DELIVERED',
+  ];
+
+  return orderRows.map((orderRow) => {
+    const itemRows = itemsByOrder.get(orderRow.id) || [];
+    const fulfillmentRows = fulfillmentsByOrder.get(orderRow.id) || [];
+    const historyRows = historyByOrder.get(orderRow.id) || [];
+    const assignment = (assignmentsByOrder.get(orderRow.id) || [])[0] || null;
+    const trackingRows = (trackingByOrder.get(orderRow.id) || []).slice(0, 20);
+    const refundRows = refundsByOrder.get(orderRow.id) || [];
+    const paymentRow = (paymentsByOrder.get(orderRow.id) || [])[0] || null;
+
+    const itemsByVendorMap = new Map<
+      string,
+      {
+        vendor: { id: string; name: string; lat?: number; lng?: number; area?: string };
+        fulfillment_status: string;
+        fulfillment_id?: number;
+        items: {
+          id: number;
+          product_id: string | null;
+          product_name: string;
+          unit: string;
+          quantity: number;
+          unit_price: number;
+          total: number;
+          image_url: string;
+        }[];
+        vendor_delivery_fee: number;
+      }
+    >();
+
+    for (const item of itemRows) {
+      const vRow = item.vendorId ? vendorMap.get(item.vendorId) : undefined;
+      const vExtId = vRow?.externalKey || (item.vendorId ? `v-${item.vendorId}` : 'v-himalayan');
+      const vName = vRow?.name || orderRow.vendorName || 'OyoPasal Partner';
+      const matchingFulfillment = fulfillmentRows.find(
+        (f) => f.id === item.vendorFulfillmentId || f.vendorId === item.vendorId
+      );
+
+      if (!itemsByVendorMap.has(vExtId)) {
+        itemsByVendorMap.set(vExtId, {
+          vendor: {
+            id: vExtId,
+            name: vName,
+            lat: vRow ? parseFloat(vRow.lat) : undefined,
+            lng: vRow ? parseFloat(vRow.lng) : undefined,
+            area: vRow?.area,
+          },
+          fulfillment_status: matchingFulfillment?.status || orderRow.status,
+          fulfillment_id: matchingFulfillment?.id,
+          items: [],
+          vendor_delivery_fee: matchingFulfillment?.deliveryFee || 0,
+        });
+      }
+
+      itemsByVendorMap.get(vExtId)!.items.push({
+        id: item.id,
+        product_id: item.productId ? `prod-${item.productId}` : null,
+        product_name: item.productName,
+        unit: item.unit || '1 pc',
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total: item.totalPrice,
+        image_url: item.image || '/src/assets/images/hero_groceries_fresh_1794407355931.jpg',
       });
     }
 
-    itemsByVendorMap.get(vExtId)!.items.push({
-      id: item.id,
-      product_id: item.productId ? `prod-${item.productId}` : null,
-      product_name: item.productName,
-      unit: item.unit || '1 pc',
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total: item.totalPrice,
-      image_url: item.image || '/src/assets/images/hero_groceries_fresh_1794407355931.jpg',
-    });
-  }
-
-  let agentDetails: {
-    id: number;
-    full_name: string;
-    phone: string;
-    vehicle_type: string;
-    vehicle_number: string;
-    rating: number;
-  } | null = null;
-
-  const assignment = assignmentRows[0] || null;
-  if (assignment?.agentId) {
-    const agentRows = await db
-      .select()
-      .from(deliveryAgents)
-      .where(eq(deliveryAgents.id, assignment.agentId))
-      .limit(1);
-    if (agentRows.length > 0) {
-      agentDetails = {
-        id: agentRows[0].id,
-        full_name: agentRows[0].fullName,
-        phone: agentRows[0].phone,
-        vehicle_type: agentRows[0].vehicleType,
-        vehicle_number: agentRows[0].vehicleNumber,
-        rating: parseFloat(agentRows[0].rating || '4.9'),
-      };
-    }
-  }
-
-  const timelineSteps = ['ORDER_PLACED', 'PACKED_BY_VENDOR', 'RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-  const currentIdx = timelineSteps.indexOf(orderRow.status);
-  const historyMap = new Map(historyRows.map((h) => [h.status, h]));
-
-  const defaultDescriptions: Record<string, { title: string; desc: string }> = {
-    ORDER_PLACED: {
-      title: 'Order Placed',
-      desc: 'Order confirmed and sent to neighborhood store.',
-    },
-    PACKED_BY_VENDOR: {
-      title: 'Packed by Vendor',
-      desc: 'Your fresh items are quality-checked & sealed.',
-    },
-    RIDER_ASSIGNED: {
-      title: 'Rider Assigned',
-      desc: agentDetails ? `${agentDetails.full_name} assigned for pickup.` : 'Assigning nearest delivery partner.',
-    },
-    OUT_FOR_DELIVERY: {
-      title: 'Out for Delivery',
-      desc: 'Rider is on the way to your address.',
-    },
-    DELIVERED: {
-      title: 'Delivered',
-      desc: 'Delivered safely to your doorstep.',
-    },
-  };
-
-  const trackingUpdates =
-    orderRow.status === 'CANCELLED'
-      ? historyRows.map((h) => ({
-          timestamp: h.createdAt ? new Date(h.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          title: h.title,
-          description: h.description,
-          done: true,
-        }))
-      : timelineSteps.map((st, idx) => {
-          const hist = historyMap.get(st);
-          const done = currentIdx >= idx;
-          return {
-            timestamp: hist?.createdAt
-              ? new Date(hist.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : done
-              ? 'Completed'
-              : 'Pending',
-            title: hist?.title || defaultDescriptions[st].title,
-            description: hist?.description || defaultDescriptions[st].desc,
-            done,
-          };
-        });
-
-  return {
-    id: orderRow.externalKey || `ord-${orderRow.id}`,
-    db_id: orderRow.id,
-    order_number: orderRow.orderNumber,
-    created_at: orderRow.createdAt ? new Date(orderRow.createdAt).toISOString() : new Date().toISOString(),
-    status: orderRow.status,
-    estimated_delivery_mins: orderRow.estimatedMinutes,
-    delivery_address: {
-      id: orderRow.addressId ? `addr-${orderRow.addressId}` : 'addr-order',
-      title: orderRow.deliveryTitle || 'Home',
-      recipient_name: orderRow.recipientName,
-      phone: orderRow.recipientPhone,
-      street: orderRow.deliveryAddress,
-      area: orderRow.deliveryArea,
-      city: orderRow.deliveryCity,
-      landmark: orderRow.deliveryLandmark || '',
-      is_default: true,
-      lat: orderRow.deliveryLat ? parseFloat(orderRow.deliveryLat) : 27.6986,
-      lng: orderRow.deliveryLng ? parseFloat(orderRow.deliveryLng) : 85.3292,
-    },
-    delivery_option: orderRow.deliveryOption,
-    payment_method: orderRow.paymentMethod,
-    payment_status: orderRow.paymentStatus,
-    payment_id: paymentRows[0]?.id ?? null,
-    items_by_vendor: Array.from(itemsByVendorMap.values()),
-    subtotal: orderRow.subtotal,
-    delivery_fee: orderRow.deliveryFee,
-    handling_fee: orderRow.handlingFee,
-    coupon_discount: orderRow.discount,
-    total_amount: orderRow.totalAmount,
-    tracking_updates: trackingUpdates,
-    delivery_assignment: assignment
+    const agentRow = assignment?.agentId ? agentMap.get(assignment.agentId) : undefined;
+    const agentDetails = agentRow
       ? {
-          id: assignment.id,
-          status: assignment.status,
-          pickup_lat: assignment.pickupLat ? parseFloat(assignment.pickupLat) : null,
-          pickup_lng: assignment.pickupLng ? parseFloat(assignment.pickupLng) : null,
-          dropoff_lat: assignment.dropoffLat ? parseFloat(assignment.dropoffLat) : null,
-          dropoff_lng: assignment.dropoffLng ? parseFloat(assignment.dropoffLng) : null,
-          current_lat: assignment.currentLat ? parseFloat(assignment.currentLat) : null,
-          current_lng: assignment.currentLng ? parseFloat(assignment.currentLng) : null,
-          speed_kmh: assignment.speedKmh,
-          eta_minutes: assignment.etaMinutes,
-          agent: agentDetails,
-          updated_at: assignment.updatedAt ? new Date(assignment.updatedAt).toISOString() : null,
+          id: agentRow.id,
+          full_name: agentRow.fullName,
+          phone: agentRow.phone,
+          vehicle_type: agentRow.vehicleType,
+          vehicle_number: agentRow.vehicleNumber,
+          rating: parseFloat(agentRow.rating || '4.9'),
         }
-      : null,
-    tracking_events: trackingRows.map((ev) => ({
-      id: ev.id,
-      lat: parseFloat(ev.lat),
-      lng: parseFloat(ev.lng),
-      speed_kmh: ev.speedKmh,
-      heading: ev.heading,
-      status_note: ev.statusNote,
-      recorded_at: ev.recordedAt ? new Date(ev.recordedAt).toISOString() : null,
-    })),
-    refunds: refundRows.map((rf) => ({
-      id: rf.id,
-      amount: rf.amount,
-      reason: rf.reason,
-      status: rf.status,
-      admin_note: rf.adminNote,
-      created_at: rf.createdAt ? new Date(rf.createdAt).toISOString() : null,
-    })),
-  };
+      : null;
+
+    const currentIdx = timelineSteps.indexOf(orderRow.status);
+    const historyMap = new Map(historyRows.map((h) => [h.status, h]));
+
+    const defaultDescriptions: Record<string, { title: string; desc: string }> = {
+      ORDER_PLACED: {
+        title: 'Order Placed',
+        desc: 'Order confirmed and sent to neighborhood store.',
+      },
+      CONFIRMED_BY_VENDOR: {
+        title: 'Confirmed by Store',
+        desc: 'Neighborhood store confirmed your order.',
+      },
+      PACKED_BY_VENDOR: {
+        title: 'Packed by Vendor',
+        desc: 'Your fresh items are quality-checked & sealed.',
+      },
+      RIDER_ASSIGNED: {
+        title: 'Rider Assigned',
+        desc: agentDetails
+          ? `${agentDetails.full_name} assigned for pickup.`
+          : 'Assigning nearest delivery partner.',
+      },
+      OUT_FOR_DELIVERY: {
+        title: 'Out for Delivery',
+        desc: 'Rider is on the way to your address.',
+      },
+      DELIVERED: {
+        title: 'Delivered',
+        desc: 'Delivered safely to your doorstep.',
+      },
+    };
+
+    const trackingUpdates =
+      orderRow.status === 'CANCELLED'
+        ? historyRows.map((h) => ({
+            timestamp: h.createdAt
+              ? new Date(h.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '',
+            title: h.title,
+            description: h.description,
+            done: true,
+          }))
+        : timelineSteps.map((st, idx) => {
+            const hist = historyMap.get(st);
+            const done = currentIdx >= idx;
+            return {
+              timestamp: hist?.createdAt
+                ? new Date(hist.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : done
+                ? 'Completed'
+                : 'Pending',
+              title: hist?.title || defaultDescriptions[st].title,
+              description: hist?.description || defaultDescriptions[st].desc,
+              done,
+            };
+          });
+
+    return {
+      id: orderRow.externalKey || `ord-${orderRow.id}`,
+      db_id: orderRow.id,
+      order_number: orderRow.orderNumber,
+      created_at: orderRow.createdAt ? new Date(orderRow.createdAt).toISOString() : new Date().toISOString(),
+      status: orderRow.status,
+      estimated_delivery_mins: orderRow.estimatedMinutes,
+      delivery_address: {
+        id: orderRow.addressId ? `addr-${orderRow.addressId}` : 'addr-order',
+        title: orderRow.deliveryTitle || 'Home',
+        recipient_name: orderRow.recipientName,
+        phone: orderRow.recipientPhone,
+        street: orderRow.deliveryAddress,
+        area: orderRow.deliveryArea,
+        city: orderRow.deliveryCity,
+        landmark: orderRow.deliveryLandmark || '',
+        is_default: true,
+        lat: orderRow.deliveryLat ? parseFloat(orderRow.deliveryLat) : 27.6986,
+        lng: orderRow.deliveryLng ? parseFloat(orderRow.deliveryLng) : 85.3292,
+      },
+      delivery_option: orderRow.deliveryOption,
+      payment_method: orderRow.paymentMethod,
+      payment_status: orderRow.paymentStatus,
+      payment_id: paymentRow?.id ?? null,
+      items_by_vendor: Array.from(itemsByVendorMap.values()),
+      subtotal: orderRow.subtotal,
+      delivery_fee: orderRow.deliveryFee,
+      handling_fee: orderRow.handlingFee,
+      coupon_discount: orderRow.discount,
+      total_amount: orderRow.totalAmount,
+      tracking_updates: trackingUpdates,
+      delivery_assignment: assignment
+        ? {
+            id: assignment.id,
+            status: assignment.status,
+            pickup_lat: assignment.pickupLat ? parseFloat(assignment.pickupLat) : null,
+            pickup_lng: assignment.pickupLng ? parseFloat(assignment.pickupLng) : null,
+            dropoff_lat: assignment.dropoffLat ? parseFloat(assignment.dropoffLat) : null,
+            dropoff_lng: assignment.dropoffLng ? parseFloat(assignment.dropoffLng) : null,
+            current_lat: assignment.currentLat ? parseFloat(assignment.currentLat) : null,
+            current_lng: assignment.currentLng ? parseFloat(assignment.currentLng) : null,
+            speed_kmh: assignment.speedKmh,
+            eta_minutes: assignment.etaMinutes,
+            agent: agentDetails,
+            updated_at: assignment.updatedAt ? new Date(assignment.updatedAt).toISOString() : null,
+          }
+        : null,
+      tracking_events: trackingRows.map((ev) => ({
+        id: ev.id,
+        lat: parseFloat(ev.lat),
+        lng: parseFloat(ev.lng),
+        speed_kmh: ev.speedKmh,
+        heading: ev.heading,
+        status_note: ev.statusNote,
+        recorded_at: ev.recordedAt ? new Date(ev.recordedAt).toISOString() : null,
+      })),
+      refunds: refundRows.map((rf) => ({
+        id: rf.id,
+        amount: rf.amount,
+        reason: rf.reason,
+        status: rf.status,
+        admin_note: rf.adminNote,
+        created_at: rf.createdAt ? new Date(rf.createdAt).toISOString() : null,
+      })),
+    };
+  });
+}
+
+export async function serializeOrder(orderRow: typeof orders.$inferSelect) {
+  const [serialized] = await serializeOrdersBatch([orderRow]);
+  return serialized;
 }
 
 export async function createTransactionalOrder(params: {
@@ -873,34 +927,43 @@ export async function cancelTransactionalOrder(
 }
 
 export async function recordOrderDeliveredSettlement(orderId: number) {
-  const fulfillments = await db
-    .select()
-    .from(vendorFulfillments)
-    .where(eq(vendorFulfillments.orderId, orderId));
+  const [fulfillments, existingLedgers] = await Promise.all([
+    db.select().from(vendorFulfillments).where(eq(vendorFulfillments.orderId, orderId)),
+    db.select().from(financialLedger).where(eq(financialLedger.orderId, orderId)),
+  ]);
+
+  if (fulfillments.length === 0) return;
+
+  const settledVendorIds = new Set(existingLedgers.map((l) => l.vendorId));
+  const newEntries: {
+    vendorId: number;
+    orderId: number;
+    entryType: string;
+    amount: number;
+    description: string;
+  }[] = [];
 
   for (const f of fulfillments) {
-    const existingLedger = await db
-      .select()
-      .from(financialLedger)
-      .where(and(eq(financialLedger.orderId, orderId), eq(financialLedger.vendorId, f.vendorId)))
-      .limit(1);
-    if (existingLedger.length === 0) {
-      await db.insert(financialLedger).values([
-        {
-          vendorId: f.vendorId,
-          orderId,
-          entryType: 'sale_credit',
-          amount: f.subtotal,
-          description: `Gross sale from Order #${orderId}`,
-        },
-        {
-          vendorId: f.vendorId,
-          orderId,
-          entryType: 'commission_debit',
-          amount: -f.commissionAmount,
-          description: `Platform commission (${f.commissionRate}%) on Order #${orderId}`,
-        },
-      ]);
-    }
+    if (settledVendorIds.has(f.vendorId)) continue;
+    newEntries.push(
+      {
+        vendorId: f.vendorId,
+        orderId,
+        entryType: 'sale_credit',
+        amount: f.subtotal,
+        description: `Gross sale from Order #${orderId}`,
+      },
+      {
+        vendorId: f.vendorId,
+        orderId,
+        entryType: 'commission_debit',
+        amount: -f.commissionAmount,
+        description: `Platform commission (${f.commissionRate}%) on Order #${orderId}`,
+      }
+    );
+  }
+
+  if (newEntries.length > 0) {
+    await db.insert(financialLedger).values(newEntries);
   }
 }

@@ -1142,6 +1142,7 @@ export const TRANSLATIONS = {
 } as const;
 
 export type TranslationKey = keyof typeof TRANSLATIONS.en;
+export type TranslatorFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 export function createTranslator(lang: Language) {
   return function t(key: TranslationKey, vars?: Record<string, string | number>): string {

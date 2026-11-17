@@ -34,3 +34,30 @@ export interface DRFPaginatedResponse<T> {
   previous: string | null;
   results: T[];
 }
+
+export interface AutocompleteSuggestion {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image_url: string;
+  unit: string;
+}
+
+export interface AutocompleteCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface DbStatusResponse {
+  status: string;
+  engine?: string;
+  counts?: {
+    products: number;
+    categories: number;
+    vendors: number;
+    orders: number;
+  };
+}
+

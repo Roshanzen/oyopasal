@@ -2,16 +2,18 @@ import {
   InventoryMovementItem,
   Product,
   SellerAnalyticsResponse,
+  SellerDashboardResponse,
   SellerFulfillmentItem,
   SellerReviewItem,
+  SellerSettlementItem,
   Vendor,
 } from '../types';
 import { httpClient } from './httpClient';
 
 export const sellerService = {
-  getSellerDashboard(vendorId?: string): Promise<any> {
+  getSellerDashboard(vendorId?: string): Promise<SellerDashboardResponse> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/dashboard/${qs}`, {}, true);
+    return httpClient.request<SellerDashboardResponse>(`/seller/dashboard/${qs}`, {}, true);
   },
 
   getSellerAnalytics(vendorId?: string, months = 6): Promise<SellerAnalyticsResponse> {
@@ -121,7 +123,7 @@ export const sellerService = {
     );
   },
 
-  getSellerStore(vendorId?: string): Promise<{ vendor: Vendor; settlements: any[] }> {
+  getSellerStore(vendorId?: string): Promise<{ vendor: Vendor; settlements: SellerSettlementItem[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
     return httpClient.request(`/seller/store/${qs}`, {}, true);
   },

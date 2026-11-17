@@ -21,6 +21,7 @@ import {
   createTransactionalOrder,
   resolveOrderByIdentifier,
   serializeOrder,
+  serializeOrdersBatch,
 } from '../services/orderService.ts';
 import { createNotification, recordAuditLog } from '../utils/audit.ts';
 import { ApiError, asyncHandler } from '../utils/errors.ts';
@@ -68,7 +69,7 @@ router.get(
             .orderBy(desc(orders.createdAt))
             .limit(50);
 
-    const serialized = await Promise.all(orderRows.map((o) => serializeOrder(o)));
+    const serialized = await serializeOrdersBatch(orderRows);
     res.json({
       count: serialized.length,
       next: null,
@@ -239,9 +240,14 @@ router.post(
     if (!reason) {
       throw new ApiError(400, 'Please provide a reason for your refund request.', 'MISSING_REASON');
     }
-    const requestedAmount = req.body?.amount
-      ? Math.min(orderRow.totalAmount, Math.max(1, Number(req.body.amount)))
-      : orderRow.totalAmount;
+    let requestedAmount = orderRow.totalAmount;
+    if (req.body?.amount !== undefined && req.body?.amount !== null && req.body?.amount !== '') {
+      const parsedAmount = Number(req.body.amount);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        throw new ApiError(400, 'Refund amount must be a positive number.', 'INVALID_AMOUNT');
+      }
+      requestedAmount = Math.min(orderRow.totalAmount, Math.round(parsedAmount));
+    }
 
     const paymentRow = (
       await db.select().from(payments).where(eq(payments.orderId, orderRow.id)).limit(1)

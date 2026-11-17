@@ -1,4 +1,23 @@
-import { Advertisement, Order, Promotion } from '../types';
+import {
+  AdminAuditLogItem,
+  AdminCouponItem,
+  AdminOverviewResponse,
+  AdminPaymentItem,
+  AdminProductItem,
+  AdminRefundItem,
+  AdminRiderItem,
+  AdminSellerItem,
+  AdminSettingItem,
+  AdminSettlementItem,
+  AdminTicketItem,
+  AdminUserItem,
+  AdminVendorBalance,
+  AdminZoneItem,
+  Advertisement,
+  Category,
+  Order,
+  Promotion,
+} from '../types';
 import { httpClient } from './httpClient';
 
 export const adminService = {
@@ -35,44 +54,47 @@ export const adminService = {
     return resp.asset;
   },
 
-  getAdminOverview(from?: string, to?: string): Promise<any> {
+  getAdminOverview(from?: string, to?: string): Promise<AdminOverviewResponse> {
     const qs = new URLSearchParams();
     if (from) qs.set('from', from);
     if (to) qs.set('to', to);
     const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return httpClient.request(`/admin/overview/${suffix}`);
+    return httpClient.request<AdminOverviewResponse>(`/admin/overview/${suffix}`);
   },
 
-  getAdminUsers(): Promise<{ count: number; results: any[] }> {
+  getAdminUsers(): Promise<{ count: number; results: AdminUserItem[] }> {
     return httpClient.request('/admin/users/');
   },
 
-  updateAdminUser(id: number, payload: { is_active?: boolean; role?: string }): Promise<any> {
+  updateAdminUser(
+    id: number,
+    payload: { is_active?: boolean; role?: string }
+  ): Promise<{ success: boolean; user: AdminUserItem }> {
     return httpClient.request(`/admin/users/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
-  getAdminSellers(): Promise<{ count: number; results: any[] }> {
+  getAdminSellers(): Promise<{ count: number; results: AdminSellerItem[] }> {
     return httpClient.request('/admin/sellers/');
   },
 
   updateSellerApproval(
     vendorDbId: number,
     payload: { approval_status?: string; commission_rate?: number; rejection_reason?: string }
-  ): Promise<any> {
+  ): Promise<{ success: boolean; vendor: AdminSellerItem }> {
     return httpClient.request(`/admin/sellers/${vendorDbId}/approval/`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
   },
 
-  getAdminProducts(): Promise<{ count: number; results: any[] }> {
+  getAdminProducts(): Promise<{ count: number; results: AdminProductItem[] }> {
     return httpClient.request('/admin/products/');
   },
 
   moderateAdminProduct(
     productDbId: number,
     payload: { approval_status?: string; is_active?: boolean }
-  ): Promise<any> {
+  ): Promise<{ success: boolean; product: AdminProductItem }> {
     return httpClient.request(`/admin/products/${productDbId}/moderation/`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -88,15 +110,18 @@ export const adminService = {
     description?: string;
     image_url?: string;
     parent_id?: number;
-  }): Promise<any> {
+  }): Promise<{ success: boolean; category: Category }> {
     return httpClient.request('/admin/categories/', { method: 'POST', body: JSON.stringify(payload) });
   },
 
-  updateAdminCategory(id: number, payload: Record<string, unknown>): Promise<any> {
+  updateAdminCategory(
+    id: number,
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; category: Category }> {
     return httpClient.request(`/admin/categories/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
-  deleteAdminCategory(id: number): Promise<any> {
+  deleteAdminCategory(id: number): Promise<{ success: boolean }> {
     return httpClient.request(`/admin/categories/${id}/`, { method: 'DELETE' });
   },
 
@@ -104,15 +129,18 @@ export const adminService = {
     return httpClient.request('/admin/promotions/');
   },
 
-  createAdminPromotion(payload: Record<string, unknown>): Promise<any> {
+  createAdminPromotion(payload: Record<string, unknown>): Promise<{ success: boolean; promotion: Promotion }> {
     return httpClient.request('/admin/promotions/', { method: 'POST', body: JSON.stringify(payload) });
   },
 
-  updateAdminPromotion(id: number, payload: Record<string, unknown>): Promise<any> {
+  updateAdminPromotion(
+    id: number,
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; promotion: Promotion }> {
     return httpClient.request(`/admin/promotions/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
-  deleteAdminPromotion(id: number): Promise<any> {
+  deleteAdminPromotion(id: number): Promise<{ success: boolean }> {
     return httpClient.request(`/admin/promotions/${id}/`, { method: 'DELETE' });
   },
 
@@ -120,19 +148,24 @@ export const adminService = {
     return httpClient.request('/admin/advertisements/');
   },
 
-  createAdminAdvertisement(payload: Record<string, unknown>): Promise<any> {
+  createAdminAdvertisement(
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; advertisement: Advertisement }> {
     return httpClient.request('/admin/advertisements/', { method: 'POST', body: JSON.stringify(payload) });
   },
 
-  updateAdminAdvertisement(id: number, payload: Record<string, unknown>): Promise<any> {
+  updateAdminAdvertisement(
+    id: number,
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; advertisement: Advertisement }> {
     return httpClient.request(`/admin/advertisements/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
-  deleteAdminAdvertisement(id: number): Promise<any> {
+  deleteAdminAdvertisement(id: number): Promise<{ success: boolean }> {
     return httpClient.request(`/admin/advertisements/${id}/`, { method: 'DELETE' });
   },
 
-  getAdminPayments(): Promise<{ count: number; results: any[] }> {
+  getAdminPayments(): Promise<{ count: number; results: AdminPaymentItem[] }> {
     return httpClient.request('/admin/payments/');
   },
 
@@ -140,14 +173,14 @@ export const adminService = {
     return httpClient.request('/admin/orders/');
   },
 
-  assignRiderToOrder(orderId: string, agentId: number): Promise<any> {
+  assignRiderToOrder(orderId: string, agentId: number): Promise<{ success: boolean; message?: string }> {
     return httpClient.request(`/admin/orders/${orderId}/assign-rider/`, {
       method: 'POST',
       body: JSON.stringify({ agent_id: agentId }),
     });
   },
 
-  getAdminRefunds(): Promise<{ count: number; results: any[] }> {
+  getAdminRefunds(): Promise<{ count: number; results: AdminRefundItem[] }> {
     return httpClient.request('/admin/refunds/');
   },
 
@@ -155,76 +188,83 @@ export const adminService = {
     id: number,
     status: 'approved' | 'rejected' | 'processed',
     admin_note?: string
-  ): Promise<any> {
+  ): Promise<{ success: boolean; refund: AdminRefundItem }> {
     return httpClient.request(`/admin/refunds/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify({ status, admin_note }),
     });
   },
 
-  getAdminZones(): Promise<{ count: number; results: any[] }> {
+  getAdminZones(): Promise<{ count: number; results: AdminZoneItem[] }> {
     return httpClient.request('/admin/zones/');
   },
 
-  createAdminZone(payload: Record<string, unknown>): Promise<any> {
+  createAdminZone(payload: Record<string, unknown>): Promise<{ success: boolean; zone: AdminZoneItem }> {
     return httpClient.request('/admin/zones/', { method: 'POST', body: JSON.stringify(payload) });
   },
 
-  getAdminRiders(): Promise<{ count: number; results: any[] }> {
+  getAdminRiders(): Promise<{ count: number; results: AdminRiderItem[] }> {
     return httpClient.request('/admin/riders/');
   },
 
-  updateAdminRider(id: number, payload: { verification_status?: string; availability_status?: string }): Promise<any> {
+  updateAdminRider(
+    id: number,
+    payload: { verification_status?: string; availability_status?: string }
+  ): Promise<{ success: boolean; rider: AdminRiderItem }> {
     return httpClient.request(`/admin/riders/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
-  getAdminCoupons(): Promise<{ count: number; results: any[] }> {
+  getAdminCoupons(): Promise<{ count: number; results: AdminCouponItem[] }> {
     return httpClient.request('/admin/coupons/');
   },
 
-  createAdminCoupon(payload: Record<string, unknown>): Promise<any> {
+  createAdminCoupon(payload: Record<string, unknown>): Promise<{ success: boolean; coupon: AdminCouponItem }> {
     return httpClient.request('/admin/coupons/', { method: 'POST', body: JSON.stringify(payload) });
   },
 
-  toggleAdminCoupon(id: number, is_active: boolean): Promise<any> {
+  toggleAdminCoupon(id: number, is_active: boolean): Promise<{ success: boolean; coupon: AdminCouponItem }> {
     return httpClient.request(`/admin/coupons/${id}/`, { method: 'PATCH', body: JSON.stringify({ is_active }) });
   },
 
-  getAdminSettlements(): Promise<{ vendor_balances: any[]; settlements: any[] }> {
+  getAdminSettlements(): Promise<{ vendor_balances: AdminVendorBalance[]; settlements: AdminSettlementItem[] }> {
     return httpClient.request('/admin/settlements/');
   },
 
-  generateSettlement(vendor_id: number): Promise<any> {
+  generateSettlement(vendor_id: number): Promise<{ success: boolean; settlement: AdminSettlementItem }> {
     return httpClient.request('/admin/settlements/generate/', {
       method: 'POST',
       body: JSON.stringify({ vendor_id }),
     });
   },
 
-  paySettlement(id: number, payout_reference?: string): Promise<any> {
+  paySettlement(id: number, payout_reference?: string): Promise<{ success: boolean; settlement: AdminSettlementItem }> {
     return httpClient.request(`/admin/settlements/${id}/pay/`, {
       method: 'PATCH',
       body: JSON.stringify({ payout_reference }),
     });
   },
 
-  getAdminTickets(): Promise<{ count: number; results: any[] }> {
+  getAdminTickets(): Promise<{ count: number; results: AdminTicketItem[] }> {
     return httpClient.request('/admin/tickets/');
   },
 
-  updateAdminTicket(id: number, status: string): Promise<any> {
+  updateAdminTicket(id: number, status: string): Promise<{ success: boolean; ticket: AdminTicketItem }> {
     return httpClient.request(`/admin/tickets/${id}/`, { method: 'PATCH', body: JSON.stringify({ status }) });
   },
 
-  getAdminAuditLogs(): Promise<{ count: number; results: any[] }> {
+  getAdminAuditLogs(): Promise<{ count: number; results: AdminAuditLogItem[] }> {
     return httpClient.request('/admin/audit-logs/');
   },
 
-  getAdminSettings(): Promise<{ count: number; results: any[] }> {
+  getAdminSettings(): Promise<{ count: number; results: AdminSettingItem[] }> {
     return httpClient.request('/admin/settings/');
   },
 
-  saveAdminSetting(key: string, value: Record<string, unknown>, description?: string): Promise<any> {
+  saveAdminSetting(
+    key: string,
+    value: Record<string, unknown>,
+    description?: string
+  ): Promise<{ success: boolean; setting: AdminSettingItem }> {
     return httpClient.request('/admin/settings/', {
       method: 'PUT',
       body: JSON.stringify({ key, value, description }),

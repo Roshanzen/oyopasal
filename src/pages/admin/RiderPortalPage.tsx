@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context';
-import { api } from '../../services';
+import { orderService } from '../../services';
+import { DeliveryAgentProfile, DeliveryAssignmentItem } from '../../types';
 import {
   Bike,
   Navigation,
@@ -28,8 +29,8 @@ export default function RiderPortalPage() {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  const [profile, setProfile] = useState<any | null>(null);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [profile, setProfile] = useState<DeliveryAgentProfile | null>(null);
+  const [assignments, setAssignments] = useState<DeliveryAssignmentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<Record<number, { lat: string; lng: string; speed: string; eta: string }>>({});
 
@@ -40,13 +41,13 @@ export default function RiderPortalPage() {
     setLoading(true);
     try {
       const [prof, assignRes] = await Promise.all([
-        api.getDeliveryProfile().catch(() => null),
-        api.getDeliveryAssignments()
+        orderService.getDeliveryProfile().catch(() => null),
+        orderService.getDeliveryAssignments()
       ]);
       if (prof) setProfile(prof);
       setAssignments(assignRes.results || []);
-    } catch (err: any) {
-      showToast(err?.message || 'Could not load rider workspace', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Could not load rider workspace', 'error');
     } finally {
       setLoading(false);
     }
@@ -81,7 +82,7 @@ export default function RiderPortalPage() {
 
   const handlePushCoords = async (assignmentId: number, lat: number, lng: number, speed = 26, eta = 5, note?: string) => {
     try {
-      await api.pushDeliveryLocation(assignmentId, {
+      await orderService.pushDeliveryLocation(assignmentId, {
         lat,
         lng,
         speed_kmh: speed,
@@ -90,8 +91,8 @@ export default function RiderPortalPage() {
       });
       showToast(`Pushed live GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`, 'success');
       await loadRiderWorkspace();
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to push GPS ping', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to push GPS ping', 'error');
     }
   };
 
@@ -202,8 +203,8 @@ export default function RiderPortalPage() {
               value={profile.availability_status}
               onChange={async e => {
                 const next = e.target.value as 'offline' | 'available' | 'busy';
-                await api.updateDeliveryAvailability(next);
-                setProfile((p: any) => ({ ...p, availability_status: next }));
+                await orderService.updateDeliveryAvailability(next);
+                setProfile((p) => (p ? { ...p, availability_status: next } : p));
                 showToast(`Availability set to ${next.toUpperCase()}`, 'info');
               }}
               className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-bold text-emerald-400"
@@ -265,7 +266,7 @@ export default function RiderPortalPage() {
                     {a.status === 'assigned' && (
                       <button
                         onClick={async () => {
-                          await api.updateDeliveryStatus(a.id, 'accepted');
+                          await orderService.updateDeliveryStatus(a.id, 'accepted');
                           showToast('Assignment accepted', 'success');
                           loadRiderWorkspace();
                         }}
@@ -277,7 +278,7 @@ export default function RiderPortalPage() {
                     {['assigned', 'accepted'].includes(a.status) && (
                       <button
                         onClick={async () => {
-                          await api.updateDeliveryStatus(a.id, 'picked_up');
+                          await orderService.updateDeliveryStatus(a.id, 'picked_up');
                           showToast('Marked Picked Up & Out for Delivery', 'success');
                           loadRiderWorkspace();
                         }}
@@ -289,7 +290,7 @@ export default function RiderPortalPage() {
                     {['picked_up', 'in_transit'].includes(a.status) && (
                       <button
                         onClick={async () => {
-                          await api.updateDeliveryStatus(a.id, 'delivered', 'Handed over at doorstep');
+                          await orderService.updateDeliveryStatus(a.id, 'delivered', 'Handed over at doorstep');
                           showToast('Order Delivered! Commission ledger settled.', 'success');
                           loadRiderWorkspace();
                         }}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context';
-import { api } from '../../services';
+import { vendorService } from '../../services';
+import { Vendor } from '../../types';
 import {
   X,
   Store,
@@ -31,7 +32,7 @@ export default function BecomeSellerModal() {
   const [email, setEmail] = useState('');
   const [dailyOrders, setDailyOrders] = useState('20-50');
   const [submitting, setSubmitting] = useState(false);
-  const [submittedData, setSubmittedData] = useState<any | null>(null);
+  const [submittedData, setSubmittedData] = useState<{ success: boolean; message: string; vendor: Vendor } | null>(null);
 
 
   const handleClose = () => {
@@ -51,7 +52,7 @@ export default function BecomeSellerModal() {
 
     setSubmitting(true);
     try {
-      const res = await api.registerVendor({
+      const res = await vendorService.registerVendor({
         store_name: storeName.trim(),
         category,
         city,

@@ -7,6 +7,21 @@ interface RateLimitBucket {
 }
 
 const buckets = new Map<string, RateLimitBucket>();
+let lastSweepAt = Date.now();
+const SWEEP_INTERVAL_MS = 60_000;
+const SWEEP_SIZE_THRESHOLD = 500;
+
+function sweepExpiredBuckets(now: number) {
+  if (buckets.size < SWEEP_SIZE_THRESHOLD && now - lastSweepAt < SWEEP_INTERVAL_MS) {
+    return;
+  }
+  lastSweepAt = now;
+  for (const [bucketKey, bucket] of buckets.entries()) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(bucketKey);
+    }
+  }
+}
 
 export function createRateLimiter(options: {
   windowMs: number;
@@ -17,6 +32,7 @@ export function createRateLimiter(options: {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const key = `${options.keyPrefix}:${ip}`;
     const now = Date.now();
+    sweepExpiredBuckets(now);
 
     const current = buckets.get(key);
     if (!current || current.resetAt <= now) {

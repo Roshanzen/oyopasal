@@ -14,6 +14,7 @@ import { AuthRequest, requireAuth, requireRole } from '../middleware/auth.ts';
 import { recordOrderDeliveredSettlement, resolveOrderByIdentifier } from '../services/orderService.ts';
 import { createNotification, recordAuditLog } from '../utils/audit.ts';
 import { ApiError, asyncHandler } from '../utils/errors.ts';
+import { parseNumericId } from '../utils/validation.ts';
 
 const router = Router();
 
@@ -217,7 +218,7 @@ router.post(
   requireAuth,
   requireRole('delivery_agent', 'admin'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const assignmentId = parseInt(req.params.id, 10);
+    const assignmentId = parseNumericId(req.params.id, 'assignment id', 'INVALID_ASSIGNMENT_ID');
     const { lat, lng, speed_kmh = 24, heading = 0, eta_minutes, status_note } = req.body as {
       lat?: number;
       lng?: number;
@@ -227,8 +228,17 @@ router.post(
       status_note?: string;
     };
 
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
-      throw new ApiError(400, 'Numeric lat and lng coordinates are required.', 'INVALID_COORDINATES');
+    if (
+      typeof lat !== 'number' ||
+      typeof lng !== 'number' ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      throw new ApiError(400, 'Valid numeric lat and lng coordinates are required.', 'INVALID_COORDINATES');
     }
 
     const aRows = await db
@@ -288,7 +298,7 @@ router.patch(
   requireAuth,
   requireRole('delivery_agent', 'admin'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const assignmentId = parseInt(req.params.id, 10);
+    const assignmentId = parseNumericId(req.params.id, 'assignment id', 'INVALID_ASSIGNMENT_ID');
     const nextStatus = String(req.body?.status || '').toLowerCase();
     const proofNote = req.body?.proof_note ? String(req.body.proof_note).trim() : undefined;
 

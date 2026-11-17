@@ -28,11 +28,14 @@ export interface Order {
   delivery_option: 'EXPRESS_12_MINS' | 'SCHEDULED_TODAY';
   payment_method: PaymentMethod;
   payment_status: 'PAID' | 'PENDING';
+  payment_id?: number | null;
   items_by_vendor: {
-    vendor: { id: string; name: string };
+    vendor: { id: string; name: string; lat?: number; lng?: number; area?: string };
     fulfillment_status?: string;
+    fulfillment_id?: number;
     items: {
-      product_id?: string;
+      id?: number;
+      product_id?: string | null;
       product_name: string;
       unit: string;
       quantity: number;
@@ -48,6 +51,46 @@ export interface Order {
   coupon_discount: number;
   total_amount: number;
   tracking_updates: TrackingStep[];
+  delivery_assignment?: DeliveryTrackingTelemetry['assignment'];
+  tracking_events?: DeliveryTrackingTelemetry['events'];
+}
+
+export interface DeliveryAgentProfile {
+  id: number;
+  full_name: string;
+  phone: string;
+  vehicle_type: string;
+  vehicle_number: string;
+  verification_status: 'pending' | 'approved' | 'suspended' | string;
+  availability_status: 'offline' | 'available' | 'busy' | string;
+  current_lat: number | null;
+  current_lng: number | null;
+  rating: number;
+  total_deliveries: number;
+}
+
+export interface DeliveryAssignmentItem {
+  id: number;
+  status: string;
+  order_id: number;
+  order_external_id: string;
+  order_number: string;
+  order_status: string;
+  recipient_name: string;
+  recipient_phone: string;
+  delivery_address: string;
+  vendor_name: string;
+  total_amount: number;
+  payment_method: string;
+  payment_status: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
+  current_lat: number | null;
+  current_lng: number | null;
+  eta_minutes: number | null;
+  speed_kmh: number;
 }
 
 export interface DeliveryTrackingTelemetry {
@@ -102,3 +145,4 @@ export interface SupportTicket {
     created_at: string;
   }[];
 }
+

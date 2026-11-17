@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context';
-import { api } from '../../services';
+import { sellerService } from '../../services';
 import { translateOrderStatus } from '../../i18n';
-import { SellerFulfillmentItem } from '../../types';
+import { Product, SellerDashboardResponse, SellerFulfillmentItem } from '../../types';
 import {
   X,
   Store,
@@ -32,7 +32,7 @@ export default function SellerDashboardModal() {
     language
   } = useApp();
 
-  const [dashboardData, setDashboardData] = useState<any | null>(null);
+  const [dashboardData, setDashboardData] = useState<SellerDashboardResponse | null>(null);
   const [allOrders, setAllOrders] = useState<SellerFulfillmentItem[]>([]);
   const [orderTab, setOrderTab] = useState<'active' | 'all'>('all');
   const [loading, setLoading] = useState(false);
@@ -46,8 +46,8 @@ export default function SellerDashboardModal() {
       if (!silent) setLoading(true);
       setError(null);
       const [data, ordersRes] = await Promise.all([
-        api.getSellerDashboard(currentSeller.id),
-        api.getSellerOrders(currentSeller.id)
+        sellerService.getSellerDashboard(currentSeller.id),
+        sellerService.getSellerOrders(currentSeller.id)
       ]);
       setDashboardData(data);
       if (data?.vendor && typeof data.vendor.is_online === 'boolean') {
@@ -82,7 +82,7 @@ export default function SellerDashboardModal() {
   const handleMarkPacked = async (fulfillment: SellerFulfillmentItem) => {
     setPackingId(fulfillment.fulfillment_id);
     try {
-      await api.updateSellerFulfillmentStatus(fulfillment.fulfillment_id, 'PACKED_BY_VENDOR', currentSeller.id);
+      await sellerService.updateSellerFulfillmentStatus(fulfillment.fulfillment_id, 'PACKED_BY_VENDOR', currentSeller.id);
       setAllOrders(prev =>
         prev.map(o => (o.fulfillment_id === fulfillment.fulfillment_id ? { ...o, status: 'PACKED_BY_VENDOR' } : o))
       );
@@ -92,8 +92,8 @@ export default function SellerDashboardModal() {
           : `Order ${fulfillment.order_number} marked as packed!`,
         'success'
       );
-    } catch (err: any) {
-      showToast(err?.message || 'Could not update fulfillment status', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Could not update fulfillment status', 'error');
     } finally {
       setPackingId(null);
     }
@@ -102,7 +102,7 @@ export default function SellerDashboardModal() {
   const handleToggleStoreStatus = async () => {
     const nextOnline = !storeOnline;
     try {
-      await api.updateSellerStore({ is_online: nextOnline }, currentSeller.id);
+      await sellerService.updateSellerStore({ is_online: nextOnline }, currentSeller.id);
       setStoreOnline(nextOnline);
       showToast(
         nextOnline
@@ -110,8 +110,8 @@ export default function SellerDashboardModal() {
           : 'Store is now PAUSED for new orders.',
         nextOnline ? 'success' : 'info'
       );
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to update store status', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to update store status', 'error');
     }
   };
 
@@ -361,7 +361,7 @@ export default function SellerDashboardModal() {
 
               <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                 {dashboardData?.products && dashboardData.products.length > 0 ? (
-                  dashboardData.products.map((item: any) => (
+                  dashboardData.products.map((item: Product) => (
                     <div
                       key={item.id}
                       className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm bg-white dark:bg-[#0f1422]"

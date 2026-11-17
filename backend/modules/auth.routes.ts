@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, isNotNull, lt, or } from 'drizzle-orm';
 import { db } from '../../src/db/index.ts';
 import {
   addresses,
@@ -26,10 +26,22 @@ import { ApiError, asyncHandler } from '../utils/errors.ts';
 const router = Router();
 const authLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30, keyPrefix: 'auth' });
 
+const SEEDED_DEMO_VENDOR_IDENTIFIERS = new Set([
+  'v-himalayan',
+  'himalayan-fresh-farms',
+  'v-patan-bakery',
+  'patan-artisan-bakery',
+  'v-everest-pantry',
+  'everest-organic-pantry',
+  'v-green-valley',
+  'green-valley-hydroponics',
+]);
+
 async function createDbSession(userId: number, deviceInfo?: string): Promise<string> {
   const rawToken = generateSessionToken();
   const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   await db.insert(userSessions).values({
     userId,
@@ -37,6 +49,13 @@ async function createDbSession(userId: number, deviceInfo?: string): Promise<str
     deviceInfo: deviceInfo || 'Web Browser',
     expiresAt,
   });
+
+  // Probabilistic cleanup of expired/revoked sessions to prevent table bloat
+  if (Math.random() < 0.1) {
+    await db
+      .delete(userSessions)
+      .where(or(lt(userSessions.expiresAt, now), isNotNull(userSessions.revokedAt)));
+  }
 
   return rawToken;
 }
@@ -294,10 +313,18 @@ router.post(
     let sellerUser: typeof users.$inferSelect | undefined;
 
     if (vendor_id && demo_quick_login) {
+      const normalizedVendorId = String(vendor_id).trim();
+      if (!SEEDED_DEMO_VENDOR_IDENTIFIERS.has(normalizedVendorId)) {
+        throw new ApiError(
+          403,
+          'Demo quick login is restricted to seeded sample stores. Sign in with store email and password.',
+          'DEMO_LOGIN_RESTRICTED'
+        );
+      }
       const vRows = await db
         .select()
         .from(vendors)
-        .where(or(eq(vendors.externalKey, vendor_id), eq(vendors.slug, vendor_id)))
+        .where(or(eq(vendors.externalKey, normalizedVendorId), eq(vendors.slug, normalizedVendorId)))
         .limit(1);
       if (vRows.length === 0) {
         throw new ApiError(404, 'Selected vendor store not found.', 'VENDOR_NOT_FOUND');
