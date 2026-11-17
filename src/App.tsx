@@ -4,30 +4,21 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AppProvider } from './shared/context/AppContext';
-import Header from './customer/components/Header';
-import CategoryBar from './customer/components/CategoryBar';
-import CartDrawer from './customer/components/CartDrawer';
-import LocationModal from './customer/components/LocationModal';
-import BecomeSellerModal from './vendor/components/BecomeSellerModal';
-import SellerLoginModal from './vendor/components/SellerLoginModal';
-import SellerDashboardModal from './vendor/components/SellerDashboardModal';
-import LoginModal from './customer/components/LoginModal';
-import MobileBottomNav from './customer/components/MobileBottomNav';
-import ToastContainer from './shared/components/Toast';
-import { ChatConcierge } from './customer/components/ChatConcierge';
-
-import HomePage from './customer/pages/HomePage';
-import ProductDetailPage from './customer/pages/ProductDetailPage';
-import CategoryPage from './customer/pages/CategoryPage';
-import SearchPage from './customer/pages/SearchPage';
-import CheckoutPage from './customer/pages/CheckoutPage';
-import OrderTrackingPage from './customer/pages/OrderTrackingPage';
-import AccountPage from './customer/pages/AccountPage';
-import SellerPortalPage from './vendor/pages/SellerPortalPage';
-import AdminPortalPage from './admin/pages/AdminPortalPage';
-import RiderPortalPage from './admin/pages/RiderPortalPage';
+import { BrowserRouter, useLocation } from 'react-router-dom';
+import { AppProvider } from './context';
+import { AppRoutes } from './routes';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import Header from './components/layout/Header';
+import CategoryBar from './components/common/CategoryBar';
+import MobileBottomNav from './components/layout/MobileBottomNav';
+import { ChatConcierge } from './components/layout/ChatConcierge';
+import CartDrawer from './components/modals/CartDrawer';
+import LocationModal from './components/modals/LocationModal';
+import BecomeSellerModal from './components/modals/BecomeSellerModal';
+import SellerLoginModal from './components/modals/SellerLoginModal';
+import SellerDashboardModal from './components/modals/SellerDashboardModal';
+import LoginModal from './components/modals/LoginModal';
+import ToastContainer from './components/feedback/ToastContainer';
 
 function AppShell() {
   const location = useLocation();
@@ -42,20 +33,9 @@ function AppShell() {
       {!isPortalRoute && <CategoryBar />}
 
       <main className="flex-1 w-full">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/product/:id" element={<ProductDetailPage />} />
-          <Route path="/categories" element={<CategoryPage />} />
-          <Route path="/category/:slug" element={<CategoryPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/orders/:id" element={<OrderTrackingPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/seller" element={<SellerPortalPage />} />
-          <Route path="/admin" element={<AdminPortalPage />} />
-          <Route path="/rider" element={<RiderPortalPage />} />
-          <Route path="*" element={<HomePage />} />
-        </Routes>
+        <ErrorBoundary fallbackTitle="Page failed to render">
+          <AppRoutes />
+        </ErrorBoundary>
       </main>
 
       <CartDrawer />
