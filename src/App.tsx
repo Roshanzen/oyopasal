@@ -30,7 +30,11 @@ function AppShell() {
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <Header />
-      {!isPortalRoute && <CategoryBar />}
+      {!isPortalRoute && (
+        <ErrorBoundary fallbackTitle="Category navigation unavailable">
+          <CategoryBar />
+        </ErrorBoundary>
+      )}
 
       <main className="flex-1 w-full">
         <ErrorBoundary fallbackTitle="Page failed to render">

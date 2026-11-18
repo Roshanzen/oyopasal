@@ -46,9 +46,11 @@ export default function CategoryBar() {
       try {
         setLoading(true);
         const res = await categoryService.getCategories();
-        setCategories(res.results);
+        const list = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+        setCategories(list);
       } catch (err) {
         console.error('Failed to load categories', err);
+        setCategories([]);
       } finally {
         setLoading(false);
       }
@@ -114,7 +116,7 @@ export default function CategoryBar() {
               />
             ))
           ) : (
-            categories.map((cat) => {
+            (categories || []).map((cat) => {
               const IconComp = ICON_MAP[cat.icon] || Package;
               const isActive = currentPath === `/category/${cat.slug}`;
 

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { APP_CONFIG } from '../config';
 import { addressService, vendorService } from '../services';
+import { httpClient } from '../services/httpClient';
 import { Address, Coordinates, PublicSettings, Vendor } from '../types';
 import { calculateDistanceInKm, estimateDeliveryMinutes } from '../utils';
 import { useLanguageContext } from './LanguageContext';
@@ -55,18 +56,24 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshAddresses = useCallback(async () => {
+    if (!httpClient.getToken()) {
+      setAddresses([]);
+      return;
+    }
     try {
       const resp = await addressService.getAddresses();
-      setAddresses(resp.results);
-      if (resp.results.length > 0) {
-        const defaultAddr = resp.results.find((a) => a.is_default) || resp.results[0];
+      const list = Array.isArray(resp?.results) ? resp.results : (Array.isArray(resp) ? (resp as Address[]) : []);
+      setAddresses(list);
+      if (list.length > 0) {
+        const defaultAddr = list.find((a) => a.is_default) || list[0];
         setCurrentAddressState(defaultAddr);
         if (typeof defaultAddr.lat === 'number' && typeof defaultAddr.lng === 'number') {
           setCurrentCoordinates({ lat: defaultAddr.lat, lng: defaultAddr.lng });
         }
       }
     } catch {
-      // Unauthenticated guests receive empty address list
+      // Unauthenticated guests or expired sessions receive empty address list
+      setAddresses([]);
     }
   }, []);
 

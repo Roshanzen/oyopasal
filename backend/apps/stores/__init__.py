@@ -1,0 +1,2 @@
+"""Store management module."""
+

@@ -1,0 +1,293 @@
+import uuid
+from decimal import Decimal
+from django.db import transaction
+from django.utils import timezone
+from apps.cart.models import Cart
+from apps.orders.models import (
+    Order,
+    VendorSubOrder,
+    OrderItem,
+    OrderStatus,
+    OrderStatusHistory
+)
+from apps.inventory.models import InventoryItem
+from apps.inventory.services import InventoryService, InsufficientStockError
+
+class CheckoutService:
+    @classmethod
+    @transaction.atomic
+    def process_checkout(cls, user, shipping_address_data: dict, payment_method: str = 'COD', customer_notes: str = '') -> Order:
+        """
+        Executes atomic multi-vendor checkout:
+        1. Validates cart content and active product statuses.
+        2. Reserves required stock across warehouse records.
+        3. Groups line items by vendor.
+        4. Calculates suborders, commissions, and taxes.
+        5. Generates Parent Order and VendorSubOrders.
+        6. Clears customer cart.
+        """
+        try:
+            cart = Cart.objects.select_for_update().get(user=user)
+        except Cart.DoesNotExist:
+            raise ValueError("Customer cart not found.")
+
+        cart_items = list(cart.items.select_related(
+            'variant', 'variant__product', 'variant__product__vendor', 'variant__product__store'
+        ))
+
+        if not cart_items:
+            raise ValueError("Your cart is empty.")
+
+        # Validate that all items are approved
+        for item in cart_items:
+            if item.variant.product.status != 'APPROVED':
+                raise ValueError(f"Product {item.variant.product.name} is no longer available.")
+
+        # Generate unique order number
+        order_uuid_suffix = uuid.uuid4().hex[:8].upper()
+        order_date_str = timezone.now().strftime('%Y%m%d')
+        order_number = f"ORD-{order_date_str}-{order_uuid_suffix}"
+
+        # Group items by vendor
+        vendor_groups = {}
+        for item in cart_items:
+            v_id = item.variant.product.vendor_id
+            if v_id not in vendor_groups:
+                vendor_groups[v_id] = {
+                    'vendor': item.variant.product.vendor,
+                    'store': item.variant.product.store,
+                    'items': []
+                }
+            vendor_groups[v_id]['items'].append(item)
+
+        # Calculate totals
+        order_subtotal = Decimal('0.00')
+        order_tax_total = Decimal('0.00')
+        order_delivery_total = Decimal('100.00') * len(vendor_groups) # NPR 100 base delivery per vendor package
+
+        # Reserve inventory for each item
+        reservations = []
+        for item in cart_items:
+            # Locate an inventory item with available stock
+            inv_record = InventoryItem.objects.filter(
+                variant=item.variant,
+                quantity_on_hand__gte=item.quantity
+            ).first()
+
+            if not inv_record or inv_record.quantity_available < item.quantity:
+                raise InsufficientStockError(f"Insufficient stock available for {item.variant.product.name} ({item.variant.sku}).")
+
+            res = InventoryService.reserve_stock(
+                warehouse_id=inv_record.warehouse_id,
+                variant_id=item.variant_id,
+                quantity=item.quantity,
+                session_id=order_number
+            )
+            reservations.append((item, res))
+
+        # Initial Parent Order
+        initial_status = OrderStatus.CONFIRMED if payment_method == 'COD' else OrderStatus.PENDING_PAYMENT
+        parent_order = Order.objects.create(
+            order_number=order_number,
+            customer=user,
+            status=initial_status,
+            subtotal=Decimal('0.00'),
+            delivery_total=order_delivery_total,
+            tax_total=Decimal('0.00'),
+            grand_total=Decimal('0.00'),
+            payment_method=payment_method,
+            payment_status='UNPAID',
+            shipping_address_snapshot=shipping_address_data,
+            customer_notes=customer_notes
+        )
+
+        # Create VendorSubOrders and OrderItems
+        suborder_counter = 1
+        for v_id, group in vendor_groups.items():
+            sub_order_number = f"SUB-{order_date_str}-{order_uuid_suffix}-V{suborder_counter:02d}"
+            suborder_counter += 1
+
+            vendor = group['vendor']
+            store = group['store']
+            sub_items = group['items']
+
+            sub_subtotal = sum(i.total_price for i in sub_items)
+            sub_delivery = Decimal('100.00')
+            
+            # Commission calculation (vendor override if specified, else default 10%)
+            commission_rate = vendor.commission_rate_override if vendor.commission_rate_override is not None else Decimal('10.00')
+            commission_amount = round((sub_subtotal * (commission_rate / Decimal('100.00'))), 2)
+            vendor_net = sub_subtotal - commission_amount
+
+            sub_order = VendorSubOrder.objects.create(
+                parent_order=parent_order,
+                sub_order_number=sub_order_number,
+                vendor=vendor,
+                store=store,
+                status=initial_status,
+                subtotal=sub_subtotal,
+                delivery_fee=sub_delivery,
+                commission_rate=commission_rate,
+                commission_amount=commission_amount,
+                vendor_net_amount=vendor_net
+            )
+
+            # Create OrderItems
+            for item in sub_items:
+                # Find matching reservation
+                matched_res = next((r for i, r in reservations if i.id == item.id), None)
+                res_id = matched_res.id if matched_res else None
+
+                item_tax = round(item.total_price * (item.variant.product.tax_rate / Decimal('100.00')), 2)
+                order_tax_total += item_tax
+
+                OrderItem.objects.create(
+                    sub_order=sub_order,
+                    variant=item.variant,
+                    product_name=item.variant.product.name,
+                    variant_sku=item.variant.sku,
+                    attributes_snapshot=item.variant.attributes,
+                    unit_price=item.unit_price,
+                    quantity=item.quantity,
+                    total_price=item.total_price,
+                    tax_rate=item.variant.product.tax_rate,
+                    tax_amount=item_tax,
+                    reservation_id=res_id
+                )
+
+            order_subtotal += sub_subtotal
+
+            # Timeline log for suborder
+            OrderStatusHistory.objects.create(
+                order=parent_order,
+                sub_order=sub_order,
+                previous_status='CREATED',
+                new_status=initial_status,
+                remarks=f"Sub-order created for vendor {vendor.business_name}",
+                changed_by=user
+            )
+
+        # Update parent totals
+        parent_order.subtotal = order_subtotal
+        parent_order.tax_total = order_tax_total
+        parent_order.grand_total = order_subtotal + order_delivery_total + order_tax_total
+
+        # Enforce Cash On Delivery threshold limit
+        if payment_method == 'COD' and parent_order.grand_total > Decimal('50000.00'):
+            raise ValueError("Cash on Delivery (COD) is limited to orders up to NPR 50,000.00. Please select an online payment method.")
+
+        parent_order.save(update_fields=['subtotal', 'tax_total', 'grand_total', 'updated_at'])
+
+        # Timeline log for parent
+        OrderStatusHistory.objects.create(
+            order=parent_order,
+            previous_status='CREATED',
+            new_status=initial_status,
+            remarks=f"Order {order_number} placed via {payment_method}",
+            changed_by=user
+        )
+
+        # Empty cart
+        cart.items.all().delete()
+
+        return parent_order
+
+
+class OrderService:
+    VALID_TRANSITIONS = {
+        OrderStatus.CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        OrderStatus.PROCESSING: [OrderStatus.PACKED, OrderStatus.CANCELLED],
+        OrderStatus.PACKED: [OrderStatus.READY_FOR_DISPATCH, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+        OrderStatus.READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+        OrderStatus.SHIPPED: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED],
+        OrderStatus.OUT_FOR_DELIVERY: [OrderStatus.DELIVERED],
+        OrderStatus.DELIVERED: [OrderStatus.RETURN_REQUESTED],
+        OrderStatus.RETURN_REQUESTED: [OrderStatus.RETURNED],
+    }
+
+    @classmethod
+    @transaction.atomic
+    def transition_suborder(cls, sub_order_id, new_status: str, user, remarks: str = '', tracking_number: str = '', delivery_provider: str = '') -> VendorSubOrder:
+        """
+        Executes a validated state transition for a vendor sub-order.
+        Automatically commits inventory reservations when shipped, or releases them if cancelled.
+        """
+        sub_order = VendorSubOrder.objects.select_for_update().get(id=sub_order_id)
+        current_status = sub_order.status
+
+        # Validate transition rules
+        allowed = cls.VALID_TRANSITIONS.get(current_status, [])
+        if new_status not in allowed and not (user.is_superuser or user.role == 'SUPER_ADMIN'):
+            raise ValueError(f"Invalid transition from {current_status} to {new_status}.")
+
+        prev_status = sub_order.status
+        sub_order.status = new_status
+
+        if tracking_number:
+            sub_order.tracking_number = tracking_number
+        if delivery_provider:
+            sub_order.delivery_provider = delivery_provider
+        if new_status == OrderStatus.SHIPPED:
+            sub_order.shipped_at = timezone.now()
+            # Commit all linked inventory reservations
+            for item in sub_order.items.all():
+                if item.reservation_id:
+                    try:
+                        InventoryService.commit_reservation(
+                            reservation_id=item.reservation_id,
+                            reference_id=sub_order.sub_order_number,
+                            user=user
+                        )
+                    except Exception:
+                        pass
+        elif new_status == OrderStatus.DELIVERED:
+            sub_order.delivered_at = timezone.now()
+        elif new_status == OrderStatus.CANCELLED:
+            sub_order.cancellation_reason = remarks
+            # Release all linked inventory reservations
+            for item in sub_order.items.all():
+                if item.reservation_id:
+                    try:
+                        InventoryService.release_reservation(
+                            reservation_id=item.reservation_id,
+                            user=user
+                        )
+                    except Exception:
+                        pass
+
+        sub_order.save()
+
+        # Log timeline
+        OrderStatusHistory.objects.create(
+            order=sub_order.parent_order,
+            sub_order=sub_order,
+            previous_status=prev_status,
+            new_status=new_status,
+            remarks=remarks,
+            changed_by=user
+        )
+
+        # Check if parent order status should advance
+        cls._sync_parent_order_status(sub_order.parent_order)
+
+        return sub_order
+
+    @classmethod
+    def _sync_parent_order_status(cls, parent_order: Order):
+        """
+        Advances parent order status if all sibling vendor suborders reach completion.
+        """
+        suborders = parent_order.suborders.all()
+        statuses = [s.status for s in suborders]
+
+        if all(s == OrderStatus.DELIVERED for s in statuses):
+            parent_order.status = OrderStatus.DELIVERED
+            parent_order.save(update_fields=['status', 'updated_at'])
+        elif all(s == OrderStatus.CANCELLED for s in statuses):
+            parent_order.status = OrderStatus.CANCELLED
+            parent_order.save(update_fields=['status', 'updated_at'])
+        elif any(s in [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY] for s in statuses):
+            if parent_order.status != OrderStatus.DELIVERED:
+                parent_order.status = OrderStatus.SHIPPED
+                parent_order.save(update_fields=['status', 'updated_at'])
+

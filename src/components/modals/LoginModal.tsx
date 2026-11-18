@@ -205,7 +205,21 @@ export default function LoginModal() {
               {error && (
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-semibold">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <span>{error}</span>
+                    {mode === 'create' && error.toLowerCase().includes('already exists') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('signin');
+                          setError('');
+                        }}
+                        className="text-left text-xs font-bold text-emerald-700 dark:text-emerald-400 underline hover:no-underline cursor-pointer"
+                      >
+                        Switch to Sign In →
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

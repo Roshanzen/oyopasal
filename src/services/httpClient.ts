@@ -102,8 +102,18 @@ class HttpClient {
 
       let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
       try {
-        const errJson = (await response.json()) as { detail?: string; message?: string };
-        errorDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
+        const errJson = (await response.json()) as any;
+        if (errJson?.error) {
+          if (errJson.error.details && typeof errJson.error.details === 'object') {
+            const firstKey = Object.keys(errJson.error.details)[0];
+            const firstVal = errJson.error.details[firstKey];
+            errorDetail = Array.isArray(firstVal) ? String(firstVal[0]) : String(firstVal);
+          } else {
+            errorDetail = errJson.error.message || errJson.error.detail || errorDetail;
+          }
+        } else {
+          errorDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
+        }
       } catch {
         // default error message kept
       }
