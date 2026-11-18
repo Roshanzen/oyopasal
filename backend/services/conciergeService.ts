@@ -12,7 +12,7 @@ import {
   vendors,
 } from '../../src/db/schema.ts';
 import { ENV } from '../config/env.ts';
-import { AuthRequest, getEffectiveSessionKey } from '../middleware/auth.ts';
+import { AuthRequest, AuthenticatedUser, getEffectiveSessionKey } from '../middleware/auth.ts';
 import {
   calculateAndSerializeCart,
   computeCouponDiscount,
@@ -23,14 +23,19 @@ import {
 import { createTransactionalOrder } from './orderService.ts';
 import { ApiError } from '../utils/errors.ts';
 
-const ai = new GoogleGenAI({
-  apiKey: ENV.GEMINI_API_KEY || process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+export function createConciergeAiClient(apiKey?: string) {
+  return new GoogleGenAI({
+    apiKey: apiKey || ENV.GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+    apiVersion: 'v1beta',
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
     },
-  },
-});
+  });
+}
+
+export const conciergeAi = createConciergeAiClient();
 
 export interface UserLocationInput {
   latitude?: number;
@@ -74,6 +79,27 @@ export interface EnrichedCatalogOffer {
   value_score: number;
 }
 
+export interface RankedOfferResult {
+  product_id: string;
+  db_id: number;
+  name: string;
+  category: string;
+  unit: string;
+  price: number;
+  original_price: number;
+  discount_percentage: number;
+  stock: number;
+  image_url: string;
+  vendor_id: string;
+  vendor_name: string;
+  vendor_area: string;
+  vendor_rating: number;
+  distance_km: number;
+  eta_mins: number;
+  recommended_badge: string;
+  suggested_quantity: number;
+}
+
 export interface ResolvedDeliveryLocation {
   addressId?: string;
   title: string;
@@ -84,7 +110,9 @@ export interface ResolvedDeliveryLocation {
   lng: number;
 }
 
-function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export type PriceTier = 'cheap' | 'medium' | 'premium' | 'balanced';
+
+export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -98,7 +126,7 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return Math.max(0.2, Math.round(R * c * 10) / 10);
 }
 
-function estimateEtaMins(distanceKm: number, rawEta?: string | null): number {
+export function estimateEtaMins(distanceKm: number, rawEta?: string | null): number {
   const parsed = parseInt(String(rawEta || ''), 10);
   const base = !Number.isNaN(parsed) && parsed > 0 ? parsed : 10;
   return Math.min(35, Math.max(8, Math.round(base + distanceKm * 1.8)));
@@ -138,14 +166,20 @@ function expandTokens(text: string): string[] {
     .filter((w) => w.length >= 2);
   const stopWords = new Set([
     'find', 'show', 'give', 'best', 'seller', 'sellers', 'price', 'cheapest', 'cheap',
-    'nearest', 'near', 'deliver', 'delivery', 'assigned', 'location', 'address', 'direct',
-    'buy', 'order', 'purchase', 'want', 'need', 'please', 'with', 'from', 'that', 'this',
-    'what', 'which', 'for', 'and', 'the', 'are', 'you', 'can', 'today', 'now', 'under',
-    'below', 'less', 'than', 'rs', 'npr', 'kg', 'ltr', 'pcs', 'pack', 'to', 'my', 'me',
+    'budget', 'affordable', 'inexpensive', 'economy', 'medium', 'mid', 'range', 'tier',
+    'moderate', 'reasonable', 'average', 'premium', 'expensive', 'luxury', 'product',
+    'products', 'item', 'items', 'thing', 'things', 'something', 'anything', 'option',
+    'options', 'nearest', 'near', 'deliver', 'delivered', 'delivery', 'assigned',
+    'location', 'address', 'direct', 'directly', 'buy', 'order', 'place', 'purchase',
+    'want', 'need', 'please', 'with', 'from', 'that', 'this', 'what', 'which', 'for',
+    'and', 'the', 'are', 'you', 'can', 'today', 'now', 'under', 'below', 'less', 'than',
+    'between', 'rs', 'npr', 'kg', 'ltr', 'pcs', 'pack', 'to', 'my', 'me', 'set', 'automatically',
+    'detect', 'only', 'photo', 'photos', 'list', 'lists', 'chat', 'box', 'beyond', 'go',
   ]);
   const tokens: string[] = [];
   for (const w of clean) {
     if (stopWords.has(w)) continue;
+    if (/^\d+$/.test(w)) continue;
     tokens.push(w);
     const syns = SYNONYM_MAP[w];
     if (syns) tokens.push(...syns);
@@ -153,12 +187,56 @@ function expandTokens(text: string): string[] {
   return Array.from(new Set(tokens));
 }
 
-async function buildLiveMarketplaceContext(
-  req: AuthRequest,
+export function detectPriceTier(text: string): PriceTier | null {
+  const lower = text.toLowerCase();
+  if (/\b(cheap|cheapest|budget|affordable|low[\s-]?price|lowest|inexpensive|economy|सस्तो|कम मूल्य)\b/i.test(lower)) {
+    return 'cheap';
+  }
+  if (/\b(medium[\s-]?range|medium|mid[\s-]?range|mid[\s-]?tier|moderate|mid[\s-]?price|reasonable|average price|मध्यम)\b/i.test(lower)) {
+    return 'medium';
+  }
+  if (/\b(premium|expensive|luxury|high[\s-]?end|प्रिमियम|महँगो)\b/i.test(lower)) {
+    return 'premium';
+  }
+  return null;
+}
+
+export function detectExplicitPriceBounds(text: string): { minPrice?: number; maxPrice?: number } {
+  const betweenMatch = /\bbetween\s*(?:rs\.?|npr)?\s*(\d+)\s*(?:and|to|-)\s*(?:rs\.?|npr)?\s*(\d+)/i.exec(text);
+  if (betweenMatch) {
+    const a = Number(betweenMatch[1]);
+    const b = Number(betweenMatch[2]);
+    if (!Number.isNaN(a) && !Number.isNaN(b) && a > 0 && b >= a) {
+      return { minPrice: a, maxPrice: b };
+    }
+  }
+  const underMatch = /\b(?:under|below|less than|max|within|upto|up to)\s*(?:rs\.?|npr)?\s*(\d+)/i.exec(text);
+  if (underMatch) {
+    const maxPrice = Number(underMatch[1]);
+    if (!Number.isNaN(maxPrice) && maxPrice > 0) {
+      return { maxPrice };
+    }
+  }
+  return {};
+}
+
+export function detectAutonomousOrderIntent(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  if (!lower) return false;
+  // Ignore negative instructions or informational how-to questions
+  if (/\b(don't|do not|never|cancel|without placing|how to order|how do i order|what can i order|just show|only show|show only)\b/i.test(lower)) {
+    return false;
+  }
+  // Action command to place / buy / order / deliver product(s)
+  return /\b(order|buy|purchase|place\s+(?:an?\s+)?order|checkout|get\s+me|send\s+(?:me)?|deliver\s+(?:to|it|for)|bring\s+me|अर्डर|मगाउनु|किन्नु|पठाउनु)\b/i.test(lower);
+}
+
+export async function buildLiveMarketplaceContext(
+  authUser: AuthenticatedUser | undefined,
+  sessionKey: string,
   userLocation?: UserLocationInput
 ) {
   const now = new Date();
-  const sessionKey = getEffectiveSessionKey(req);
 
   const [
     allProducts,
@@ -189,19 +267,19 @@ async function buildLiveMarketplaceContext(
       ),
     db.select().from(deliveryZones).where(eq(deliveryZones.isActive, true)),
     getPlatformFeesConfig(),
-    calculateAndSerializeCart(sessionKey, req.authUser?.id),
-    req.authUser
+    calculateAndSerializeCart(sessionKey, authUser?.id),
+    authUser
       ? db
           .select()
           .from(addresses)
-          .where(eq(addresses.userId, req.authUser.id))
+          .where(eq(addresses.userId, authUser.id))
           .orderBy(desc(addresses.isDefault), desc(addresses.id))
       : Promise.resolve([]),
-    req.authUser
+    authUser
       ? db
           .select()
           .from(orders)
-          .where(eq(orders.userId, req.authUser.id))
+          .where(eq(orders.userId, authUser.id))
           .orderBy(desc(orders.createdAt))
           .limit(3)
       : Promise.resolve([]),
@@ -317,16 +395,20 @@ async function buildLiveMarketplaceContext(
   };
 }
 
-function rankOffersForQuery(
+export type MarketplaceContext = Awaited<ReturnType<typeof buildLiveMarketplaceContext>>;
+
+export function rankOffersForQuery(
   offers: EnrichedCatalogOffer[],
   params: {
     query?: string;
     category?: string;
+    minPrice?: number;
     maxPrice?: number;
-    priority?: 'balanced' | 'cheapest' | 'nearest' | 'top_rated';
+    priceTier?: PriceTier;
+    priority?: 'balanced' | 'cheapest' | 'medium' | 'nearest' | 'top_rated';
     limit?: number;
   }
-) {
+): RankedOfferResult[] {
   const inStock = offers.filter((o) => o.in_stock && o.stock > 0);
   const queryText = (params.query || '').trim();
   const tokens = expandTokens(queryText);
@@ -340,6 +422,11 @@ function rankOffersForQuery(
         o.category.toLowerCase().includes(catLower)
     );
     if (catMatched.length > 0) candidates = catMatched;
+  }
+
+  if (typeof params.minPrice === 'number' && params.minPrice > 0) {
+    const minFiltered = candidates.filter((o) => o.price >= params.minPrice!);
+    if (minFiltered.length > 0) candidates = minFiltered;
   }
 
   if (typeof params.maxPrice === 'number' && params.maxPrice > 0) {
@@ -371,22 +458,58 @@ function rankOffersForQuery(
   const hasQueryMatches = tokens.length > 0 && scored.some((s) => s.textMatchScore > 0);
   let filtered = hasQueryMatches ? scored.filter((s) => s.textMatchScore > 0) : scored;
 
-  const priority = params.priority || 'balanced';
+  const effectiveTier: PriceTier | 'nearest' | 'top_rated' =
+    params.priceTier ||
+    (params.priority === 'cheapest'
+      ? 'cheap'
+      : params.priority === 'medium'
+      ? 'medium'
+      : params.priority === 'nearest'
+      ? 'nearest'
+      : params.priority === 'top_rated'
+      ? 'top_rated'
+      : 'balanced');
+
+  let medianPrice = 0;
+  if (effectiveTier === 'medium' && filtered.length >= 3) {
+    const sortedByPrice = [...filtered].sort((a, b) => a.offer.price - b.offer.price);
+    const lowIdx = Math.floor(sortedByPrice.length * 0.25);
+    const highIdx = Math.ceil(sortedByPrice.length * 0.75);
+    medianPrice = sortedByPrice[Math.floor(sortedByPrice.length / 2)].offer.price;
+    const midBand = sortedByPrice.slice(lowIdx, Math.max(lowIdx + 1, highIdx));
+    if (midBand.length > 0) {
+      filtered = midBand;
+    }
+  } else if (filtered.length > 0) {
+    const prices = filtered.map((f) => f.offer.price).sort((a, b) => a - b);
+    medianPrice = prices[Math.floor(prices.length / 2)];
+  }
+
   filtered = [...filtered].sort((a, b) => {
     if (hasQueryMatches && Math.abs(b.textMatchScore - a.textMatchScore) >= 40) {
       return b.textMatchScore - a.textMatchScore;
     }
-    if (priority === 'cheapest') {
+    if (effectiveTier === 'cheap') {
       if (a.offer.price !== b.offer.price) return a.offer.price - b.offer.price;
       return a.offer.distance_km - b.offer.distance_km;
     }
-    if (priority === 'nearest') {
+    if (effectiveTier === 'medium') {
+      const distA = Math.abs(a.offer.price - medianPrice);
+      const distB = Math.abs(b.offer.price - medianPrice);
+      if (Math.abs(distA - distB) > 15) return distA - distB;
+      return b.offer.value_score - a.offer.value_score;
+    }
+    if (effectiveTier === 'premium') {
+      if (b.offer.price !== a.offer.price) return b.offer.price - a.offer.price;
+      return b.offer.vendor_rating - a.offer.vendor_rating;
+    }
+    if (effectiveTier === 'nearest') {
       if (a.offer.distance_km !== b.offer.distance_km) {
         return a.offer.distance_km - b.offer.distance_km;
       }
       return a.offer.price - b.offer.price;
     }
-    if (priority === 'top_rated') {
+    if (effectiveTier === 'top_rated') {
       if (b.offer.vendor_rating !== a.offer.vendor_rating) {
         return b.offer.vendor_rating - a.offer.vendor_rating;
       }
@@ -404,7 +527,11 @@ function rankOffersForQuery(
 
   return top.map((o, idx) => {
     let badge = 'Best Match';
-    if (o.price === minPrice && o.distance_km === minDist) {
+    if (effectiveTier === 'medium' && idx === 0) {
+      badge = 'Best Medium Range';
+    } else if (effectiveTier === 'cheap' && idx === 0) {
+      badge = 'Best Budget Pick';
+    } else if (o.price === minPrice && o.distance_km === minDist) {
       badge = 'Best Price + Nearest';
     } else if (o.price === minPrice) {
       badge = 'Best Price';
@@ -439,9 +566,9 @@ function rankOffersForQuery(
   });
 }
 
-function buildOrderPreviewFromItems(
+export function buildOrderPreviewFromItems(
   requestedItems: { product_id: string; quantity: number }[],
-  context: Awaited<ReturnType<typeof buildLiveMarketplaceContext>>,
+  context: MarketplaceContext,
   opts?: {
     payment_method?: string;
     delivery_option?: string;
@@ -456,7 +583,21 @@ function buildOrderPreviewFromItems(
     offerById.set(o.slug, o);
   }
 
-  const lineItems: any[] = [];
+  const lineItems: Array<{
+    product_id: string;
+    name: string;
+    unit: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    stock: number;
+    image_url: string;
+    vendor_id: string;
+    vendor_name: string;
+    vendor_rating: number;
+    distance_km: number;
+    eta_mins: number;
+  }> = [];
   let subtotal = 0;
   let maxEta = 12;
 
@@ -545,7 +686,7 @@ export async function createDirectOrderFromItems(params: {
   authUser: NonNullable<AuthRequest['authUser']>;
   items: { product_id: string; quantity: number; variant_id?: string }[];
   addressId?: string;
-  deliveryAddress?: any;
+  deliveryAddress?: Record<string, unknown>;
   paymentMethod?: string;
   deliveryOption?: string;
   couponCode?: string | null;
@@ -570,20 +711,28 @@ export async function createDirectOrderFromItems(params: {
   });
 }
 
-const findBestSellerOffersDecl: FunctionDeclaration = {
+export const findBestSellerOffersDecl: FunctionDeclaration = {
   name: 'find_best_seller_offers',
   description:
-    'Search ALL active approved products across every vendor in PostgreSQL and rank them by best price, vendor rating, stock, and shortest distance to the customer assigned delivery address.',
+    'Search ALL active approved products across every vendor in PostgreSQL and rank them by price tier (cheap, medium, premium, or balanced), vendor rating, stock, and shortest distance to the customer assigned delivery address.',
   parameters: {
     type: Type.OBJECT,
     properties: {
       query: {
         type: Type.STRING,
-        description: 'Product name, grocery keyword, dish/ingredient, or vendor name to search.',
+        description: 'Product name, grocery keyword, dish/ingredient, or empty string when picking across the catalog.',
       },
       category: {
         type: Type.STRING,
         description: 'Optional category slug such as fruits-vegetables, dairy-bakery, grocery, snacks, beverages.',
+      },
+      price_tier: {
+        type: Type.STRING,
+        description: 'Price tier filter: cheap, medium, premium, or balanced.',
+      },
+      min_price: {
+        type: Type.NUMBER,
+        description: 'Optional minimum unit price filter in Rs.',
       },
       max_price: {
         type: Type.NUMBER,
@@ -591,7 +740,7 @@ const findBestSellerOffersDecl: FunctionDeclaration = {
       },
       priority: {
         type: Type.STRING,
-        description: 'Ranking strategy: balanced, cheapest, nearest, or top_rated.',
+        description: 'Ranking strategy: balanced, cheapest, medium, nearest, or top_rated.',
       },
       limit: {
         type: Type.INTEGER,
@@ -602,10 +751,10 @@ const findBestSellerOffersDecl: FunctionDeclaration = {
   },
 };
 
-const prepareDirectPurchaseDecl: FunctionDeclaration = {
+export const prepareDirectPurchaseDecl: FunctionDeclaration = {
   name: 'prepare_direct_purchase',
   description:
-    'Build an interactive 1-tap Direct Purchase checkout card in chat for one or more selected best-seller products delivered to the customer assigned delivery address.',
+    'Build a checkout preview card in chat when browsing/asking to see prices before ordering, or when the customer is not signed in yet.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -638,10 +787,10 @@ const prepareDirectPurchaseDecl: FunctionDeclaration = {
   },
 };
 
-const placeDirectPurchaseDecl: FunctionDeclaration = {
+export const placeDirectPurchaseDecl: FunctionDeclaration = {
   name: 'place_direct_purchase',
   description:
-    'Place a real order immediately in PostgreSQL ONLY when the authenticated customer explicitly confirms they want to finalize/place the purchase right now.',
+    'Immediately place a real order in PostgreSQL to the customer assigned delivery address. Call this whenever an authenticated customer commands to order, buy, purchase, or deliver cheap, medium-range, or specific products.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -675,7 +824,7 @@ const placeDirectPurchaseDecl: FunctionDeclaration = {
   },
 };
 
-const addItemsToCartDecl: FunctionDeclaration = {
+export const addItemsToCartDecl: FunctionDeclaration = {
   name: 'add_items_to_cart',
   description: 'Add one or more best-seller products to the customer shopping cart.',
   parameters: {
@@ -697,120 +846,172 @@ const addItemsToCartDecl: FunctionDeclaration = {
   },
 };
 
-function runDeterministicShoppingFallback(
-  userQuery: string,
-  language: 'en' | 'ne',
-  context: Awaited<ReturnType<typeof buildLiveMarketplaceContext>>,
-  isAuthenticated: boolean
-) {
-  const qLower = userQuery.toLowerCase();
-  const isCheapestIntent = /cheap|lowest|best price|budget|सस्तो|कम मूल्य/.test(qLower);
-  const isNearestIntent = /near|closest|fast|express|नजिक|छिटो/.test(qLower);
-  const isBuyIntent = /buy|order|purchase|checkout|deliver|send|किन्नु|अर्डर|पठाउनु/.test(qLower);
-
-  const priority = isCheapestIntent
-    ? 'cheapest'
-    : isNearestIntent
-    ? 'nearest'
-    : 'balanced';
-
-  const segments = userQuery
-    .split(/\s+(?:and|with|plus|\+|र)\s+|,/i)
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 2);
-
-  const collectedOffersMap = new Map<string, any>();
-  const bundleItems: { product_id: string; quantity: number }[] = [];
-
-  const searchSegments = segments.length > 1 ? segments : [userQuery];
-  for (const seg of searchSegments) {
-    const qtyMatch = /\b(\d+)\s*(?:x|pcs|kg|l|ltr|pack|packs|bottle|bottles)?\b/i.exec(seg);
-    const parsedQty = qtyMatch ? Math.min(10, Math.max(1, parseInt(qtyMatch[1], 10))) : 1;
-
-    const ranked = rankOffersForQuery(context.offers, {
-      query: seg,
-      priority,
-      limit: segments.length > 1 ? 2 : 5,
-    });
-
-    if (ranked.length > 0) {
-      const topPick = ranked[0];
-      if (!bundleItems.some((b) => b.product_id === topPick.product_id)) {
-        bundleItems.push({ product_id: topPick.product_id, quantity: parsedQty });
-      }
-      for (const offer of ranked) {
-        if (!collectedOffersMap.has(offer.product_id)) {
-          collectedOffersMap.set(offer.product_id, {
-            ...offer,
-            suggested_quantity: offer.product_id === topPick.product_id ? parsedQty : 1,
-          });
-        }
-      }
-    }
-  }
-
-  const recommendedOffers = Array.from(collectedOffersMap.values()).slice(0, 6);
-  const orderPreview =
-    (isBuyIntent || segments.length > 1 || recommendedOffers.length > 0) && bundleItems.length > 0
-      ? buildOrderPreviewFromItems(bundleItems, context, {
-          payment_method: /esewa/i.test(qLower)
-            ? 'ESEWA'
-            : /khalti/i.test(qLower)
-            ? 'KHALTI'
-            : 'CASH_ON_DELIVERY',
-          delivery_option: 'EXPRESS_12_MINS',
-          isAuthenticated,
-        })
-      : null;
-
-  const locLabel = `${context.assignedLocation.area}, ${context.assignedLocation.city}`;
-  const couponNote =
-    context.coupons.length > 0
-      ? language === 'ne'
-        ? `\n\n🏷️ सक्रिय कुपन: **${context.coupons[0].code}** (${context.coupons[0].description})`
-        : `\n\n🏷️ Active coupon available: **${context.coupons[0].code}** — ${context.coupons[0].description}`
-      : '';
-
-  let reply = '';
-  if (recommendedOffers.length === 0) {
-    reply =
-      language === 'ne'
-        ? `नमस्ते! "${locLabel}" को लागि हाल स्टकमा रहेका ताजा सामग्रीहरू उपलब्ध छन्, तर तपाईंले खोज्नुभएको सामग्री फेला परेन। कृपया अर्को नाम प्रयास गर्नुहोस्।`
-        : `I checked all ${context.offers.length} live products across ${context.vendors.length} verified sellers near **${locLabel}**, but couldn't find an exact in-stock match. Try searching for vegetables, fresh milk, bread, snacks, or pantry staples!`;
-  } else {
-    const lines = recommendedOffers.slice(0, 4).map(
-      (o) =>
-        `• **${o.name}** (${o.unit}) — **Rs. ${o.price}** · ${o.vendor_name} (★ ${o.vendor_rating}, ${o.distance_km} km, ~${o.eta_mins} mins) [${o.recommended_badge}]`
-    );
-    if (language === 'ne') {
-      reply =
-        `तपाईंको डेलिभरी ठेगाना **${locLabel}** को लागि उत्कृष्ट मूल्य र नजिकको पसल फेला पर्यो:\n\n` +
-        lines.join('\n') +
-        `\n\nतलको कार्डबाट सीधै कार्टमा थप्न वा **तुरुन्तै अर्डर (Direct Buy)** गर्न सक्नुहुन्छ।${couponNote}`;
-    } else {
-      reply =
-        `I analyzed all **${context.offers.length} live products** across **${context.vendors.length} local sellers** for delivery to **${locLabel}** and selected the best seller & best price options:\n\n` +
-        lines.join('\n') +
-        `\n\nYou can add any item to cart or use the **Direct Purchase** card below to complete delivery straight to your assigned address.${couponNote}`;
-    }
-  }
-
-  return { reply, recommendedOffers, orderPreview };
+export interface ConciergeToolAccumulator {
+  collectedOffers: RankedOfferResult[];
+  orderPreview: ReturnType<typeof buildOrderPreviewFromItems>;
+  placedOrder: Awaited<ReturnType<typeof createDirectOrderFromItems>> | null;
+  cartUpdated: boolean;
 }
 
-export async function handleChatConciergeTurn(
-  req: AuthRequest,
-  params: {
-    messages: { role: string; content: string }[];
-    userLocation?: UserLocationInput;
-    language?: 'en' | 'ne';
+export async function executeConciergeToolCall(
+  name: string,
+  args: Record<string, unknown>,
+  opts: {
+    authUser?: AuthenticatedUser;
+    context: MarketplaceContext;
+    ipAddress?: string;
+    accumulator: ConciergeToolAccumulator;
   }
 ) {
-  const { messages, userLocation, language = 'en' } = params;
-  const context = await buildLiveMarketplaceContext(req, userLocation);
-  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
-  const isAuthenticated = Boolean(req.authUser);
+  const { authUser, context, ipAddress, accumulator } = opts;
 
+  if (name === 'find_best_seller_offers') {
+    const results = rankOffersForQuery(context.offers, {
+      query: String(args.query || ''),
+      category: args.category ? String(args.category) : undefined,
+      priceTier: args.price_tier ? (String(args.price_tier) as PriceTier) : undefined,
+      minPrice: typeof args.min_price === 'number' ? args.min_price : undefined,
+      maxPrice: typeof args.max_price === 'number' ? args.max_price : undefined,
+      priority: (args.priority as 'balanced' | 'cheapest' | 'medium' | 'nearest' | 'top_rated') || 'balanced',
+      limit: typeof args.limit === 'number' ? Math.min(8, Math.max(1, args.limit)) : 5,
+    });
+    for (const r of results) {
+      if (!accumulator.collectedOffers.some((existing) => existing.product_id === r.product_id)) {
+        accumulator.collectedOffers.push(r);
+      }
+    }
+    return {
+      assigned_delivery_location: context.assignedLocation,
+      matched_count: results.length,
+      offers: results,
+    };
+  }
+
+  if (name === 'prepare_direct_purchase') {
+    const reqItems = Array.isArray(args.items)
+      ? (args.items as { product_id: string; quantity: number }[])
+      : [];
+    const preview = buildOrderPreviewFromItems(reqItems, context, {
+      payment_method: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
+      delivery_option: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
+      coupon_code: args.coupon_code ? String(args.coupon_code) : null,
+      isAuthenticated: Boolean(authUser),
+    });
+    if (!preview) {
+      return { error: 'No matching in-stock items could be matched for direct checkout.' };
+    }
+    accumulator.orderPreview = preview;
+    return { success: true, order_preview: preview };
+  }
+
+  if (name === 'add_items_to_cart') {
+    const reqItems = Array.isArray(args.items)
+      ? (args.items as { product_id: string; quantity: number }[])
+      : [];
+    const sessionKey = context.sessionKey;
+    const cartRow = await getOrCreateCartRow(sessionKey, authUser?.id);
+    const added: string[] = [];
+
+    for (const item of reqItems) {
+      const pRow = await resolveProductByIdentifier(String(item.product_id || ''));
+      if (!pRow || !pRow.isActive || !pRow.inStock || pRow.stockCount <= 0) continue;
+      const qty = Math.min(pRow.stockCount, Math.max(1, Math.round(Number(item.quantity) || 1)));
+      const existing = await db
+        .select()
+        .from(cartItems)
+        .where(and(eq(cartItems.cartId, cartRow.id), eq(cartItems.productId, pRow.id)))
+        .limit(1);
+      if (existing.length > 0) {
+        await db
+          .update(cartItems)
+          .set({ quantity: Math.min(pRow.stockCount, existing[0].quantity + qty), updatedAt: new Date() })
+          .where(eq(cartItems.id, existing[0].id));
+      } else {
+        await db.insert(cartItems).values({
+          cartId: cartRow.id,
+          productId: pRow.id,
+          variantId: null,
+          quantity: qty,
+          unitPriceSnapshot: pRow.price,
+        });
+      }
+      added.push(`${pRow.name} x${qty}`);
+    }
+    accumulator.cartUpdated = added.length > 0;
+    const latestCart = await calculateAndSerializeCart(sessionKey, authUser?.id);
+    return {
+      success: accumulator.cartUpdated,
+      added,
+      cart_total: latestCart.total,
+      item_count: latestCart.item_count,
+    };
+  }
+
+  if (name === 'place_direct_purchase') {
+    const reqItems = Array.isArray(args.items)
+      ? (args.items as { product_id: string; quantity: number }[])
+      : [];
+    if (!authUser) {
+      const preview = buildOrderPreviewFromItems(reqItems, context, {
+        payment_method: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
+        delivery_option: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
+        coupon_code: args.coupon_code ? String(args.coupon_code) : null,
+        isAuthenticated: false,
+      });
+      accumulator.orderPreview = preview;
+      return {
+        requires_auth: true,
+        message: 'Customer must sign in before finalizing direct purchase. Order preview prepared for 1-click checkout.',
+        order_preview: preview,
+      };
+    }
+
+    try {
+      const order = await createDirectOrderFromItems({
+        authUser,
+        items: reqItems,
+        addressId: context.assignedLocation.addressId,
+        deliveryAddress: {
+          title: context.assignedLocation.title,
+          recipient_name: authUser.fullName || 'OyoPasal Customer',
+          phone: authUser.phone || '+977 9800000000',
+          street: context.assignedLocation.street,
+          area: context.assignedLocation.area,
+          city: context.assignedLocation.city,
+          lat: context.assignedLocation.lat,
+          lng: context.assignedLocation.lng,
+        },
+        paymentMethod: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
+        deliveryOption: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
+        couponCode: args.coupon_code ? String(args.coupon_code) : null,
+        notes: args.notes ? String(args.notes) : 'Placed autonomously via OyoPasal AI Concierge',
+        ipAddress,
+      });
+      accumulator.placedOrder = order;
+      accumulator.orderPreview = null;
+      return {
+        success: true,
+        order_number: order.order_number,
+        order_id: order.id,
+        total_amount: order.total_amount,
+        status: order.status,
+        delivery_address: order.delivery_address,
+      };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : 'Failed to place direct order' };
+    }
+  }
+
+  return { error: `Unknown tool: ${name}` };
+}
+
+export function buildConciergeSystemInstruction(params: {
+  context: MarketplaceContext;
+  authUser?: AuthenticatedUser;
+  language: 'en' | 'ne';
+  forVoice?: boolean;
+}) {
+  const { context, authUser, language, forVoice = false } = params;
   const assignedLocationSummary = `${context.assignedLocation.title}: ${context.assignedLocation.street}, ${context.assignedLocation.area}, ${context.assignedLocation.city} (${context.assignedLocation.lat.toFixed(4)}, ${context.assignedLocation.lng.toFixed(4)})`;
 
   const fullCatalogText = context.offers
@@ -841,145 +1042,9 @@ export async function handleChatConciergeTurn(
     })
     .join('\n');
 
-  const collectedOffers: any[] = [];
-  let orderPreview: any = null;
-  let placedOrder: any = null;
-  let cartUpdated = false;
-
-  const executeToolCall = async (name: string, args: Record<string, any>) => {
-    if (name === 'find_best_seller_offers') {
-      const results = rankOffersForQuery(context.offers, {
-        query: String(args.query || ''),
-        category: args.category ? String(args.category) : undefined,
-        maxPrice: typeof args.max_price === 'number' ? args.max_price : undefined,
-        priority: (args.priority as any) || 'balanced',
-        limit: typeof args.limit === 'number' ? Math.min(8, Math.max(1, args.limit)) : 5,
-      });
-      for (const r of results) {
-        if (!collectedOffers.some((existing) => existing.product_id === r.product_id)) {
-          collectedOffers.push(r);
-        }
-      }
-      return {
-        assigned_delivery_location: context.assignedLocation,
-        matched_count: results.length,
-        offers: results,
-      };
-    }
-
-    if (name === 'prepare_direct_purchase') {
-      const reqItems = Array.isArray(args.items) ? args.items : [];
-      const preview = buildOrderPreviewFromItems(reqItems, context, {
-        payment_method: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
-        delivery_option: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
-        coupon_code: args.coupon_code ? String(args.coupon_code) : null,
-        isAuthenticated,
-      });
-      if (!preview) {
-        return { error: 'No matching in-stock items could be matched for direct checkout.' };
-      }
-      orderPreview = preview;
-      return { success: true, order_preview: preview };
-    }
-
-    if (name === 'add_items_to_cart') {
-      const reqItems = Array.isArray(args.items) ? args.items : [];
-      const sessionKey = context.sessionKey;
-      const cartRow = await getOrCreateCartRow(sessionKey, req.authUser?.id);
-      const added: string[] = [];
-
-      for (const item of reqItems) {
-        const pRow = await resolveProductByIdentifier(String(item.product_id || ''));
-        if (!pRow || !pRow.isActive || !pRow.inStock || pRow.stockCount <= 0) continue;
-        const qty = Math.min(pRow.stockCount, Math.max(1, Math.round(Number(item.quantity) || 1)));
-        const existing = await db
-          .select()
-          .from(cartItems)
-          .where(and(eq(cartItems.cartId, cartRow.id), eq(cartItems.productId, pRow.id)))
-          .limit(1);
-        if (existing.length > 0) {
-          await db
-            .update(cartItems)
-            .set({ quantity: Math.min(pRow.stockCount, existing[0].quantity + qty), updatedAt: new Date() })
-            .where(eq(cartItems.id, existing[0].id));
-        } else {
-          await db.insert(cartItems).values({
-            cartId: cartRow.id,
-            productId: pRow.id,
-            variantId: null,
-            quantity: qty,
-            unitPriceSnapshot: pRow.price,
-          });
-        }
-        added.push(`${pRow.name} x${qty}`);
-      }
-      cartUpdated = added.length > 0;
-      const latestCart = await calculateAndSerializeCart(sessionKey, req.authUser?.id);
-      return { success: cartUpdated, added, cart_total: latestCart.total, item_count: latestCart.item_count };
-    }
-
-    if (name === 'place_direct_purchase') {
-      const reqItems = Array.isArray(args.items) ? args.items : [];
-      if (!req.authUser) {
-        const preview = buildOrderPreviewFromItems(reqItems, context, {
-          payment_method: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
-          delivery_option: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
-          coupon_code: args.coupon_code ? String(args.coupon_code) : null,
-          isAuthenticated: false,
-        });
-        orderPreview = preview;
-        return {
-          requires_auth: true,
-          message: 'Customer must sign in before finalizing direct purchase. Order preview prepared for 1-click checkout.',
-          order_preview: preview,
-        };
-      }
-
-      try {
-        const order = await createDirectOrderFromItems({
-          authUser: req.authUser,
-          items: reqItems,
-          addressId: context.assignedLocation.addressId,
-          deliveryAddress: {
-            title: context.assignedLocation.title,
-            street: context.assignedLocation.street,
-            area: context.assignedLocation.area,
-            city: context.assignedLocation.city,
-            lat: context.assignedLocation.lat,
-            lng: context.assignedLocation.lng,
-          },
-          paymentMethod: args.payment_method ? String(args.payment_method) : 'CASH_ON_DELIVERY',
-          deliveryOption: args.delivery_option ? String(args.delivery_option) : 'EXPRESS_12_MINS',
-          couponCode: args.coupon_code ? String(args.coupon_code) : null,
-          notes: args.notes ? String(args.notes) : 'Placed directly via OyoPasal AI Concierge',
-          ipAddress: req.ip,
-        });
-        placedOrder = order;
-        return {
-          success: true,
-          order_number: order.order_number,
-          order_id: order.id,
-          total_amount: order.total_amount,
-          status: order.status,
-          delivery_address: order.delivery_address,
-        };
-      } catch (err: any) {
-        return { error: err?.message || 'Failed to place direct order' };
-      }
-    }
-
-    return { error: `Unknown tool: ${name}` };
-  };
-
-  try {
-    const apiKey = ENV.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY not configured');
-    }
-
-    const systemInstruction = `You are OyoPasal AI Shopping Concierge for quick-commerce grocery delivery across Kathmandu Valley (Nepal).
+  return `You are OyoPasal AI Shopping Concierge for quick-commerce grocery delivery across Kathmandu Valley (Nepal).
 Customer Language Preference: ${language === 'ne' ? 'Nepali (respond in natural Nepali with Rs. prices)' : 'English'}.
-Customer Authentication Status: ${isAuthenticated ? `Signed in as ${req.authUser!.fullName}` : 'Guest (not signed in yet)'}.
+Customer Authentication Status: ${authUser ? `Signed in as ${authUser.fullName || authUser.email}` : 'Guest (not signed in yet)'}.
 Customer Assigned Delivery Location: ${assignedLocationSummary}
 Platform Fees: Base Delivery Rs. ${context.feeConfig.baseDeliveryFee} (FREE over Rs. ${context.feeConfig.freeDeliveryThreshold}), Handling Rs. ${context.feeConfig.handlingFee}.
 Current Cart: ${context.cart.item_count} items (Total Rs. ${context.cart.total}).
@@ -991,16 +1056,244 @@ ${vendorSummary}
 FULL LIVE PRODUCT CATALOG (${context.offers.length} active approved products in PostgreSQL):
 ${fullCatalogText}
 
-Strict Shopping Rules:
-1. ALWAYS use the real products, prices, stock, vendor ratings, and distances above. Never invent products, prices, or sellers.
-2. When the customer asks for products, deals, cheapest options, or nearest sellers: call \`find_best_seller_offers\` so the UI renders interactive offer cards, and compare sellers highlighting the best price + closest seller to "${context.assignedLocation.area}".
-3. When the customer expresses intent to buy/order/deliver items ("buy", "order", "get me", "deliver to my location"):
-   - Automatically select the best seller + best price in-stock match(es).
-   - Call \`prepare_direct_purchase\` with those items so the UI displays a ready-to-confirm Direct Purchase bundle card to "${context.assignedLocation.area}".
-   - ONLY call \`place_direct_purchase\` if the customer explicitly confirms placing the order right now (e.g., "confirm and place order now", "yes buy it now") AND is signed in.
-4. Keep replies concise, practical, and reference exact Rs. prices, vendor names, distance (km), and ETA.`;
+Strict Shopping & Autonomous Ordering Rules:
+1. ALWAYS use real products, prices, stock, vendor ratings, and distances from the catalog above. Never invent products, prices, or sellers.
+2. When the customer asks to browse/show/find products, deals, cheap or medium-range options: call \`find_best_seller_offers\` with the appropriate \`price_tier\` (\`cheap\`, \`medium\`, \`premium\`, or \`balanced\`).
+3. AUTONOMOUS ORDER EXECUTION: Whenever the customer commands to **order, buy, purchase, send, or get delivered** any product (including generic requests like "order cheap product for me", "order a medium range item to my location", or specific items):
+   - Automatically detect the best matching in-stock product(s) using \`find_best_seller_offers\` (\`price_tier: 'cheap'\` for cheap/budget, \`price_tier: 'medium'\` for medium-range/moderate).
+   - ${authUser ? `Because the customer is signed in, IMMEDIATELY call \`place_direct_purchase\` right away to place a real order in PostgreSQL delivered to "${context.assignedLocation.area}"—do NOT merely list photo cards when they asked to order!` : `Because the customer is a guest, call \`prepare_direct_purchase\` and politely ask them to sign in so the order can be finalized.`}
+4. Keep responses ${forVoice ? 'natural, warm, concise, and easy to follow aloud (mention exact product name, Rs. price, vendor, and order number if placed)' : 'concise, practical, and reference exact Rs. prices, vendor names, distance (km), ETA, and order number when placed'}.`;
+}
 
-    const contents: any[] = messages.map((m) => ({
+function selectBundleFromQuery(userQuery: string, context: MarketplaceContext) {
+  const qLower = userQuery.toLowerCase();
+  const detectedTier = detectPriceTier(userQuery) || 'balanced';
+  const explicitBounds = detectExplicitPriceBounds(userQuery);
+  const isNearestIntent = /\b(near|closest|fast|express|नजिक|छिटो)\b/i.test(qLower);
+
+  const priority: 'balanced' | 'cheapest' | 'medium' | 'nearest' | 'top_rated' =
+    detectedTier === 'cheap'
+      ? 'cheapest'
+      : detectedTier === 'medium'
+      ? 'medium'
+      : isNearestIntent
+      ? 'nearest'
+      : 'balanced';
+
+  const segments = userQuery
+    .split(/\s+(?:and|with|plus|\+|र)\s+|,/i)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2);
+
+  const collectedOffersMap = new Map<string, RankedOfferResult>();
+  const bundleItems: { product_id: string; quantity: number }[] = [];
+
+  const searchSegments = segments.length > 1 ? segments : [userQuery];
+  for (const seg of searchSegments) {
+    const qtyMatch = /\b(\d+)\s*(?:x|pcs|kg|l|ltr|pack|packs|bottle|bottles)?\b/i.exec(seg);
+    const parsedQty = qtyMatch ? Math.min(10, Math.max(1, parseInt(qtyMatch[1], 10))) : 1;
+
+    const ranked = rankOffersForQuery(context.offers, {
+      query: seg,
+      priceTier: detectedTier,
+      minPrice: explicitBounds.minPrice,
+      maxPrice: explicitBounds.maxPrice,
+      priority,
+      limit: segments.length > 1 ? 2 : 5,
+    });
+
+    if (ranked.length > 0) {
+      const topPick = ranked[0];
+      if (!bundleItems.some((b) => b.product_id === topPick.product_id)) {
+        bundleItems.push({ product_id: topPick.product_id, quantity: parsedQty });
+      }
+      for (const offer of ranked) {
+        if (!collectedOffersMap.has(offer.product_id)) {
+          collectedOffersMap.set(offer.product_id, {
+            ...offer,
+            suggested_quantity: offer.product_id === topPick.product_id ? parsedQty : 1,
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    detectedTier,
+    recommendedOffers: Array.from(collectedOffersMap.values()).slice(0, 6),
+    bundleItems,
+    paymentMethod: /esewa/i.test(qLower)
+      ? 'ESEWA'
+      : /khalti/i.test(qLower)
+      ? 'KHALTI'
+      : 'CASH_ON_DELIVERY',
+  };
+}
+
+async function runDeterministicShoppingFallback(
+  userQuery: string,
+  language: 'en' | 'ne',
+  context: MarketplaceContext,
+  authUser?: AuthenticatedUser,
+  ipAddress?: string
+) {
+  const isAuthenticated = Boolean(authUser);
+  const isBuyCommand = detectAutonomousOrderIntent(userQuery);
+  const { detectedTier, recommendedOffers, bundleItems, paymentMethod } = selectBundleFromQuery(
+    userQuery,
+    context
+  );
+
+  let placedOrder: Awaited<ReturnType<typeof createDirectOrderFromItems>> | null = null;
+  let orderPreview: ReturnType<typeof buildOrderPreviewFromItems> = null;
+  let autoOrderError: string | null = null;
+
+  if (isBuyCommand && bundleItems.length > 0) {
+    if (authUser) {
+      try {
+        placedOrder = await createDirectOrderFromItems({
+          authUser,
+          items: bundleItems,
+          addressId: context.assignedLocation.addressId,
+          deliveryAddress: {
+            title: context.assignedLocation.title,
+            recipient_name: authUser.fullName || 'OyoPasal Customer',
+            phone: authUser.phone || '+977 9800000000',
+            street: context.assignedLocation.street,
+            area: context.assignedLocation.area,
+            city: context.assignedLocation.city,
+            lat: context.assignedLocation.lat,
+            lng: context.assignedLocation.lng,
+          },
+          paymentMethod,
+          deliveryOption: 'EXPRESS_12_MINS',
+          notes: `Autonomous AI Order (${detectedTier} tier) -> ${context.assignedLocation.area}`,
+          ipAddress,
+        });
+      } catch (err: unknown) {
+        autoOrderError = err instanceof Error ? err.message : 'Auto-order failed';
+      }
+    }
+  }
+
+  if (!placedOrder && bundleItems.length > 0) {
+    orderPreview = buildOrderPreviewFromItems(bundleItems, context, {
+      payment_method: paymentMethod,
+      delivery_option: 'EXPRESS_12_MINS',
+      isAuthenticated,
+    });
+  }
+
+  const locLabel = `${context.assignedLocation.area}, ${context.assignedLocation.city}`;
+  const tierLabel =
+    detectedTier === 'cheap'
+      ? language === 'ne'
+        ? 'सस्तो (बजेट)'
+        : 'budget / cheap'
+      : detectedTier === 'medium'
+      ? language === 'ne'
+        ? 'मध्यम मूल्य (मेडियम रेन्ज)'
+        : 'medium-range'
+      : language === 'ne'
+      ? 'उत्कृष्ट'
+      : 'best-matched';
+
+  const couponNote =
+    context.coupons.length > 0
+      ? language === 'ne'
+        ? `\n\n🏷️ सक्रिय कुपन: **${context.coupons[0].code}** (${context.coupons[0].description})`
+        : `\n\n🏷️ Active coupon available: **${context.coupons[0].code}** — ${context.coupons[0].description}`
+      : '';
+
+  let reply = '';
+  if (placedOrder) {
+    const orderedLines = bundleItems
+      .map((bi) => {
+        const match = recommendedOffers.find((o) => o.product_id === bi.product_id);
+        return match
+          ? `• **${match.name}** x${bi.quantity} (${match.unit}) — **Rs. ${match.price * bi.quantity}** via ${match.vendor_name}`
+          : null;
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    reply =
+      language === 'ne'
+        ? `✅ मैले तपाईंको लागि **${tierLabel}** सामान स्वचालित रूपमा छानेर **${locLabel}** मा अर्डर पक्का गरिदिएँ!\n\n${orderedLines}\n\n🧾 अर्डर नम्बर: **${placedOrder.order_number}** · जम्मा: **Rs. ${placedOrder.total_amount}** (${placedOrder.payment_method})। तलबाट लाइभ ट्र्याक गर्न सक्नुहुन्छ।`
+        : `✅ I automatically detected the best **${tierLabel}** product(s) and placed your order straight to **${locLabel}**!\n\n${orderedLines}\n\n🧾 Order **${placedOrder.order_number}** confirmed · Total **Rs. ${placedOrder.total_amount}** (${placedOrder.payment_method}).`;
+  } else if (recommendedOffers.length === 0) {
+    reply =
+      language === 'ne'
+        ? `नमस्ते! "${locLabel}" को लागि हाल स्टकमा रहेका ताजा सामग्रीहरू उपलब्ध छन्, तर तपाईंले खोज्नुभएको सामग्री फेला परेन। कृपया अर्को नाम प्रयास गर्नुहोस्।`
+        : `I checked all ${context.offers.length} live products across ${context.vendors.length} verified sellers near **${locLabel}**, but couldn't find an exact in-stock match. Try searching for vegetables, fresh milk, bread, snacks, or pantry staples!`;
+  } else {
+    const lines = recommendedOffers.slice(0, 4).map(
+      (o) =>
+        `• **${o.name}** (${o.unit}) — **Rs. ${o.price}** · ${o.vendor_name} (★ ${o.vendor_rating}, ${o.distance_km} km, ~${o.eta_mins} mins) [${o.recommended_badge}]`
+    );
+    if (isBuyCommand && !isAuthenticated) {
+      reply =
+        language === 'ne'
+          ? `मैले **${locLabel}** का लागि उत्कृष्ट **${tierLabel}** सामान छानिसकेको छु:\n\n${lines.join('\n')}\n\nअर्डर स्वचालित रूपमा पक्का गर्न कृपया साइन इन गर्नुहोस्।`
+          : `I selected the best **${tierLabel}** product(s) for **${locLabel}**:\n\n${lines.join('\n')}\n\nPlease sign in below so I can finalize and place this order automatically to your location.${autoOrderError ? ` (${autoOrderError})` : ''}`;
+    } else if (language === 'ne') {
+      reply =
+        `तपाईंको डेलिभरी ठेगाना **${locLabel}** को लागि उत्कृष्ट मूल्य र नजिकको पसल फेला पर्यो:\n\n` +
+        lines.join('\n') +
+        `\n\nतलको कार्डबाट सीधै कार्टमा थप्न वा **तुरुन्तै अर्डर (Direct Buy)** गर्न सक्नुहुन्छ।${couponNote}`;
+    } else {
+      reply =
+        `I analyzed all **${context.offers.length} live products** across **${context.vendors.length} local sellers** for delivery to **${locLabel}** and selected the best **${tierLabel}** matches:\n\n` +
+        lines.join('\n') +
+        `\n\nYou can add any item to cart or use the **Direct Purchase** card below to complete delivery straight to your assigned address.${couponNote}`;
+    }
+  }
+
+  return {
+    reply,
+    recommendedOffers,
+    orderPreview,
+    placedOrder,
+    requiresAuthForAutoOrder: isBuyCommand && !isAuthenticated && Boolean(orderPreview),
+  };
+}
+
+export async function handleChatConciergeTurn(
+  req: AuthRequest,
+  params: {
+    messages: { role: string; content: string }[];
+    userLocation?: UserLocationInput;
+    language?: 'en' | 'ne';
+  }
+) {
+  const { messages, userLocation, language = 'en' } = params;
+  const sessionKey = getEffectiveSessionKey(req);
+  const context = await buildLiveMarketplaceContext(req.authUser, sessionKey, userLocation);
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+  const isAuthenticated = Boolean(req.authUser);
+  const isBuyCommand = detectAutonomousOrderIntent(lastUserMessage);
+
+  const accumulator: ConciergeToolAccumulator = {
+    collectedOffers: [],
+    orderPreview: null,
+    placedOrder: null,
+    cartUpdated: false,
+  };
+
+  try {
+    const apiKey = ENV.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+
+    const systemInstruction = buildConciergeSystemInstruction({
+      context,
+      authUser: req.authUser,
+      language,
+      forVoice: false,
+    });
+
+    const contents: Array<Record<string, unknown>> = messages.map((m) => ({
       role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
@@ -1018,12 +1311,13 @@ Strict Shopping Rules:
 
     let finalReply = '';
     for (let round = 0; round < 3; round++) {
-      const response = await ai.models.generateContent({
+      const response = await conciergeAi.models.generateContent({
         model: 'gemini-4-hydrogen',
-        contents,
+        contents: contents as never,
         config: {
           systemInstruction,
           tools,
+          abortSignal: AbortSignal.timeout(12000),
         },
       });
 
@@ -1036,12 +1330,21 @@ Strict Shopping Rules:
       }
 
       if (modelContent) {
-        contents.push(modelContent);
+        contents.push(modelContent as unknown as Record<string, unknown>);
       }
 
-      const functionResponseParts: any[] = [];
+      const functionResponseParts: Array<Record<string, unknown>> = [];
       for (const fc of functionCalls) {
-        const result = await executeToolCall(fc.name || '', (fc.args as Record<string, any>) || {});
+        const result = await executeConciergeToolCall(
+          fc.name || '',
+          (fc.args as Record<string, unknown>) || {},
+          {
+            authUser: req.authUser,
+            context,
+            ipAddress: req.ip,
+            accumulator,
+          }
+        );
         functionResponseParts.push({
           functionResponse: {
             id: fc.id,
@@ -1057,13 +1360,61 @@ Strict Shopping Rules:
       });
     }
 
-    if (collectedOffers.length === 0 && lastUserMessage.trim().length > 2) {
-      const autoOffers = rankOffersForQuery(context.offers, {
-        query: lastUserMessage,
-        priority: 'balanced',
-        limit: 4,
-      });
-      collectedOffers.push(...autoOffers);
+    if (accumulator.collectedOffers.length === 0 && lastUserMessage.trim().length > 2) {
+      const { recommendedOffers } = selectBundleFromQuery(lastUserMessage, context);
+      accumulator.collectedOffers.push(...recommendedOffers);
+    }
+
+    // Guarantee autonomous order placement when the user issued a buy/order command
+    if (isBuyCommand && !accumulator.placedOrder) {
+      const candidateItems =
+        accumulator.orderPreview?.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })) ||
+        (accumulator.collectedOffers[0]
+          ? [{ product_id: accumulator.collectedOffers[0].product_id, quantity: accumulator.collectedOffers[0].suggested_quantity || 1 }]
+          : selectBundleFromQuery(lastUserMessage, context).bundleItems);
+
+      if (candidateItems.length > 0) {
+        if (req.authUser) {
+          try {
+            const autoOrder = await createDirectOrderFromItems({
+              authUser: req.authUser,
+              items: candidateItems,
+              addressId: context.assignedLocation.addressId,
+              deliveryAddress: {
+                title: context.assignedLocation.title,
+                recipient_name: req.authUser.fullName || 'OyoPasal Customer',
+                phone: req.authUser.phone || '+977 9800000000',
+                street: context.assignedLocation.street,
+                area: context.assignedLocation.area,
+                city: context.assignedLocation.city,
+                lat: context.assignedLocation.lat,
+                lng: context.assignedLocation.lng,
+              },
+              paymentMethod: accumulator.orderPreview?.payment_method || 'CASH_ON_DELIVERY',
+              deliveryOption: accumulator.orderPreview?.delivery_option || 'EXPRESS_12_MINS',
+              couponCode: accumulator.orderPreview?.coupon_code || null,
+              notes: `Autonomous AI Order -> ${context.assignedLocation.area}`,
+              ipAddress: req.ip,
+            });
+            accumulator.placedOrder = autoOrder;
+            accumulator.orderPreview = null;
+            if (!finalReply.includes(autoOrder.order_number)) {
+              finalReply =
+                language === 'ne'
+                  ? `✅ अर्डर **${autoOrder.order_number}** स्वचालित रूपमा **${context.assignedLocation.area}** मा पठाइयो (जम्मा Rs. ${autoOrder.total_amount})!\n\n${finalReply}`
+                  : `✅ Automatically placed order **${autoOrder.order_number}** to **${context.assignedLocation.area}** (Total **Rs. ${autoOrder.total_amount}**).\n\n${finalReply}`;
+            }
+          } catch {
+            // Keep preview if placement threw an unexpected validation error
+          }
+        } else if (!accumulator.orderPreview) {
+          accumulator.orderPreview = buildOrderPreviewFromItems(candidateItems, context, {
+            payment_method: 'CASH_ON_DELIVERY',
+            delivery_option: 'EXPRESS_12_MINS',
+            isAuthenticated: false,
+          });
+        }
+      }
     }
 
     return {
@@ -1071,30 +1422,38 @@ Strict Shopping Rules:
         finalReply ||
         'Here are the best-priced sellers closest to your assigned delivery location.',
       groundingChunks: [],
-      recommendedOffers: collectedOffers,
-      orderPreview,
-      placedOrder,
-      cartUpdated,
+      recommendedOffers: accumulator.collectedOffers,
+      orderPreview: accumulator.placedOrder ? null : accumulator.orderPreview,
+      placedOrder: accumulator.placedOrder,
+      requiresAuthForAutoOrder: Boolean(
+        isBuyCommand && !isAuthenticated && !accumulator.placedOrder && accumulator.orderPreview
+      ),
+      cartUpdated: accumulator.cartUpdated,
       assignedLocation: context.assignedLocation,
       catalogStats: {
         totalProducts: context.offers.length,
         totalVendors: context.vendors.length,
       },
     };
-  } catch (error: any) {
-    console.error('Gemini chat fallback activated:', error?.message || error);
-    const fallback = runDeterministicShoppingFallback(
+  } catch (error: unknown) {
+    console.error(
+      'Gemini chat fallback activated:',
+      error instanceof Error ? error.message : error
+    );
+    const fallback = await runDeterministicShoppingFallback(
       lastUserMessage,
       language,
       context,
-      isAuthenticated
+      req.authUser,
+      req.ip
     );
     return {
       reply: fallback.reply,
       groundingChunks: [],
       recommendedOffers: fallback.recommendedOffers,
       orderPreview: fallback.orderPreview,
-      placedOrder: null,
+      placedOrder: fallback.placedOrder,
+      requiresAuthForAutoOrder: fallback.requiresAuthForAutoOrder,
       cartUpdated: false,
       assignedLocation: context.assignedLocation,
       catalogStats: {

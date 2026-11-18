@@ -89,12 +89,16 @@ export default function AccountPage() {
               savingProfile={acc.savingProfile}
               syncingGoogle={acc.syncingGoogle}
               dbStatus={acc.dbStatus}
+              theme={acc.theme}
+              language={acc.language}
               t={acc.t}
               onOpenLogin={() => acc.setLoginModalOpen(true)}
               onChangeFullName={acc.setFullName}
               onChangePhone={acc.setPhone}
               onSaveProfile={acc.handleSaveProfile}
               onGoogleSignIn={acc.handleGoogleSignIn}
+              onToggleTheme={acc.toggleTheme}
+              onChangeLanguage={acc.setLanguage}
             />
           )}
 

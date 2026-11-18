@@ -33,6 +33,9 @@ export function useAccountPortal() {
     t,
     formatPrice,
     language,
+    setLanguage,
+    theme,
+    toggleTheme,
   } = useApp();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -279,6 +282,9 @@ export function useAccountPortal() {
     t,
     formatPrice,
     language,
+    setLanguage,
+    theme,
+    toggleTheme,
     orders,
     wishlistProducts,
     notifications,

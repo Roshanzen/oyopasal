@@ -724,13 +724,13 @@ test('8. AI Shopping Concierge full-catalog best-seller ranking & direct purchas
   const buyerToken = regRes.data.token;
   cleanupState.userIds.push(regRes.data.user.db_id);
 
-  // Ask AI concierge to find cheapest milk & avocados delivered to Pulchowk
+  // Ask AI concierge to show cheapest milk & avocados for Pulchowk (browsing/preview mode)
   const chatRes = await apiJson('/api/v1/chat/', {
     method: 'POST',
     token: buyerToken,
     body: JSON.stringify({
       messages: [
-        { role: 'user', content: 'Buy cheapest fresh milk and avocados delivered to Pulchowk' },
+        { role: 'user', content: 'Show cheapest fresh milk and avocados for Pulchowk' },
       ],
       userLocation: {
         latitude: 27.674,
@@ -906,5 +906,107 @@ test('9. Security & validation hardening: hijack block, demo login allowlist, nu
   assert.equal(negPriceRes.status, 400);
   assert.equal(negPriceRes.data.code, 'INVALID_PRICE');
 });
+
+test('10. Autonomous AI command detects cheap & medium-range products and places real orders to assigned location', async () => {
+  const runId = crypto.randomBytes(3).toString('hex');
+  const buyerEmail = `auto.buyer.${runId}@oyopasal.np`;
+
+  const regRes = await apiJson('/api/v1/auth/register/', {
+    method: 'POST',
+    body: JSON.stringify({
+      full_name: 'Autonomous Order Buyer',
+      phone_or_email: buyerEmail,
+      password: 'BuyerPass@123',
+    }),
+  });
+  assert.equal(regRes.status, 201);
+  const buyerToken = regRes.data.token;
+  cleanupState.userIds.push(regRes.data.user.db_id);
+
+  // Command 1: Order cheap product automatically to Patan
+  const cheapCmdRes = await apiJson('/api/v1/chat/', {
+    method: 'POST',
+    token: buyerToken,
+    body: JSON.stringify({
+      messages: [
+        { role: 'user', content: 'Order a cheap product for me to my location' },
+      ],
+      userLocation: {
+        latitude: 27.6766,
+        longitude: 85.317,
+        area: 'Patan',
+        street: 'Mangal Bazar',
+        city: 'Lalitpur',
+      },
+      language: 'en',
+    }),
+  });
+  assert.equal(cheapCmdRes.status, 200);
+  assert.ok(cheapCmdRes.data.placedOrder, 'Cheap order command must autonomously place an order');
+  assert.equal(cheapCmdRes.data.orderPreview, null);
+  assert.equal(cheapCmdRes.data.placedOrder.delivery_address.area, 'Patan');
+  assert.ok(cheapCmdRes.data.recommendedOffers.length >= 1);
+  assert.equal(cheapCmdRes.data.recommendedOffers[0].recommended_badge, 'Best Budget Pick');
+  cleanupState.orderIds.push(cheapCmdRes.data.placedOrder.db_id);
+
+  // Verify seller sees the autonomously placed cheap order
+  const cheapVendorId = cheapCmdRes.data.placedOrder.items_by_vendor?.[0]?.vendor?.id;
+  assert.ok(cheapVendorId);
+  const sellerLogin1 = await apiJson('/api/v1/auth/seller/login/', {
+    method: 'POST',
+    body: JSON.stringify({ vendor_id: cheapVendorId, demo_quick_login: true }),
+  });
+  assert.equal(sellerLogin1.status, 200);
+  const sellerOrders1 = await apiJson(`/api/v1/seller/orders/?vendor_id=${cheapVendorId}`, {
+    token: sellerLogin1.data.token,
+  });
+  assert.ok(
+    sellerOrders1.data.results.some(
+      (o: { order_number: string }) => o.order_number === cheapCmdRes.data.placedOrder.order_number
+    )
+  );
+
+  // Command 2: Order medium range product automatically to Patan
+  const medCmdRes = await apiJson('/api/v1/chat/', {
+    method: 'POST',
+    token: buyerToken,
+    body: JSON.stringify({
+      messages: [
+        { role: 'user', content: 'Order a medium range product for me now' },
+      ],
+      userLocation: {
+        latitude: 27.6766,
+        longitude: 85.317,
+        area: 'Patan',
+        street: 'Mangal Bazar',
+        city: 'Lalitpur',
+      },
+      language: 'en',
+    }),
+  });
+  assert.equal(medCmdRes.status, 200);
+  assert.ok(medCmdRes.data.placedOrder, 'Medium-range order command must autonomously place an order');
+  assert.equal(medCmdRes.data.placedOrder.delivery_address.area, 'Patan');
+  assert.ok(medCmdRes.data.recommendedOffers.length >= 1);
+  assert.equal(medCmdRes.data.recommendedOffers[0].recommended_badge, 'Best Medium Range');
+  assert.ok(
+    medCmdRes.data.recommendedOffers[0].price >= cheapCmdRes.data.recommendedOffers[0].price,
+    'Medium-range pick should not be cheaper than the absolute cheapest pick'
+  );
+  cleanupState.orderIds.push(medCmdRes.data.placedOrder.db_id);
+
+  // Clean up stock by cancelling both autonomous orders
+  await apiJson(`/api/v1/orders/${cheapCmdRes.data.placedOrder.id}/cancel/`, {
+    method: 'POST',
+    token: buyerToken,
+    body: JSON.stringify({ reason: 'Test cleanup' }),
+  });
+  await apiJson(`/api/v1/orders/${medCmdRes.data.placedOrder.id}/cancel/`, {
+    method: 'POST',
+    token: buyerToken,
+    body: JSON.stringify({ reason: 'Test cleanup' }),
+  });
+});
+
 
 

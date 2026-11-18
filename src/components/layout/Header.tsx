@@ -4,12 +4,9 @@ import {
   ChevronDown,
   Clock,
   Heart,
-  Languages,
   LogIn,
   MapPin,
-  Moon,
   ShoppingBag,
-  Sun,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useApp } from '../../context';
@@ -146,40 +143,7 @@ export default function Header() {
 
           {/* D, E, F. Right Cluster */}
           <div className="order-2 md:order-4 ml-auto md:ml-0 flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 shrink-0 select-none">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={toggleLanguage}
-              aria-label={language === 'en' ? 'Switch to Nepali' : 'अंग्रेजीमा बदल्नुहोस्'}
-              title={language === 'en' ? 'नेपाली भाषामा हेर्नुहोस्' : 'Switch to English'}
-              className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 h-10 lg:h-11 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            >
-              <Languages className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="flex items-center gap-1 text-xs font-extrabold tracking-tight">
-                <span className={language === 'en' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}>
-                  EN
-                </span>
-                <span className="text-slate-300 dark:text-slate-700">/</span>
-                <span className={language === 'ne' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}>
-                  ने
-                </span>
-              </span>
-            </motion.button>
-
             <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.92 }}
-                onClick={toggleTheme}
-                aria-label={theme === 'dark' ? t('header.switchToLight') : t('header.switchToDark')}
-                title={theme === 'dark' ? t('header.switchToLight') : t('header.switchToDark')}
-                className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              >
-                {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
-              </motion.button>
-
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }} className="hidden xl:block">
                 <Link
                   to="/account?tab=wishlist"

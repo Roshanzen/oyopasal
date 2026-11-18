@@ -78,6 +78,7 @@ export interface ChatResponsePayload {
   recommendedOffers?: ChatProductOffer[];
   orderPreview?: ChatOrderPreview | null;
   placedOrder?: Order | null;
+  requiresAuthForAutoOrder?: boolean;
   cartUpdated?: boolean;
   assignedLocation?: {
     title: string;

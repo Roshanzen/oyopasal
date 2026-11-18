@@ -103,7 +103,7 @@ async function hydrateUserContext(userRow: typeof users.$inferSelect): Promise<A
   };
 }
 
-async function resolveUserFromToken(token: string): Promise<AuthenticatedUser | null> {
+export async function resolveUserFromToken(token: string): Promise<AuthenticatedUser | null> {
   if (!token) return null;
 
   // 1. Check DB-backed HMAC session token (op_sess_...)
