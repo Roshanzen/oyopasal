@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { APP_CONFIG } from '../config';
 import { useApp } from '../context';
 import { adminService, categoryService, sellerService } from '../services';
+import { safeStorage } from '../utils';
 import {
   Category,
   InventoryMovementItem,
@@ -121,44 +123,61 @@ export function useSellerPortal() {
     };
   }, []);
 
-  const loadSellerDashboard = useCallback(async () => {
-    if (!currentSeller?.id) return;
+  const inFlightDashboardRef = useRef(false);
+  const inFlightOrdersRef = useRef(false);
+  const lastSyncTimestampRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const loadSellerDashboard = useCallback(async (options?: { signal?: AbortSignal }) => {
+    if (!currentSeller?.id || inFlightDashboardRef.current) return;
+    inFlightDashboardRef.current = true;
     setLoadingProducts(true);
     setDashboardError(null);
     try {
-      const dash = await sellerService.getSellerDashboard(currentSeller.id);
+      const dash = await sellerService.getSellerDashboard(currentSeller.id, {
+        bypassCache: true,
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+        ...options,
+      });
       setDashboardStats(dash.stats || null);
       if (Array.isArray(dash.products)) {
         setSellerProducts(dash.products);
       } else {
-        const res = await sellerService.getSellerProducts(currentSeller.id);
+        const res = await sellerService.getSellerProducts(currentSeller.id, options);
         setSellerProducts(res.results || []);
       }
       if (dash.vendor) {
         setStoreProfile(dash.vendor);
+        safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, dash.vendor);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : 'Failed to load seller dashboard';
       setDashboardError(msg);
       console.error('Failed to load seller dashboard', err);
     } finally {
+      inFlightDashboardRef.current = false;
       setLoadingProducts(false);
     }
   }, [currentSeller?.id]);
 
   const loadSellerOrders = useCallback(
-    async (silent = false) => {
-      if (!currentSeller?.id) return;
+    async (silent = false, options?: { signal?: AbortSignal }) => {
+      if (!currentSeller?.id || inFlightOrdersRef.current) return;
+      inFlightOrdersRef.current = true;
       if (!silent) setLoadingOrders(true);
       setOrdersError(null);
       try {
-        const res = await sellerService.getSellerOrders(currentSeller.id);
+        const res = await sellerService.getSellerOrders(currentSeller.id, options);
         setSellerOrders(res.results || []);
-      } catch (err) {
+        lastSyncTimestampRef.current = Date.now();
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         const msg = err instanceof Error ? err.message : 'Failed to load store orders';
         setOrdersError(msg);
         console.error('Failed to load seller orders', err);
       } finally {
+        inFlightOrdersRef.current = false;
         if (!silent) setLoadingOrders(false);
       }
     },
@@ -169,12 +188,16 @@ export function useSellerPortal() {
     if (!currentSeller?.id) return;
     try {
       const [movRes, storeRes] = await Promise.all([
-        sellerService.getSellerInventoryMovements(currentSeller.id),
-        sellerService.getSellerStore(currentSeller.id),
+        sellerService.getSellerInventoryMovements(currentSeller.id, { bypassCache: true }),
+        sellerService.getSellerStore(currentSeller.id, {
+          bypassCache: true,
+          headers: { 'Cache-Control': 'no-cache, no-store' },
+        }),
       ]);
       setMovements(movRes.results || []);
       if (storeRes.vendor) {
         setStoreProfile(storeRes.vendor);
+        safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
         setStoreOnline(storeRes.vendor.is_online !== false);
         setOpenTime(storeRes.vendor.open_time || '06:30');
         setCloseTime(storeRes.vendor.close_time || '22:00');
@@ -204,41 +227,70 @@ export function useSellerPortal() {
     }
   }, [currentSeller?.id]);
 
+  // Initial load when currentSeller changes
   useEffect(() => {
-    if (currentSeller?.id) {
-      loadSellerDashboard();
-      loadSellerOrders();
-      loadMovementsAndStore();
-      loadSellerReviews();
-    }
+    if (!currentSeller?.id) return;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    loadSellerDashboard({ signal: controller.signal });
+    loadSellerOrders(false, { signal: controller.signal });
+    loadMovementsAndStore();
+    loadSellerReviews();
+
+    return () => {
+      controller.abort();
+    };
   }, [currentSeller?.id, loadSellerDashboard, loadSellerOrders, loadMovementsAndStore, loadSellerReviews]);
 
+  // Tab switch to orders (only if stale, i.e. > 10s old)
   useEffect(() => {
     if (!currentSeller?.id) return;
     if (activeTab === 'orders') {
-      loadSellerOrders();
+      const isStale = Date.now() - lastSyncTimestampRef.current > 10000;
+      if (isStale) {
+        loadSellerOrders(true);
+      }
     }
   }, [activeTab, currentSeller?.id, loadSellerOrders]);
 
+  // Non-overlapping adaptive polling while currentSeller is active
   useEffect(() => {
     if (!currentSeller?.id) return;
-    const syncOrdersNow = () => {
+
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
+
+    const pollLoop = async () => {
+      if (isCancelled) return;
       if (document.visibilityState === 'visible') {
-        loadSellerOrders(true);
-        loadSellerDashboard();
+        await loadSellerOrders(true);
+      }
+      if (!isCancelled) {
+        timerId = setTimeout(pollLoop, 15000);
       }
     };
-    window.addEventListener('focus', syncOrdersNow);
-    document.addEventListener('visibilitychange', syncOrdersNow);
-    const interval = window.setInterval(() => {
+
+    timerId = setTimeout(pollLoop, 15000);
+
+    const syncOnFocus = () => {
       if (document.visibilityState === 'visible') {
-        loadSellerOrders(true);
+        const isStale = Date.now() - lastSyncTimestampRef.current > 10000;
+        if (isStale) {
+          loadSellerOrders(true);
+          loadSellerDashboard();
+        }
       }
-    }, 12000);
+    };
+
+    window.addEventListener('focus', syncOnFocus);
+    document.addEventListener('visibilitychange', syncOnFocus);
+
     return () => {
-      window.removeEventListener('focus', syncOrdersNow);
-      document.removeEventListener('visibilitychange', syncOrdersNow);
-      window.clearInterval(interval);
+      isCancelled = true;
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener('focus', syncOnFocus);
+      document.removeEventListener('visibilitychange', syncOnFocus);
     };
   }, [currentSeller?.id, loadSellerOrders, loadSellerDashboard]);
 
@@ -327,6 +379,21 @@ export function useSellerPortal() {
   const handleAddGalleryUrl = () => {
     const trimmed = galleryUrlInput.trim();
     if (!trimmed) return;
+    const isValid =
+      ['http://', 'https://', '/uploads/', '/media/', 'data:image/', '/static/'].some((p) =>
+        trimmed.startsWith(p)
+      ) &&
+      !trimmed.includes('\n') &&
+      !trimmed.includes('\r') &&
+      trimmed.length <= 500;
+
+    if (!isValid) {
+      showToast(
+        language === 'ne' ? 'कृपया मान्य फोटो URL राख्नुहोस्' : 'Please enter a valid image URL or path',
+        'error'
+      );
+      return;
+    }
     if (!galleryUrls.includes(trimmed)) {
       setGalleryUrls((prev) => [...prev, trimmed]);
     }
@@ -347,14 +414,31 @@ export function useSellerPortal() {
       showToast(language === 'ne' ? 'कृपया सामानको परिमाण राख्नुहोस्' : 'Please specify the product unit', 'error');
       return;
     }
-    const finalImage = customImageUrl.trim();
-    if (!finalImage) {
+    const isValidImageUrl = (url: string) => {
+      if (!url || typeof url !== 'string') return false;
+      const t = url.trim();
+      if (t.length > 500) return false;
+      if (t.includes('\n') || t.includes('\r')) return false;
+      const validPrefixes = ['http://', 'https://', '/uploads/', '/media/', 'data:image/', '/static/'];
+      return validPrefixes.some((p) => t.startsWith(p));
+    };
+
+    const allImages = [customImageUrl.trim(), ...galleryUrls.map((u) => u.trim())]
+      .filter(isValidImageUrl)
+      .slice(0, 6);
+
+    if (allImages.length === 0) {
       showToast(
-        language === 'ne' ? 'कृपया सामानको फोटो अपलोड वा URL राख्नुहोस्' : 'Please upload a product image or provide an image URL',
+        language === 'ne'
+          ? 'कृपया कम्तिमा एउटा कभर फोटो राख्नुहोस्'
+          : 'Please upload at least 1 cover image for the product',
         'error'
       );
       return;
     }
+
+    const finalImage = allImages[0];
+    const sanitizedGallery = allImages.slice(1);
 
     setSubmittingProduct(true);
     try {
@@ -370,7 +454,8 @@ export function useSellerPortal() {
         description:
           description.trim() || `${productName.trim()} sourced fresh by ${currentSeller?.name || 'Local Merchant'}.`,
         image_url: finalImage,
-        gallery_urls: galleryUrls.length > 0 ? galleryUrls : undefined,
+        gallery_urls: sanitizedGallery.length > 0 ? sanitizedGallery : undefined,
+        images: allImages,
         sections: selectedSections.length > 0 ? selectedSections : ['fresh_arrivals', 'best_sellers'],
       });
 

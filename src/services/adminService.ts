@@ -15,6 +15,7 @@ import {
   AdminZoneItem,
   Advertisement,
   Category,
+  HeroBanner,
   Order,
   Promotion,
 } from '../types';
@@ -268,6 +269,47 @@ export const adminService = {
     return httpClient.request('/admin/settings/', {
       method: 'PUT',
       body: JSON.stringify({ key, value, description }),
+    });
+  },
+
+  getAdminHeroBanners(): Promise<HeroBanner[]> {
+    return httpClient.request<HeroBanner[]>('/admin/hero-banners/', { bypassCache: true });
+  },
+
+  createAdminHeroBanner(payload: {
+    data_url: string;
+    filename?: string;
+    target_url?: string;
+    alt_text?: string;
+    display_order?: number;
+    is_active?: boolean;
+  }): Promise<HeroBanner> {
+    return httpClient.request<HeroBanner>('/admin/hero-banners/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateAdminHeroBanner(
+    id: number,
+    payload: Partial<HeroBanner> & { data_url?: string; filename?: string }
+  ): Promise<HeroBanner> {
+    return httpClient.request<HeroBanner>(`/admin/hero-banners/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteAdminHeroBanner(id: number): Promise<{ success: boolean; message?: string }> {
+    return httpClient.request<{ success: boolean; message?: string }>(`/admin/hero-banners/${id}/`, {
+      method: 'DELETE',
+    });
+  },
+
+  reorderAdminHeroBanner(banner_id: number, direction: 'up' | 'down'): Promise<HeroBanner[]> {
+    return httpClient.request<HeroBanner[]>('/admin/hero-banners/reorder/', {
+      method: 'POST',
+      body: JSON.stringify({ banner_id, direction }),
     });
   },
 };

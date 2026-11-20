@@ -11,7 +11,6 @@ export default function OrderTrackingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const track = useOrderTracking(id);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
   if (track.loading) {
     return (
@@ -76,12 +75,22 @@ export default function OrderTrackingPage() {
     <div className="w-full px-4 sm:px-6 lg:px-10 py-6 sm:py-8 pb-24">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <Link
-            to="/account?tab=orders"
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else if (track.user?.role === 'vendor') {
+                navigate('/seller');
+              } else {
+                navigate('/account?tab=orders');
+              }
+            }}
             className="p-2.5 rounded-xl bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="Back"
           >
             <ArrowLeft className="w-4 h-4" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
@@ -185,7 +194,6 @@ export default function OrderTrackingPage() {
           )}
 
           <OrderTrackingMapCard
-            apiKey={apiKey}
             mapsQuotaError={track.mapsQuotaError}
             isDelivered={isDelivered}
             isCancelled={isCancelled}
@@ -214,7 +222,7 @@ export default function OrderTrackingPage() {
           />
 
           <OrderTrackingTimeline
-            steps={order.tracking_updates}
+            steps={order.tracking_updates || []}
             assignment={track.assignment}
             isCancelled={isCancelled}
             t={track.t}

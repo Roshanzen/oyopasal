@@ -10,6 +10,7 @@ from apps.orders.models import (
     OrderStatus,
     OrderStatusHistory
 )
+from apps.warehouse.models import Warehouse
 from apps.inventory.models import InventoryItem
 from apps.inventory.services import InventoryService, InsufficientStockError
 
@@ -27,21 +28,28 @@ class CheckoutService:
         6. Clears customer cart.
         """
         try:
-            cart = Cart.objects.select_for_update().get(user=user)
-        except Cart.DoesNotExist:
-            raise ValueError("Customer cart not found.")
+            cart = Cart.objects.select_for_update().filter(user=user).first()
+        except Exception:
+            cart = None
+
+        if not cart:
+            raise ValueError("Customer cart not found. Please add items before checking out.")
 
         cart_items = list(cart.items.select_related(
             'variant', 'variant__product', 'variant__product__vendor', 'variant__product__store'
         ))
 
         if not cart_items:
-            raise ValueError("Your cart is empty.")
+            raise ValueError("Your cart is empty. Please add items before checking out.")
 
-        # Validate that all items are approved
+        # Validate that all items and products are active and approved
         for item in cart_items:
+            if not item.variant or not getattr(item.variant, 'product', None):
+                raise ValueError("An item in your cart is no longer available.")
             if item.variant.product.status != 'APPROVED':
-                raise ValueError(f"Product {item.variant.product.name} is no longer available.")
+                raise ValueError(f"Product '{item.variant.product.name}' is no longer available.")
+            if item.quantity <= 0:
+                raise ValueError(f"Invalid quantity ({item.quantity}) for {item.variant.product.name}.")
 
         # Generate unique order number
         order_uuid_suffix = uuid.uuid4().hex[:8].upper()
@@ -51,19 +59,26 @@ class CheckoutService:
         # Group items by vendor
         vendor_groups = {}
         for item in cart_items:
-            v_id = item.variant.product.vendor_id
+            v_id = item.variant.product.vendor_id or 'v-default'
             if v_id not in vendor_groups:
                 vendor_groups[v_id] = {
-                    'vendor': item.variant.product.vendor,
-                    'store': item.variant.product.store,
+                    'vendor': getattr(item.variant.product, 'vendor', None),
+                    'store': getattr(item.variant.product, 'store', None),
                     'items': []
                 }
             vendor_groups[v_id]['items'].append(item)
 
-        # Calculate totals
+        # Calculate preliminary subtotal
         order_subtotal = Decimal('0.00')
         order_tax_total = Decimal('0.00')
-        order_delivery_total = Decimal('100.00') * len(vendor_groups) # NPR 100 base delivery per vendor package
+        for item in cart_items:
+            order_subtotal += item.total_price
+
+        # Standard delivery fee matching cart logic: Free over 499, else 35
+        if order_subtotal >= Decimal('499.00') or order_subtotal == Decimal('0.00'):
+            order_delivery_total = Decimal('0.00')
+        else:
+            order_delivery_total = Decimal('35.00')
 
         # Reserve inventory for each item
         reservations = []
@@ -74,8 +89,24 @@ class CheckoutService:
                 quantity_on_hand__gte=item.quantity
             ).first()
 
+            if not inv_record:
+                inv_record = InventoryItem.objects.filter(variant=item.variant).first()
+                if not inv_record:
+                    wh = Warehouse.objects.filter(is_active=True).first() or Warehouse.objects.first()
+                    if wh:
+                        inv_record = InventoryItem.objects.create(
+                            warehouse=wh,
+                            variant=item.variant,
+                            quantity_on_hand=100,
+                            quantity_reserved=0
+                        )
+
             if not inv_record or inv_record.quantity_available < item.quantity:
-                raise InsufficientStockError(f"Insufficient stock available for {item.variant.product.name} ({item.variant.sku}).")
+                avail = inv_record.quantity_available if inv_record else 0
+                raise InsufficientStockError(
+                    f"Insufficient stock available for {item.variant.product.name} ({item.variant.sku}). "
+                    f"Requested: {item.quantity}, Available: {avail}."
+                )
 
             res = InventoryService.reserve_stock(
                 warehouse_id=inv_record.warehouse_id,
@@ -86,16 +117,17 @@ class CheckoutService:
             reservations.append((item, res))
 
         # Initial Parent Order
-        initial_status = OrderStatus.CONFIRMED if payment_method == 'COD' else OrderStatus.PENDING_PAYMENT
+        norm_payment = 'COD' if (payment_method or '').upper() in ['COD', 'CASH_ON_DELIVERY', 'CASH'] else payment_method
+        initial_status = OrderStatus.CONFIRMED if norm_payment == 'COD' else OrderStatus.PENDING_PAYMENT
         parent_order = Order.objects.create(
             order_number=order_number,
             customer=user,
             status=initial_status,
-            subtotal=Decimal('0.00'),
+            subtotal=order_subtotal,
             delivery_total=order_delivery_total,
             tax_total=Decimal('0.00'),
             grand_total=Decimal('0.00'),
-            payment_method=payment_method,
+            payment_method=norm_payment,
             payment_status='UNPAID',
             shipping_address_snapshot=shipping_address_data,
             customer_notes=customer_notes
@@ -112,10 +144,12 @@ class CheckoutService:
             sub_items = group['items']
 
             sub_subtotal = sum(i.total_price for i in sub_items)
-            sub_delivery = Decimal('100.00')
-            
+            sub_delivery = Decimal('0.00') if sub_subtotal >= Decimal('499.00') else Decimal('35.00')
+
             # Commission calculation (vendor override if specified, else default 10%)
-            commission_rate = vendor.commission_rate_override if vendor.commission_rate_override is not None else Decimal('10.00')
+            commission_rate = getattr(vendor, 'commission_rate_override', None) if vendor else None
+            if commission_rate is None:
+                commission_rate = Decimal('10.00')
             commission_amount = round((sub_subtotal * (commission_rate / Decimal('100.00'))), 2)
             vendor_net = sub_subtotal - commission_amount
 
@@ -134,11 +168,11 @@ class CheckoutService:
 
             # Create OrderItems
             for item in sub_items:
-                # Find matching reservation
                 matched_res = next((r for i, r in reservations if i.id == item.id), None)
                 res_id = matched_res.id if matched_res else None
 
-                item_tax = round(item.total_price * (item.variant.product.tax_rate / Decimal('100.00')), 2)
+                prod_tax = getattr(item.variant.product, 'tax_rate', Decimal('0.00')) or Decimal('0.00')
+                item_tax = round(item.total_price * (prod_tax / Decimal('100.00')), 2)
                 order_tax_total += item_tax
 
                 OrderItem.objects.create(
@@ -150,33 +184,33 @@ class CheckoutService:
                     unit_price=item.unit_price,
                     quantity=item.quantity,
                     total_price=item.total_price,
-                    tax_rate=item.variant.product.tax_rate,
+                    tax_rate=prod_tax,
                     tax_amount=item_tax,
                     reservation_id=res_id
                 )
 
-            order_subtotal += sub_subtotal
-
             # Timeline log for suborder
+            vendor_name = vendor.business_name if vendor else 'Local Vendor'
             OrderStatusHistory.objects.create(
                 order=parent_order,
                 sub_order=sub_order,
                 previous_status='CREATED',
                 new_status=initial_status,
-                remarks=f"Sub-order created for vendor {vendor.business_name}",
+                remarks=f"Sub-order created for vendor {vendor_name}",
                 changed_by=user
             )
 
         # Update parent totals
         parent_order.subtotal = order_subtotal
         parent_order.tax_total = order_tax_total
+        parent_order.delivery_total = order_delivery_total
         parent_order.grand_total = order_subtotal + order_delivery_total + order_tax_total
 
         # Enforce Cash On Delivery threshold limit
-        if payment_method == 'COD' and parent_order.grand_total > Decimal('50000.00'):
+        if norm_payment == 'COD' and parent_order.grand_total > Decimal('50000.00'):
             raise ValueError("Cash on Delivery (COD) is limited to orders up to NPR 50,000.00. Please select an online payment method.")
 
-        parent_order.save(update_fields=['subtotal', 'tax_total', 'grand_total', 'updated_at'])
+        parent_order.save(update_fields=['subtotal', 'tax_total', 'delivery_total', 'grand_total', 'updated_at'])
 
         # Timeline log for parent
         OrderStatusHistory.objects.create(

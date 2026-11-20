@@ -6,6 +6,10 @@ export interface Vendor {
   rating: number;
   delivery_time_mins: string;
   verified: boolean;
+  is_verified?: boolean;
+  is_approved?: boolean;
+  status?: string;
+  kyc_status?: string;
   approval_status?: 'pending' | 'approved' | 'rejected' | 'suspended';
   commission_rate?: number;
   is_online?: boolean;
@@ -24,6 +28,42 @@ export interface Vendor {
   tags?: string[];
   lat?: number;
   lng?: number;
+}
+
+export interface StoreDetail {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo_url?: string;
+  banner_url?: string;
+  logo?: string;
+  banner?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+  business_hours?: Record<string, string>;
+  latitude?: number | null;
+  longitude?: number | null;
+  shipping_policy?: string;
+  return_policy?: string;
+  is_active: boolean;
+  is_verified: boolean;
+  verified?: boolean;
+  is_approved?: boolean;
+  vendor_id?: string;
+  vendor_name?: string;
+  vendor_slug?: string;
+  kyc_status?: string;
+  rating?: number;
+  delivery_time_mins?: string;
+  open_time?: string;
+  close_time?: string;
+  is_open?: boolean;
+  fulfillment_modes?: string;
+  gallery?: string[];
+  distance_km?: number;
+  created_at?: string;
 }
 
 export interface SellerReviewItem {
@@ -68,7 +108,7 @@ export interface SellerAnalyticsResponse {
 }
 
 export interface SellerFulfillmentItem {
-  fulfillment_id: number;
+  fulfillment_id: string | number;
   order_id: string;
   order_number: string;
   vendor_id?: string;

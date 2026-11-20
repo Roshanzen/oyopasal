@@ -112,7 +112,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!cart || cart.items.length === 0) {
+  if (!cart || !cart.items || cart.items.length === 0) {
     return (
       <div className="max-w-md mx-auto py-24 px-4 text-center">
         <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('checkout.emptyTitle')}</h2>
@@ -280,22 +280,22 @@ export default function CheckoutPage() {
                 </h2>
               </div>
               <div className="space-y-4">
-                {cart.vendor_groups.map((group, idx) => (
+                {(cart.vendor_groups || []).map((group, idx) => (
                   <div key={idx} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-800 dark:text-slate-200">
                       <div className="flex items-center gap-2">
                         <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span>{group.vendor.name}</span>
+                        <span>{group?.vendor?.name || (group as any)?.vendor_name || 'Local Store'}</span>
                       </div>
                       <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">
-                        {group.delivery_fee === 0 ? t('common.freeDelivery') : t('cart.deliveryLabel', { amount: formatPrice(group.delivery_fee) })}
+                        {(group?.delivery_fee ?? 0) === 0 ? t('common.freeDelivery') : t('cart.deliveryLabel', { amount: formatPrice(group?.delivery_fee ?? 0) })}
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {group.items.map((item) => (
+                      {(group.items || []).map((item) => (
                         <div key={item.id} className="flex items-center justify-between text-sm">
                           <span className="text-slate-800 dark:text-slate-300 truncate font-semibold">
-                            {item.quantity}x {item.product.name} ({item.product.unit})
+                            {item.quantity}x {item.product?.name || (item as any)?.product_name || 'Product'} ({item.product?.unit || 'piece'})
                           </span>
                           <span className="font-extrabold text-slate-900 dark:text-white tabular-nums">{formatPrice(item.total_price)}</span>
                         </div>
@@ -419,7 +419,7 @@ export default function CheckoutPage() {
                       {t('common.apply')}
                     </button>
                   </form>
-                  {activeCoupons.length > 0 && (
+                  {Array.isArray(activeCoupons) && activeCoupons.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {activeCoupons.map((cp) => (
                         <button

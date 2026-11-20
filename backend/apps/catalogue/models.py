@@ -154,6 +154,21 @@ class Product(BaseModel, SoftDeletableModel):
         default=13.00,
         help_text='VAT/Tax percentage in Nepal (e.g. 13.00 for 13%)'
     )
+    unit = models.CharField(
+        max_length=50,
+        default='piece',
+        help_text='Product selling unit e.g. kg, gram, litre, piece, pack'
+    )
+    is_organic = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether the product is certified organic produce'
+    )
+    sections = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Featured placement sections e.g. ["fresh_arrivals", "best_sellers"]'
+    )
     is_featured = models.BooleanField(default=False, db_index=True)
     is_returnable = models.BooleanField(default=True)
     warranty_info = models.CharField(max_length=255, blank=True)
@@ -242,7 +257,7 @@ class ProductImage(BaseModel):
         blank=True,
         related_name='images'
     )
-    image_url = models.URLField(max_length=500)
+    image_url = models.CharField(max_length=500)
     alt_text = models.CharField(max_length=255, blank=True)
     is_primary = models.BooleanField(default=False)
     ordering = models.PositiveIntegerField(default=0)

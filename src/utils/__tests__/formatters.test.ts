@@ -38,8 +38,9 @@ test('calculateDistanceInKm and estimateDeliveryMinutes return bounded Haversine
   const km = calculateDistanceInKm(27.7172, 85.324, 27.6766, 85.317);
   assert.ok(km > 4 && km < 5.5, `Expected ~4.5km, got ${km}`);
 
-  assert.equal(estimateDeliveryMinutes(0), 12);
-  assert.equal(estimateDeliveryMinutes(50), 30);
+  assert.equal(estimateDeliveryMinutes(0, 12), 12);
+  assert.ok(estimateDeliveryMinutes(50) > 120, '50km should take over 2 hours');
+  assert.ok(estimateDeliveryMinutes(158) > 300, '158km should take over 5 hours');
 });
 
 test('formatOrderDate and formatTimeShort handle empty and invalid inputs gracefully', () => {

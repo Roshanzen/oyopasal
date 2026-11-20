@@ -10,7 +10,7 @@ export interface CartContextType {
   cartDrawerOpen: boolean;
   setCartDrawerOpen: (open: boolean) => void;
   refreshCart: () => Promise<void>;
-  addToCart: (productId: string, quantity?: number, variantId?: string) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, variantId?: string, customToast?: string | null) => Promise<void>;
   updateCartQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeCartItem: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -44,15 +44,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refreshCart]);
 
   const addToCart = useCallback(
-    async (productId: string, quantity = 1, variantId?: string) => {
+    async (productId: string, quantity = 1, variantId?: string, customToast?: string | null) => {
       try {
         setCartLoading(true);
         const updated = await cartService.addToCart(productId, quantity, variantId);
         setCart(updated);
-        showToast(t('toast.addedToBasket'), 'success');
+        if (customToast !== null) {
+          showToast(customToast || t('toast.addedToBasket'), 'success');
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Could not add item to basket';
         showToast(msg, 'error');
+        throw err;
       } finally {
         setCartLoading(false);
       }

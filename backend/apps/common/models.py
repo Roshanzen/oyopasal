@@ -50,3 +50,33 @@ class BaseModel(UUIDModel, TimeStampedModel):
     class Meta:
         abstract = True
 
+
+class MediaAsset(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    owner = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='media_assets'
+    )
+    entity_type = models.CharField(max_length=64, default='general', db_index=True)
+    entity_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    filename = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=128)
+    size_bytes = models.BigIntegerField(default=0)
+    url = models.CharField(max_length=1024)
+    storage_path = models.CharField(max_length=1024, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Media Asset'
+        verbose_name_plural = 'Media Assets'
+        indexes = [
+            models.Index(fields=['entity_type', 'entity_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.filename} ({self.entity_type})"
+

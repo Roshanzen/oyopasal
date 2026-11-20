@@ -93,23 +93,56 @@ export default function OrdersTab({
               </div>
             </div>
 
-            <div className="space-y-2 text-sm">
-              {o.items_by_vendor.map((vg, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Store className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold">{vg.vendor.name}:</span>
-                  <span className="text-slate-500 dark:text-slate-400 truncate">
-                    {vg.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
-                  </span>
+            <div className="space-y-3 text-sm">
+              {(o.items_by_vendor || []).length > 0 ? (
+                o.items_by_vendor.map((vg, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Store className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {vg.vendor?.name || 'Local Store'}:
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400 truncate">
+                        {(vg.items || []).length > 0
+                          ? vg.items.map((i) => `${i.quantity}x ${i.product_name || 'Item'}${i.unit ? ` (${i.unit})` : ''}`).join(', ')
+                          : language === 'ne' ? 'सामान संलग्न छ' : 'Items attached'}
+                      </span>
+                    </div>
+
+                    {vg.items && vg.items.length > 0 && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {vg.items.slice(0, 3).map((it, itIdx) =>
+                          it.image_url ? (
+                            <img
+                              key={itIdx}
+                              src={it.image_url}
+                              alt={it.product_name}
+                              className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-800"
+                            />
+                          ) : null
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 p-2 text-xs">
+                  <Package className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{language === 'ne' ? 'अर्डरका सामानहरू प्याक हुँदैछन्' : 'Order items being fulfilled'}</span>
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="text-slate-500">
                 {t('account.totalPaid')}{' '}
-                <strong className="text-slate-900 dark:text-white font-bold">{formatPrice(o.total_amount)}</strong> (
-                {o.payment_method.replace(/_/g, ' ')} · {o.payment_status})
+                <strong className="text-slate-900 dark:text-white font-bold">
+                  {formatPrice(Number(o.total_amount ?? o.grand_total ?? 0))}
+                </strong>{' '}
+                ({(o.payment_method || 'COD').replace(/_/g, ' ')} · {o.payment_status || 'UNPAID'})
               </span>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { APP_CONFIG } from '../config';
 import { addressService, vendorService } from '../services';
 import { httpClient } from '../services/httpClient';
 import { Address, Coordinates, PublicSettings, Vendor } from '../types';
-import { calculateDistanceInKm, estimateDeliveryMinutes } from '../utils';
+import { calculateDeliveryEstimate, calculateDistanceInKm, estimateDeliveryMinutes } from '../utils';
 import { useLanguageContext } from './LanguageContext';
 import { useToastContext } from './ToastContext';
 
@@ -13,6 +13,8 @@ export interface LocationContextType {
   currentAddress: Address | null;
   setCurrentAddress: (addr: Address) => void;
   addNewAddress: (addr: Partial<Address>) => Promise<void>;
+  deleteAddress: (id: string) => Promise<void>;
+  updateExistingAddress: (id: string, addr: Partial<Address>) => Promise<void>;
   refreshAddresses: () => Promise<void>;
   currentCoordinates: Coordinates;
   setCurrentCoordinates: (coords: Coordinates) => void;
@@ -113,6 +115,47 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     [currentAddress, setCurrentAddress, showToast, t]
   );
 
+  const deleteAddress = useCallback(
+    async (id: string) => {
+      try {
+        await addressService.deleteAddress(id);
+        setAddresses((prev) => prev.filter((a) => a.id !== id));
+        if (currentAddress?.id === id) {
+          const remaining = addresses.filter((a) => a.id !== id);
+          if (remaining.length > 0) {
+            setCurrentAddress(remaining[0]);
+          } else {
+            setCurrentAddressState(null);
+          }
+        }
+        showToast('Address deleted successfully', 'success');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Could not delete address';
+        showToast(msg, 'error');
+        throw err;
+      }
+    },
+    [addresses, currentAddress?.id, setCurrentAddress, showToast]
+  );
+
+  const updateExistingAddress = useCallback(
+    async (id: string, addr: Partial<Address>) => {
+      try {
+        const updated = await addressService.updateAddress(id, addr);
+        setAddresses((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        if (currentAddress?.id === id) {
+          setCurrentAddress(updated);
+        }
+        showToast('Address updated successfully', 'success');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Could not update address';
+        showToast(msg, 'error');
+        throw err;
+      }
+    },
+    [currentAddress?.id, setCurrentAddress, showToast]
+  );
+
   const getDistanceToVendor = useCallback(
     (vendorIdOrProduct: string | { id?: string; vendor?: { id: string } }) => {
       let vId = '';
@@ -141,13 +184,11 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         : 1.0;
       const roundedDist = Math.max(0.2, dist);
       const kmUnit = language === 'ne' ? 'कि.मि.' : 'km';
-      const minsUnit = language === 'ne' ? 'मिनेट' : 'mins';
       const distanceText = `${roundedDist.toFixed(1)} ${kmUnit}`;
 
-      const estMins = estimateDeliveryMinutes(roundedDist, baseMins);
-      const etaText = `${estMins}-${estMins + 3} ${minsUnit}`;
+      const { estimatedMinutes, etaText } = calculateDeliveryEstimate(roundedDist, baseMins, language);
 
-      return { distanceKm: roundedDist, distanceText, etaText };
+      return { distanceKm: roundedDist, distanceText, etaText, estimatedMinutes };
     },
     [currentCoordinates, language, vendors, publicSettings]
   );
@@ -191,6 +232,8 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         currentAddress,
         setCurrentAddress,
         addNewAddress,
+        deleteAddress,
+        updateExistingAddress,
         refreshAddresses,
         currentCoordinates,
         setCurrentCoordinates,

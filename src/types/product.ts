@@ -77,6 +77,14 @@ export interface Advertisement {
   title_ne?: string;
   subtitle: string;
   subtitle_ne?: string;
+  brand_name?: string;
+  brand_logo?: string;
+  offer_text?: string;
+  offer_text_ne?: string;
+  badge?: string;
+  badge_ne?: string;
+  cta_text?: string;
+  cta_text_ne?: string;
   image_url: string;
   destination_url: string;
   placement: string;
@@ -95,4 +103,15 @@ export interface ReviewItem {
   author_name: string;
   is_verified_purchase: boolean;
   created_at: string;
+}
+
+export interface HeroBanner {
+  id: number;
+  image: string;
+  image_url: string;
+  target_url: string;
+  alt_text: string;
+  display_order: number;
+  is_active: boolean;
+  created_at?: string;
 }

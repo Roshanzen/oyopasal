@@ -8,12 +8,20 @@ from .views import (
     ActiveCouponsListView,
     CouponApplyView,
     CouponRemoveView,
+    HeroBannerPublicListView,
+    AdminHeroBannerListCreateView,
+    AdminHeroBannerDetailView,
+    AdminHeroBannerReorderView,
 )
 
 app_name = 'promotions'
 
 urlpatterns = [
     path('', PublicPromotionListView.as_view(), name='public_promotions'),
+    path('hero-banners/', HeroBannerPublicListView.as_view(), name='public_hero_banners'),
+    path('admin/hero-banners/', AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_list'),
+    path('admin/hero-banners/<int:pk>/', AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail'),
+    path('admin/hero-banners/reorder/', AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder'),
     path('advertisements/', PublicAdvertisementListView.as_view(), name='public_advertisements'),
     path('advertisements/<str:id>/click/', AdvertisementClickView.as_view(), name='advertisement_click'),
     path('coupons/active/', ActiveCouponsListView.as_view(), name='active_coupons'),

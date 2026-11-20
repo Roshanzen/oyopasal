@@ -20,11 +20,11 @@ urlpatterns = [
     path('', CustomerOrderListCreateView.as_view(), name='orders_list_create'),
     path('checkout/', CustomerCheckoutView.as_view(), name='checkout'),
     path('my-orders/', CustomerOrderListView.as_view(), name='customer_order_list'),
-    path('my-orders/<uuid:id>/', CustomerOrderDetailView.as_view(), name='customer_order_detail'),
-    path('<uuid:id>/', CustomerOrderDetailView.as_view(), name='order_detail'),
-    path('<uuid:id>/cancel/', CustomerOrderCancelView.as_view(), name='order_cancel'),
-    path('<uuid:id>/reorder/', CustomerOrderReorderView.as_view(), name='order_reorder'),
-    path('<uuid:id>/refund/', CustomerOrderRefundView.as_view(), name='order_refund'),
+    path('my-orders/<str:id>/', CustomerOrderDetailView.as_view(), name='customer_order_detail'),
+    path('<str:id>/', CustomerOrderDetailView.as_view(), name='order_detail'),
+    path('<str:id>/cancel/', CustomerOrderCancelView.as_view(), name='order_cancel'),
+    path('<str:id>/reorder/', CustomerOrderReorderView.as_view(), name='order_reorder'),
+    path('<str:id>/refund/', CustomerOrderRefundView.as_view(), name='order_refund'),
 
     # Vendor Fulfillment Sub-Orders (supporting both slashed and hyphenated paths)
     path('vendor/suborders/', VendorSubOrderListView.as_view(), name='vendor_suborder_list'),

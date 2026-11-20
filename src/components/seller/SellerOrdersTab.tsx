@@ -1,7 +1,8 @@
-import React from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, Navigation, RefreshCw } from 'lucide-react';
 import { translateOrderStatus, TranslatorFn } from '../../i18n';
 import { Language, SellerFulfillmentItem } from '../../types';
+import SellerOrderTrackingModal from './SellerOrderTrackingModal';
 
 interface SellerOrdersTabProps {
   vendorName: string;
@@ -10,14 +11,14 @@ interface SellerOrdersTabProps {
   ordersError: string | null;
   orderStatusFilter: 'all' | 'pending' | 'packed' | 'dispatched';
   setOrderStatusFilter: (f: 'all' | 'pending' | 'packed' | 'dispatched') => void;
-  updatingOrderId: number | null;
+  updatingOrderId: string | number | null;
   language: Language;
   formatPrice: (n: number) => string;
   t: TranslatorFn;
   onRefresh: () => void;
   onSwitchStore: () => void;
   onUpdateStatus: (
-    fulfillmentId: number,
+    fulfillmentId: string | number,
     nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED'
   ) => void;
 }
@@ -37,36 +38,42 @@ export default function SellerOrdersTab({
   onSwitchStore,
   onUpdateStatus,
 }: SellerOrdersTabProps) {
+  const [trackingFulfillment, setTrackingFulfillment] = useState<SellerFulfillmentItem | null>(null);
+
   const filterOptions: { id: 'all' | 'pending' | 'packed' | 'dispatched'; label: string }[] = [
     { id: 'all', label: language === 'ne' ? `सबै (${sellerOrders.length})` : `All Orders (${sellerOrders.length})` },
     {
       id: 'pending',
       label:
         language === 'ne'
-          ? `नयाँ / बाँकी (${sellerOrders.filter((o) => ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(o.status)).length})`
-          : `New / Pending (${sellerOrders.filter((o) => ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(o.status)).length})`,
+          ? `नयाँ / बाँकी (${sellerOrders.filter((o) => ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED', 'PENDING', 'PROCESSING'].includes(o.status)).length})`
+          : `New / Pending (${sellerOrders.filter((o) => ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED', 'PENDING', 'PROCESSING'].includes(o.status)).length})`,
     },
     {
       id: 'packed',
       label:
         language === 'ne'
-          ? `प्याक तयार (${sellerOrders.filter((o) => ['PACKED_BY_VENDOR', 'READY_FOR_RIDER_PICKUP'].includes(o.status)).length})`
-          : `Packed & Ready (${sellerOrders.filter((o) => ['PACKED_BY_VENDOR', 'READY_FOR_RIDER_PICKUP'].includes(o.status)).length})`,
+          ? `प्याक तयार (${sellerOrders.filter((o) => ['PACKED_BY_VENDOR', 'PACKED', 'READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'].includes(o.status)).length})`
+          : `Packed & Ready (${sellerOrders.filter((o) => ['PACKED_BY_VENDOR', 'PACKED', 'READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'].includes(o.status)).length})`,
     },
     {
       id: 'dispatched',
       label:
         language === 'ne'
-          ? `पठाइएको / सम्पन्न (${sellerOrders.filter((o) => ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(o.status)).length})`
-          : `Dispatched / Done (${sellerOrders.filter((o) => ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(o.status)).length})`,
+          ? `पठाइएको / सम्पन्न (${sellerOrders.filter((o) => ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'SHIPPED', 'CANCELLED', 'REJECTED'].includes(o.status)).length})`
+          : `Dispatched / Done (${sellerOrders.filter((o) => ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'SHIPPED', 'CANCELLED', 'REJECTED'].includes(o.status)).length})`,
     },
   ];
 
   const filteredOrders = sellerOrders.filter((ord) => {
-    if (orderStatusFilter === 'pending') return ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(ord.status);
-    if (orderStatusFilter === 'packed') return ['PACKED_BY_VENDOR', 'READY_FOR_RIDER_PICKUP'].includes(ord.status);
+    if (orderStatusFilter === 'pending') {
+      return ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED', 'PENDING', 'PROCESSING'].includes(ord.status);
+    }
+    if (orderStatusFilter === 'packed') {
+      return ['PACKED_BY_VENDOR', 'PACKED', 'READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'].includes(ord.status);
+    }
     if (orderStatusFilter === 'dispatched') {
-      return ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(ord.status);
+      return ['RIDER_ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'SHIPPED', 'CANCELLED', 'REJECTED'].includes(ord.status);
     }
     return true;
   });
@@ -210,7 +217,7 @@ export default function SellerOrdersTab({
                     </button>
                   </>
                 )}
-                {['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(ord.status) && (
+                {['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED'].includes(ord.status) && (
                   <button
                     disabled={updatingOrderId === ord.fulfillment_id}
                     onClick={() => onUpdateStatus(ord.fulfillment_id, 'PACKED_BY_VENDOR')}
@@ -219,7 +226,7 @@ export default function SellerOrdersTab({
                     {language === 'ne' ? 'प्याक तयार' : 'Mark Packed'}
                   </button>
                 )}
-                {ord.status === 'PACKED_BY_VENDOR' && (
+                {['PACKED_BY_VENDOR', 'PACKED'].includes(ord.status) && (
                   <button
                     disabled={updatingOrderId === ord.fulfillment_id}
                     onClick={() => onUpdateStatus(ord.fulfillment_id, 'READY_FOR_RIDER_PICKUP')}
@@ -228,10 +235,31 @@ export default function SellerOrdersTab({
                     {language === 'ne' ? 'राइडर पिकअपको लागि तयार' : 'Ready for Rider Pickup'}
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setTrackingFulfillment(ord)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="View Live GPS Tracking"
+                >
+                  <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{language === 'ne' ? 'लाइभ ट्र्याकिङ' : 'Live Tracking'}</span>
+                </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {trackingFulfillment && (
+        <SellerOrderTrackingModal
+          fulfillment={trackingFulfillment}
+          vendorName={vendorName}
+          language={language}
+          formatPrice={formatPrice}
+          onClose={() => setTrackingFulfillment(null)}
+          onUpdateStatus={onUpdateStatus}
+          updatingOrderId={updatingOrderId}
+        />
       )}
     </div>
   );

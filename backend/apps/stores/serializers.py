@@ -20,6 +20,67 @@ class StoreDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'slug', 'is_verified', 'vendor_id', 'vendor_name', 'vendor_slug', 'kyc_status', 'created_at']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        vendor = instance.vendor
+        vendor_status = getattr(vendor, 'status', 'PENDING') if vendor else 'PENDING'
+        is_approved = bool(instance.is_verified) or (str(vendor_status).upper() == 'APPROVED')
+        effective_status = 'APPROVED' if is_approved else str(vendor_status).upper()
+        data['is_approved'] = is_approved
+        data['is_verified'] = is_approved
+        data['verified'] = is_approved
+        data['status'] = effective_status
+        data['kyc_status'] = effective_status
+        data['approval_status'] = 'approved' if is_approved else effective_status.lower()
+
+        # Additional storefront attributes
+        avg_rating = 4.8
+        if vendor:
+            try:
+                from apps.reviews.models import ProductReview
+                from django.db.models import Avg
+                agg = ProductReview.objects.filter(product__vendor=vendor).aggregate(avg=Avg('rating'))
+                if agg.get('avg'):
+                    avg_rating = round(float(agg['avg']), 1)
+            except Exception:
+                pass
+
+        data['rating'] = avg_rating
+        data['delivery_time_mins'] = '10-15 mins'
+        data['open_time'] = '06:00'
+        data['close_time'] = '21:00'
+        data['is_open'] = instance.is_active
+        data['fulfillment_modes'] = 'Store Pickup & Delivery'
+
+        # Gallery photos
+        gallery = []
+        if instance.banner_url:
+            gallery.append(instance.banner_url)
+        if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
+            gallery.append(vendor.banner_url)
+        if instance.logo_url and instance.logo_url not in gallery:
+            gallery.append(instance.logo_url)
+        if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
+            gallery.append(vendor.logo_url)
+
+        # Include sample product images for the gallery if fewer than 3
+        if vendor and len(gallery) < 4:
+            try:
+                from apps.catalogue.models import ProductImage
+                prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
+                for p_url in prod_imgs:
+                    if p_url and p_url not in gallery:
+                        gallery.append(p_url)
+            except Exception:
+                pass
+
+        data['gallery'] = gallery
+        data['address'] = instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
+        data['phone'] = instance.contact_phone or (vendor.user.phone_number if vendor and hasattr(vendor, 'user') else '') or '+977-1-5544332'
+        data['email'] = instance.contact_email or (vendor.user.email if vendor and hasattr(vendor, 'user') else '') or 'store@oyopasal.com'
+        data['description'] = instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
+        return data
+
 
 class StoreListSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source='vendor.business_name', read_only=True)
@@ -33,6 +94,67 @@ class StoreListSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description', 'logo_url', 'banner_url', 'logo', 'banner',
             'vendor_name', 'is_active', 'is_verified', 'kyc_status'
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        vendor = instance.vendor
+        vendor_status = getattr(vendor, 'status', 'PENDING') if vendor else 'PENDING'
+        is_approved = bool(instance.is_verified) or (str(vendor_status).upper() == 'APPROVED')
+        effective_status = 'APPROVED' if is_approved else str(vendor_status).upper()
+        data['is_approved'] = is_approved
+        data['is_verified'] = is_approved
+        data['verified'] = is_approved
+        data['status'] = effective_status
+        data['kyc_status'] = effective_status
+        data['approval_status'] = 'approved' if is_approved else effective_status.lower()
+
+        # Additional storefront attributes
+        avg_rating = 4.8
+        if vendor:
+            try:
+                from apps.reviews.models import ProductReview
+                from django.db.models import Avg
+                agg = ProductReview.objects.filter(product__vendor=vendor).aggregate(avg=Avg('rating'))
+                if agg.get('avg'):
+                    avg_rating = round(float(agg['avg']), 1)
+            except Exception:
+                pass
+
+        data['rating'] = avg_rating
+        data['delivery_time_mins'] = '10-15 mins'
+        data['open_time'] = '06:00'
+        data['close_time'] = '21:00'
+        data['is_open'] = instance.is_active
+        data['fulfillment_modes'] = 'Store Pickup & Delivery'
+
+        # Gallery photos
+        gallery = []
+        if instance.banner_url:
+            gallery.append(instance.banner_url)
+        if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
+            gallery.append(vendor.banner_url)
+        if instance.logo_url and instance.logo_url not in gallery:
+            gallery.append(instance.logo_url)
+        if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
+            gallery.append(vendor.logo_url)
+
+        # Include sample product images for the gallery if fewer than 3
+        if vendor and len(gallery) < 4:
+            try:
+                from apps.catalogue.models import ProductImage
+                prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
+                for p_url in prod_imgs:
+                    if p_url and p_url not in gallery:
+                        gallery.append(p_url)
+            except Exception:
+                pass
+
+        data['gallery'] = gallery
+        data['address'] = instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
+        data['phone'] = instance.contact_phone or (vendor.user.phone_number if vendor and hasattr(vendor, 'user') else '') or '+977-1-5544332'
+        data['email'] = instance.contact_email or (vendor.user.email if vendor and hasattr(vendor, 'user') else '') or 'store@oyopasal.com'
+        data['description'] = instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
+        return data
 
 
 class StoreCreateUpdateSerializer(serializers.ModelSerializer):

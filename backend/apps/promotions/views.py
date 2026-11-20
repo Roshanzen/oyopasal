@@ -1,17 +1,22 @@
 from decimal import Decimal
+import base64
+import uuid
+from django.core.files.base import ContentFile
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 from apps.common.permissions import IsSuperAdmin
-from .models import Coupon, MarketingPromotion, Advertisement
+from .models import Coupon, MarketingPromotion, Advertisement, HeroBanner
 from .serializers import (
     CouponSerializer,
     CouponValidateSerializer,
     CouponValidationResultSerializer,
     MarketingPromotionSerializer,
     AdvertisementSerializer,
+    HeroBannerSerializer,
 )
 
 DEFAULT_PROMOTIONS = [
@@ -91,8 +96,74 @@ DEFAULT_PROMOTIONS = [
 
 DEFAULT_ADVERTISEMENTS = [
     {
-        "id": "ad-1",
+        "id": "ad-techzone",
         "db_id": 1,
+        "title": "TechZone Nepal Electronics",
+        "title_ne": "टेकजोन नेपाल इलेक्ट्रोनिक्स",
+        "subtitle": "GaN Fast Chargers & Mechanical Keyboards with Local Warranty",
+        "subtitle_ne": "फास्ट चार्जर र स्मार्ट ग्याजेटमा १ वर्षको स्थानीय वारेन्टी",
+        "offer_text": "Up to 25% OFF",
+        "offer_text_ne": "२५% सम्म छुट",
+        "brand_name": "TechZone Nepal",
+        "brand_logo": "",
+        "image_url": "/src/assets/images/vendor_bakery_dairy_1794407355670.jpg",
+        "destination_url": "/search?vendor=6fd88df8-bd73-42ff-b2be-5e58e7ccf757",
+        "placement": "homepage_top",
+        "cta_text": "Explore Collection",
+        "cta_text_ne": "सामग्री हेर्नुहोस्",
+        "badge": "Sponsored Brand",
+        "badge_ne": "प्रायोजित ब्रान्ड",
+        "priority": 1,
+        "is_active": True,
+        "clicks_count": 58
+    },
+    {
+        "id": "ad-honey",
+        "db_id": 2,
+        "title": "Himalayan Organic Honey Store",
+        "title_ne": "हिमालयन अर्गानिक मह पसल",
+        "subtitle": "100% Raw Wild Forest Honey & Mountain Herbs",
+        "subtitle_ne": "१००% शुद्ध जंगली मह र अर्गानिक हिमाली जडीबुटी",
+        "offer_text": "Flat 15% OFF · Farm Direct",
+        "offer_text_ne": "१५% छुट · सिधै फार्मबाट",
+        "brand_name": "Himalayan Organic",
+        "brand_logo": "",
+        "image_url": "/src/assets/images/hero_groceries_fresh_1794407355931.jpg",
+        "destination_url": "/search?vendor=7b757f41-7abf-49b3-9f1c-3b617540096a",
+        "placement": "homepage_top",
+        "cta_text": "Shop Now",
+        "cta_text_ne": "अहिले किन्नुहोस्",
+        "badge": "Featured Merchant",
+        "badge_ne": "विशेष विक्रेता",
+        "priority": 2,
+        "is_active": True,
+        "clicks_count": 46
+    },
+    {
+        "id": "ad-handicrafts",
+        "db_id": 3,
+        "title": "Himalayan Handicrafts & Pashmina",
+        "title_ne": "हिमालयन हस्तकला र पश्मिना",
+        "subtitle": "Authentic Handwoven Cashmere & Patan Brass Singing Bowls",
+        "subtitle_ne": "पाटनका कारीगरद्वारा निर्मित हस्तकला र शुद्ध पश्मिना",
+        "offer_text": "Artisan Heritage · Free Delivery",
+        "offer_text_ne": "कारीगरी सम्पदा · निःशुल्क डेलिभरी",
+        "brand_name": "Himalayan Handicrafts",
+        "brand_logo": "",
+        "image_url": "/src/assets/images/promo_snacks_drinks_1794407356711.jpg",
+        "destination_url": "/search?vendor=0665ec16-0b83-44ed-a086-98e53e8ac3a3",
+        "placement": "homepage_top",
+        "cta_text": "Explore Collection",
+        "cta_text_ne": "संग्रह हेर्नुहोस्",
+        "badge": "Sponsored Store",
+        "badge_ne": "प्रायोजित पसल",
+        "priority": 3,
+        "is_active": True,
+        "clicks_count": 39
+    },
+    {
+        "id": "ad-1",
+        "db_id": 4,
         "title": "Fast 10-Minute Delivery Guarantee",
         "title_ne": "१० मिनेट डेलिभरी ग्यारेन्टी",
         "subtitle": "Kathmandu Valley's fastest hyperlocal grocery dispatch",
@@ -100,13 +171,13 @@ DEFAULT_ADVERTISEMENTS = [
         "image_url": "/src/assets/images/promo_fresh_produce_1794407354982.jpg",
         "destination_url": "/category/fruits-vegetables",
         "placement": "sidebar",
-        "priority": 1,
+        "priority": 4,
         "is_active": True,
         "clicks_count": 42
     },
     {
         "id": "ad-2",
-        "db_id": 2,
+        "db_id": 5,
         "title": "0% Commission for Local Sellers",
         "title_ne": "स्थानीय विक्रेतालाई ०% कमिसन",
         "subtitle": "Join 450+ Kathmandu valley vendors today",
@@ -114,7 +185,7 @@ DEFAULT_ADVERTISEMENTS = [
         "image_url": "/src/assets/images/vendor_bakery_dairy_1794407355670.jpg",
         "destination_url": "/seller",
         "placement": "sidebar",
-        "priority": 2,
+        "priority": 5,
         "is_active": True,
         "clicks_count": 28
     }
@@ -389,5 +460,188 @@ class CouponRemoveView(APIView):
             'success': True,
             'cart': cart_data
         }, status=status.HTTP_200_OK)
+
+
+def get_image_file_from_request(request):
+    """Extract uploaded image file from request.FILES or base64 data_url."""
+    if 'image' in request.FILES:
+        return request.FILES['image']
+    data_url = request.data.get('data_url') or request.data.get('image')
+    if isinstance(data_url, str) and data_url.startswith('data:'):
+        try:
+            format_part, img_str = data_url.split(';base64,')
+            ext = format_part.split('/')[-1]
+            if ext == 'jpeg':
+                ext = 'jpg'
+            filename = request.data.get('filename') or f"hero_{uuid.uuid4().hex[:10]}.{ext}"
+            return ContentFile(base64.b64decode(img_str), name=filename)
+        except Exception:
+            pass
+    return None
+
+
+class HeroBannerPublicListView(APIView):
+    """
+    Public GET /api/hero-banners/
+    Returns all active hero banners sorted by display_order ascending and -created_at descending.
+    Each item contains an absolute image_url path.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        banners = HeroBanner.objects.filter(is_active=True).order_by('display_order', '-created_at')
+        serializer = HeroBannerSerializer(banners, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AdminHeroBannerListCreateView(APIView):
+    """
+    Admin GET & POST /api/admin/hero-banners/
+    Supports listing all banners and uploading new hero banners via multipart or base64.
+    """
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        banners = HeroBanner.objects.all().order_by('display_order', '-created_at')
+        serializer = HeroBannerSerializer(banners, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        image_file = get_image_file_from_request(request)
+        if not image_file:
+            return Response({'error': 'Image file is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_url = (request.data.get('target_url') or '/').strip() or '/'
+        alt_text = (request.data.get('alt_text') or 'OyoPasal Promotional Banner').strip() or 'OyoPasal Promotional Banner'
+        try:
+            display_order = int(request.data.get('display_order', 0))
+        except (ValueError, TypeError):
+            display_order = 0
+
+        is_active_val = request.data.get('is_active', True)
+        if isinstance(is_active_val, str):
+            is_active = is_active_val.lower() not in ('false', '0', 'no')
+        else:
+            is_active = bool(is_active_val)
+
+        banner = HeroBanner.objects.create(
+            image=image_file,
+            target_url=target_url,
+            alt_text=alt_text,
+            display_order=display_order,
+            is_active=is_active
+        )
+        serializer = HeroBannerSerializer(banner, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdminHeroBannerDetailView(APIView):
+    """
+    Admin GET, PATCH, PUT, DELETE /api/admin/hero-banners/<int:pk>/
+    """
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_object(self, pk):
+        try:
+            return HeroBanner.objects.get(pk=pk)
+        except HeroBanner.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        banner = self.get_object(pk)
+        if not banner:
+            return Response({'error': 'Banner not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = HeroBannerSerializer(banner, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        banner = self.get_object(pk)
+        if not banner:
+            return Response({'error': 'Banner not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'target_url' in request.data:
+            banner.target_url = (request.data.get('target_url') or '/').strip() or '/'
+        if 'alt_text' in request.data:
+            banner.alt_text = (request.data.get('alt_text') or 'OyoPasal Promotional Banner').strip()
+        if 'display_order' in request.data:
+            try:
+                banner.display_order = int(request.data['display_order'])
+            except (ValueError, TypeError):
+                pass
+        if 'is_active' in request.data:
+            val = request.data['is_active']
+            if isinstance(val, str):
+                banner.is_active = val.lower() not in ('false', '0', 'no')
+            else:
+                banner.is_active = bool(val)
+
+        new_image = get_image_file_from_request(request)
+        if new_image:
+            banner.image = new_image
+
+        banner.save()
+        serializer = HeroBannerSerializer(banner, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        return self.patch(request, pk)
+
+    def delete(self, request, pk):
+        banner = self.get_object(pk)
+        if not banner:
+            return Response({'error': 'Banner not found.'}, status=status.HTTP_404_NOT_FOUND)
+        banner.delete()
+        return Response({'success': True, 'message': 'Banner deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+class AdminHeroBannerReorderView(APIView):
+    """
+    POST /api/admin/hero-banners/reorder/
+    Supports { banner_id: int, direction: 'up' | 'down' } or { order_ids: [id1, id2, ...] }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        banner_id = request.data.get('banner_id')
+        direction = request.data.get('direction')
+        if banner_id and direction in ('up', 'down'):
+            banners = list(HeroBanner.objects.all().order_by('display_order', '-created_at'))
+            idx = next((i for i, b in enumerate(banners) if b.id == int(banner_id)), None)
+            if idx is not None:
+                swap_idx = idx - 1 if direction == 'up' else idx + 1
+                if 0 <= swap_idx < len(banners):
+                    # Ensure distinctive display orders
+                    current = banners[idx]
+                    target = banners[swap_idx]
+                    if current.display_order == target.display_order:
+                        for i, b in enumerate(banners):
+                            b.display_order = i * 10
+                            b.save(update_fields=['display_order'])
+                        current.refresh_from_db()
+                        target.refresh_from_db()
+
+                    current_order = current.display_order
+                    target_order = target.display_order
+                    current.display_order = target_order
+                    target.display_order = current_order
+                    current.save(update_fields=['display_order'])
+                    target.save(update_fields=['display_order'])
+
+            banners = HeroBanner.objects.all().order_by('display_order', '-created_at')
+            serializer = HeroBannerSerializer(banners, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        order_ids = request.data.get('order_ids')
+        if isinstance(order_ids, list):
+            for i, b_id in enumerate(order_ids):
+                HeroBanner.objects.filter(pk=b_id).update(display_order=i)
+            banners = HeroBanner.objects.all().order_by('display_order', '-created_at')
+            serializer = HeroBannerSerializer(banners, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response({'error': 'Invalid reorder parameters.'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 

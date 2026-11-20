@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context';
 import { sellerService } from '../../services';
@@ -15,9 +15,11 @@ import {
   LogOut,
   BarChart3,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Navigation,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import SellerOrderTrackingModal from '../seller/SellerOrderTrackingModal';
 
 export default function SellerDashboardModal() {
   const navigate = useNavigate();
@@ -38,44 +40,107 @@ export default function SellerDashboardModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storeOnline, setStoreOnline] = useState(true);
-  const [packingId, setPackingId] = useState<number | null>(null);
+  const [packingId, setPackingId] = useState<string | number | null>(null);
+  const [trackingFulfillment, setTrackingFulfillment] = useState<SellerFulfillmentItem | null>(null);
+
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
-    if (!currentSeller) return;
+    if (!currentSeller || isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const [data, ordersRes] = await Promise.all([
-        sellerService.getSellerDashboard(currentSeller.id),
-        sellerService.getSellerOrders(currentSeller.id)
+      const [dataRes, ordersRes] = await Promise.allSettled([
+        sellerService.getSellerDashboard(currentSeller.id, { signal: controller.signal }),
+        sellerService.getSellerOrders(currentSeller.id, { signal: controller.signal })
       ]);
-      setDashboardData(data);
-      if (data?.vendor && typeof data.vendor.is_online === 'boolean') {
-        setStoreOnline(data.vendor.is_online);
+
+      if (controller.signal.aborted) return;
+
+      if (dataRes.status === 'fulfilled') {
+        const data = dataRes.value;
+        setDashboardData(data);
+        if (data?.vendor && typeof data.vendor.is_online === 'boolean') {
+          setStoreOnline(data.vendor.is_online);
+        }
       }
-      setAllOrders(ordersRes.results || []);
+
+      if (ordersRes.status === 'fulfilled') {
+        setAllOrders(ordersRes.value.results || []);
+      }
+
+      if (dataRes.status === 'rejected' && ordersRes.status === 'rejected') {
+        const reason = dataRes.reason;
+        if (reason?.name !== 'AbortError') {
+          setError(reason instanceof Error ? reason.message : 'Could not load store orders');
+        }
+      }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : 'Could not load store orders';
       setError(msg);
       console.error(err);
     } finally {
+      isFetchingRef.current = false;
       if (!silent) setLoading(false);
     }
   }, [currentSeller]);
 
   useEffect(() => {
-    if (!sellerDashboardModalOpen || !currentSeller) return;
+    if (!sellerDashboardModalOpen || !currentSeller) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      return;
+    }
+
     loadData();
-    const interval = window.setInterval(() => {
-      loadData(true);
-    }, 12000);
-    return () => window.clearInterval(interval);
+
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
+
+    const pollLoop = async () => {
+      if (isCancelled) return;
+      if (document.visibilityState === 'visible') {
+        await loadData(true);
+      }
+      if (!isCancelled) {
+        timerId = setTimeout(pollLoop, 15000);
+      }
+    };
+
+    timerId = setTimeout(pollLoop, 15000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      isCancelled = true;
+      if (timerId) clearTimeout(timerId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [sellerDashboardModalOpen, currentSeller, loadData]);
 
   if (!sellerDashboardModalOpen || !currentSeller) return null;
 
   const activeOrders = allOrders.filter((o) =>
-    ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(o.status)
+    ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED', 'PENDING', 'PROCESSING'].includes(o.status)
   );
   const displayedOrders = orderTab === 'active' ? activeOrders : allOrders;
 
@@ -328,16 +393,27 @@ export default function SellerDashboardModal() {
                         </p>
                       </div>
 
-                      {['ORDER_PLACED', 'CONFIRMED_BY_VENDOR'].includes(ord.status) && (
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
-                          disabled={packingId === ord.fulfillment_id}
-                          onClick={() => handleMarkPacked(ord)}
-                          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
+                          type="button"
+                          onClick={() => setTrackingFulfillment(ord)}
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                          title="Live Tracking"
                         >
-                          <CheckCircle2 className="w-4 h-4 stroke-2.5" />
-                          <span>{t('sdash.handedRider')}</span>
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>{language === 'ne' ? 'ट्र्याकिङ' : 'Live Tracking'}</span>
                         </button>
-                      )}
+                        {['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED', 'PENDING'].includes(ord.status) && (
+                          <button
+                            disabled={packingId === ord.fulfillment_id}
+                            onClick={() => handleMarkPacked(ord)}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 stroke-2.5" />
+                            <span>{t('sdash.handedRider')}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -428,6 +504,20 @@ export default function SellerDashboardModal() {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {trackingFulfillment && currentSeller && (
+        <SellerOrderTrackingModal
+          fulfillment={trackingFulfillment}
+          vendorName={currentSeller.name}
+          language={language}
+          formatPrice={formatPrice}
+          onClose={() => setTrackingFulfillment(null)}
+          onUpdateStatus={async (fId, nextStatus) => {
+            await handleMarkPacked(trackingFulfillment);
+          }}
+          updatingOrderId={packingId}
+        />
       )}
     </AnimatePresence>
   );

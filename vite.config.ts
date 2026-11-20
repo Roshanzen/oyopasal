@@ -8,13 +8,25 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
+    },
+    optimizeDeps: {
+      include: ['motion/react', 'framer-motion', 'leaflet', 'lucide-react', 'react', 'react-dom', 'react-router-dom'],
     },
     server: {
       port: 3000,
       proxy: {
         '/api': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+          ws: true,
+        },
+        '/uploads': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
+        '/media': {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
         },

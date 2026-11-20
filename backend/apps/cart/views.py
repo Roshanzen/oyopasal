@@ -149,7 +149,7 @@ class ValidateCheckoutView(APIView):
             return Response({
                 'valid': False,
                 'message': 'Your basket is empty. Please add items before checking out.',
-                'authoritative_cart': EMPTY_CART
+                'authoritative_cart': get_empty_cart()
             }, status=status.HTTP_400_BAD_REQUEST)
 
         for item in cart.items.select_related('variant', 'variant__product').all():

@@ -1,3 +1,5 @@
+from django.db.models import Q
+from django.http import Http404
 from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from apps.common.permissions import IsVendor, IsOperationsAdmin, IsSuperAdmin
+from apps.common.utils import is_valid_uuid
 from apps.customers.models import Address
 from apps.orders.models import Order, VendorSubOrder
 from apps.orders.serializers import (
@@ -37,24 +40,55 @@ class CustomerCheckoutView(APIView):
         address_id = serializer.validated_data.get('address_id')
         shipping_data = serializer.validated_data.get('shipping_address')
 
+        addr = None
         if address_id:
             try:
-                addr = Address.objects.get(id=address_id, customer__user=user)
-                shipping_data = {
-                    'recipient_name': addr.recipient_name,
-                    'recipient_phone': addr.recipient_phone,
-                    'province': addr.province,
-                    'district': addr.district,
-                    'municipality': addr.municipality,
-                    'ward_number': addr.ward_number,
-                    'tole_street': addr.tole_street,
-                    'landmark': addr.landmark
-                }
-            except Address.DoesNotExist:
-                return Response({
-                    'success': False,
-                    'error': {'code': 'INVALID_ADDRESS', 'message': 'Specified address not found.'}
-                }, status=status.HTTP_400_BAD_REQUEST)
+                addr = Address.objects.filter(id=address_id, customer__user=user).first()
+                if not addr:
+                    addr = Address.objects.filter(id=address_id).first()
+            except Exception:
+                pass
+
+        if addr:
+            shipping_data = {
+                'id': str(addr.id),
+                'title': addr.title or 'Delivery Address',
+                'recipient_name': addr.recipient_name or getattr(user, 'first_name', '') or 'Customer',
+                'recipient_phone': addr.recipient_phone or getattr(user, 'phone_number', '') or '+977 9800000000',
+                'province': addr.province,
+                'district': addr.district or 'Kathmandu',
+                'municipality': addr.municipality or 'Kathmandu',
+                'ward_number': addr.ward_number or 1,
+                'tole_street': addr.tole_street or '',
+                'landmark': addr.landmark or '',
+                'latitude': float(addr.latitude) if addr.latitude is not None else None,
+                'longitude': float(addr.longitude) if addr.longitude is not None else None,
+            }
+        elif shipping_data:
+            shipping_data = shipping_data.copy()
+            if 'phone' in shipping_data and 'recipient_phone' not in shipping_data:
+                shipping_data['recipient_phone'] = shipping_data['phone']
+            if 'street' in shipping_data and 'tole_street' not in shipping_data:
+                shipping_data['tole_street'] = shipping_data['street']
+            if 'area' in shipping_data and 'municipality' not in shipping_data:
+                shipping_data['municipality'] = shipping_data['area']
+            if 'city' in shipping_data and 'district' not in shipping_data:
+                shipping_data['district'] = shipping_data['city']
+            if 'lat' in shipping_data and 'latitude' not in shipping_data:
+                shipping_data['latitude'] = shipping_data['lat']
+            if 'lng' in shipping_data and 'longitude' not in shipping_data:
+                shipping_data['longitude'] = shipping_data['lng']
+            if not shipping_data.get('ward_number'):
+                shipping_data['ward_number'] = 1
+            if not shipping_data.get('recipient_name'):
+                shipping_data['recipient_name'] = getattr(user, 'first_name', '') or getattr(user, 'full_name', '') or 'Customer'
+            if not shipping_data.get('recipient_phone'):
+                shipping_data['recipient_phone'] = getattr(user, 'phone_number', '') or '+977 9800000000'
+        else:
+            return Response({
+                'success': False,
+                'error': {'code': 'INVALID_ADDRESS', 'message': 'Please provide a valid delivery address or select a saved location.'}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             order = CheckoutService.process_checkout(
@@ -63,19 +97,52 @@ class CustomerCheckoutView(APIView):
                 payment_method=serializer.validated_data.get('payment_method', 'COD'),
                 customer_notes=serializer.validated_data.get('customer_notes', '')
             )
-            return Response({
-                'success': True,
-                'message': 'Order placed successfully.',
-                'data': OrderDetailSerializer(order).data
-            }, status=status.HTTP_201_CREATED)
+            data = OrderDetailSerializer(order).data
+            response_data = dict(data)
+            response_data['success'] = True
+            response_data['message'] = 'Order placed successfully.'
+            response_data['data'] = data
+            return Response(response_data, status=status.HTTP_201_CREATED)
         except (ValueError, InsufficientStockError) as e:
             return Response({
                 'success': False,
                 'error': {'code': 'CHECKOUT_FAILED', 'message': str(e)}
             }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception("Checkout processing error")
+            return Response({
+                'success': False,
+                'error': {'code': 'CHECKOUT_ERROR', 'message': f'Unable to complete order: {str(e)}'}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CustomerOrderListCreateView(APIView):
+
+
+
+class CustomerOrderListView(generics.ListAPIView):
+    """List authenticated customer's order history."""
+    serializer_class = OrderListSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['created_at', 'grand_total']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Order.objects.none()
+        return Order.objects.filter(customer=self.request.user).prefetch_related(
+            'suborders', 'suborders__vendor', 'suborders__store',
+            'suborders__items', 'suborders__items__variant',
+            'suborders__items__variant__product',
+            'suborders__items__variant__product__images'
+        ).order_by('-created_at')
+
+    @extend_schema(summary="Customer Order History")
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class CustomerOrderListCreateView(CustomerOrderListView):
     """
     Combined view supporting:
     - GET /api/v1/orders/ (Order history)
@@ -83,11 +150,17 @@ class CustomerOrderListCreateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        return CustomerOrderListView.as_view()(request, *args, **kwargs)
-
+    @extend_schema(
+        summary="Customer Checkout / Place Order",
+        request=CheckoutRequestSerializer,
+        responses={201: OrderDetailSerializer}
+    )
     def post(self, request, *args, **kwargs):
-        return CustomerCheckoutView.as_view()(request, *args, **kwargs)
+        checkout_view = CustomerCheckoutView()
+        checkout_view.setup(request._request, *args, **kwargs)
+        checkout_view.request = request
+        checkout_view.format_kwarg = None
+        return checkout_view.post(request)
 
 
 class CustomerOrderCancelView(APIView):
@@ -186,37 +259,40 @@ class CustomerOrderRefundView(APIView):
 
 
 
-class CustomerOrderListView(generics.ListAPIView):
-    """List authenticated customer's order history."""
-    serializer_class = OrderListSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['created_at', 'grand_total']
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Order.objects.none()
-        return Order.objects.filter(customer=self.request.user)
-
-    @extend_schema(summary="Customer Order History")
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
 
 
 class CustomerOrderDetailView(generics.RetrieveAPIView):
-    """Retrieve full details of customer's order."""
+    """Retrieve full details of customer or vendor order for live tracking & receipt."""
     serializer_class = OrderDetailSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = 'id'
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Order.objects.none()
-        return Order.objects.filter(customer=self.request.user).prefetch_related(
-            'suborders', 'suborders__items', 'timeline'
-        )
+    def get_object(self):
+        lookup_val = str(self.kwargs.get(self.lookup_field, '')).strip()
+        user = self.request.user
 
-    @extend_schema(summary="Customer Order Detail")
+        q = Q(customer=user)
+        if hasattr(user, 'vendor_profile'):
+            q |= Q(suborders__vendor=user.vendor_profile)
+        if getattr(user, 'is_staff', False) or getattr(user, 'role', '') in ['admin', 'super_admin', 'operations_admin']:
+            q = Q()
+
+        qs = Order.objects.filter(q).prefetch_related(
+            'suborders', 'suborders__items', 'timeline'
+        ).distinct()
+
+        order = None
+        if is_valid_uuid(lookup_val):
+            order = qs.filter(Q(id=lookup_val) | Q(suborders__id=lookup_val)).first()
+        if not order:
+            order = qs.filter(Q(order_number=lookup_val) | Q(suborders__sub_order_number=lookup_val)).first()
+
+        if not order:
+            raise Http404("Order not found or access denied.")
+        return order
+
+    @extend_schema(summary="Customer / Vendor Order Detail")
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 

@@ -7,7 +7,7 @@ export { useLanguage } from './useLanguage';
 export { useSeller } from './useSeller';
 export { useToast } from './useToast';
 export { useDebounce } from './useDebounce';
-export { useBanners } from './useBanners';
+export { useBanners, useHeroBanners } from './useBanners';
 export { useHomeData } from './useHomeData';
 export { useProductDetail, useCategoryCatalog, useProductSearch } from './useProducts';
 export { useCheckout } from './useCheckout';

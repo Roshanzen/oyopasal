@@ -23,6 +23,7 @@ import {
 
 export type AdminTab =
   | 'overview'
+  | 'hero-banners'
   | 'sellers'
   | 'orders'
   | 'products'

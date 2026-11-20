@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Product } from '../../types';
+import { Heart, Share2, ShoppingCart, Sparkles, Star, Store } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useApp } from '../../context';
-import { translateDurationText } from '../../i18n';
-import { Plus, Minus, Heart, Star, Clock, Sparkles, MapPin } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Product } from '../../types';
 
 interface ProductCardProps {
   product: Product;
@@ -13,234 +12,253 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate();
   const {
-    cart,
     addToCart,
-    updateCartQuantity,
     isWishlisted,
     toggleWishlist,
-    getDistanceToVendor,
-    t,
+    showToast,
     formatPrice,
-    language
+    getDistanceToVendor,
   } = useApp();
+
   const [imageError, setImageError] = useState(false);
+
   useEffect(() => {
     setImageError(false);
   }, [product.image_url]);
-  const distanceInfo = getDistanceToVendor(product);
 
-  // Find if this product is in cart
-  const cartItem = cart?.items.find((item) => item.product_id === product.id);
-  const quantityInCart = cartItem ? cartItem.quantity : 0;
   const wishlisted = isWishlisted(product.id);
 
-  const handleIncrement = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (cartItem) {
-      updateCartQuantity(cartItem.id, quantityInCart + 1);
-    } else {
-      addToCart(product.id, 1);
-    }
-  };
+  // Stock check
+  const isOutOfStock =
+    product.stock === 0 ||
+    product.in_stock === false ||
+    (product as unknown as Record<string, unknown>).inStock === false;
 
-  const handleDecrement = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (cartItem) {
-      updateCartQuantity(cartItem.id, quantityInCart - 1);
-    }
-  };
+  // Price & Discount calculation
+  const origPrice = product.original_price || 0;
+  const discPrice = product.discounted_price || product.price || 0;
+  let discountPct = product.discount_percentage || 0;
+  if (!discountPct && origPrice > discPrice && origPrice > 0) {
+    discountPct = Math.round(((origPrice - discPrice) / origPrice) * 100);
+  }
+
+  // Distance computation
+  const distObj = product.vendor
+    ? getDistanceToVendor(product.vendor.id || product.vendor)
+    : { distanceText: '2.4 km', etaText: '14 mins', distanceKm: 2.4 };
+
+  const distanceText = distObj?.distanceText || '2.4 km';
+  const travelTimeText = distObj?.etaText ? `(~${distObj.etaText})` : '(~14 mins)';
+  const distanceKm = typeof distObj?.distanceKm === 'number' ? distObj.distanceKm : 2.4;
+  const proximityProgress = Math.min(88, Math.max(28, Math.round(100 - distanceKm * 8)));
+
+  // Rating and review count
+  const ratingScore = Number(product.rating || (product.vendor as unknown as Record<string, unknown>)?.rating || 4.6).toFixed(1);
+  const reviewsCount = product.reviews_count || (Math.round((product.original_price || 600) / 7) % 80) + 48;
+
+  // Store attribution
+  const storeName = product.vendor?.name || 'rocky Local Store';
+  const storeSlug = (product.vendor as unknown as Record<string, unknown>)?.slug || product.vendor?.id || '';
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleWishlist(product.id);
   };
 
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const productUrl = `${window.location.origin}/product/${product.id}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(productUrl);
+      showToast('Product link copied to clipboard!', 'info');
+    }
+  };
+
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isOutOfStock) return;
+    addToCart(product.id, 1);
+    showToast(`Added 1 × ${product.name} to cart`, 'success');
+  };
+
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
+  };
+
+  const handleStoreClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (storeSlug) {
+      navigate(`/stores/${storeSlug}`);
+    }
   };
 
   return (
     <motion.div
       onClick={handleCardClick}
-      whileHover={{ y: -4, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+      whileHover={{ y: -4, transition: { duration: 0.18 } }}
       whileTap={{ scale: 0.985 }}
-      className="group bg-white dark:bg-[#111726] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 hover:border-emerald-300 dark:hover:border-emerald-500/60 p-3 sm:p-3.5 flex flex-col justify-between transition-colors duration-200 hover:shadow-lg dark:hover:shadow-emerald-950/20 cursor-pointer relative select-none"
+      className="group bg-[#0F172A] rounded-2xl border border-slate-800 hover:border-emerald-500/60 p-3 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none h-full hover:shadow-xl hover:shadow-black/50"
     >
-      {/* Top badges & Wishlist */}
-      <div className="flex items-center justify-between absolute top-4 left-4 right-4 z-10 pointer-events-none">
-        <div className="flex flex-col gap-1 items-start">
-          {(product.discount_percentage || 0) > 0 && (
-            <span className="bg-emerald-600 text-white font-extrabold text-xs tracking-tight px-2.5 py-0.5 rounded-md shadow-xs">
-              {t('pdp.offBadge', { pct: product.discount_percentage || 0 })}
-            </span>
-          )}
-          {product.is_organic && (
-            <span className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold text-xs px-2 py-0.5 rounded-md">
-              {t('common.organic')}
-            </span>
-          )}
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.75 }}
-          onClick={handleToggleWishlist}
-          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          className="pointer-events-auto w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs shadow-xs border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
-        >
-          <motion.div
-            animate={wishlisted ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Heart
-              className={`w-4 h-4 ${
-                wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
-              }`}
-            />
-          </motion.div>
-        </motion.button>
-      </div>
-
-      {/* Product Image */}
-      <div className="relative w-full aspect-square bg-slate-50 dark:bg-slate-900/60 rounded-xl overflow-hidden mb-3 flex items-center justify-center">
-        {!imageError ? (
+      {/* ====================================================================
+          1. TOP SQUARE MEDIA CONTAINER (aspect-square, bg-black, rounded-xl)
+         ==================================================================== */}
+      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black flex items-center justify-center">
+        {/* Centered high-resolution product image */}
+        {!imageError && product.image_url ? (
           <img
             src={product.image_url}
             alt={product.name}
             referrerPolicy="no-referrer"
             loading="lazy"
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
+            className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-emerald-50 dark:from-slate-800 to-slate-100 dark:to-slate-900 flex flex-col items-center justify-center p-3 text-center">
-            <Sparkles className="w-6 h-6 text-emerald-500 mb-1" />
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{product.name}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center text-slate-500">
+            <Sparkles className="w-8 h-8 text-emerald-500 mb-1" />
+            <span className="text-xs font-semibold text-slate-400 line-clamp-1">
+              {product.name}
+            </span>
           </div>
         )}
 
-        {/* Quick speed label */}
-        <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
-          <Clock className="w-3 h-3 text-emerald-400" />
-          <span>{distanceInfo?.etaText || translateDurationText('10-15 mins', language)}</span>
+        {/* Top-Left Discount Pill */}
+        {discountPct > 0 && (
+          <div className="absolute top-3 left-3 z-20">
+            <span className="bg-[#FF1E56] text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-md">
+              -{discountPct}%
+            </span>
+          </div>
+        )}
+
+        {/* Top-Right Floating Action Stack */}
+        <div className="absolute top-3 right-3 z-20 flex flex-col gap-2">
+          {/* Wishlist Button */}
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            type="button"
+            onClick={handleToggleWishlist}
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            className="w-[34px] h-[34px] bg-slate-900/80 border border-slate-700/80 text-slate-200 hover:border-emerald-500 hover:text-emerald-400 rounded-full flex items-center justify-center transition-colors cursor-pointer backdrop-blur-xs shadow-md"
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${
+                wishlisted ? 'fill-[#FF1E56] text-[#FF1E56]' : 'text-slate-200 hover:text-[#FF1E56]'
+              }`}
+            />
+          </motion.button>
+
+          {/* Share Button */}
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            type="button"
+            onClick={handleShare}
+            aria-label="Share product"
+            className="w-[34px] h-[34px] bg-slate-900/80 border border-slate-700/80 text-slate-200 hover:border-emerald-500 hover:text-emerald-400 rounded-full flex items-center justify-center transition-colors cursor-pointer backdrop-blur-xs shadow-md"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </motion.button>
+        </div>
+
+        {/* Out of Stock Overlay on Media */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-15 pointer-events-none">
+            <span className="bg-slate-900/90 text-rose-400 border border-rose-500/40 text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+              Out of stock
+            </span>
+          </div>
+        )}
+
+        {/* Bottom Live Store-to-Customer Distance Overlay Bar */}
+        <div className="absolute bottom-2.5 inset-x-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 z-10 shadow-lg pointer-events-none">
+          {/* Top Row: Store | Distance + Travel Time | You */}
+          <div className="flex items-center justify-between text-[11px] font-medium mb-1.5">
+            <span className="text-slate-400">Store</span>
+            <span className="flex items-center gap-1">
+              <span className="text-[#10B981] font-bold">{distanceText}</span>
+              <span className="text-slate-300 font-normal">{travelTimeText}</span>
+            </span>
+            <span className="text-[#EC4899] font-semibold">You</span>
+          </div>
+
+          {/* Bottom Progress Track */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
+            <div className="flex-1 h-1.5 rounded-full bg-slate-800 overflow-hidden relative">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#EC4899]"
+                style={{ width: `${proximityProgress}%` }}
+              />
+            </div>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#EC4899] shrink-0" />
+          </div>
         </div>
       </div>
 
-      {/* Product Information */}
-      <div className="flex-1 flex flex-col">
-        {/* Unit & Vendor */}
-        <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1.5">
-          <span className="font-semibold text-slate-600 dark:text-slate-300 shrink-0">{product.unit || 'Standard'}</span>
-          <span className="text-xs flex-1 min-w-0 truncate text-right" title={product.vendor?.name || 'Local Mart'}>
-            {product.vendor?.name || 'Local Mart'}
-          </span>
+      {/* ====================================================================
+          2. CARD DETAILS BODY (pt-3, flex-col, flex-1)
+         ==================================================================== */}
+      <div className="pt-3 flex-1 flex flex-col justify-between">
+        <div>
+          {/* Rating Pill Badge */}
+          <div className="inline-flex items-center gap-1 w-fit bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-0.5 text-xs mb-2">
+            <Star className="w-3 h-3 fill-[#FBBF24] text-[#FBBF24]" />
+            <span className="font-bold text-[#FBBF24]">{ratingScore}</span>
+            <span className="text-slate-400 font-normal">({reviewsCount})</span>
+          </div>
+
+          {/* Product Title */}
+          <h3 className="text-white font-bold text-base line-clamp-1 group-hover:text-emerald-400 transition-colors">
+            {product.name}
+          </h3>
+
+          {/* Store Attribution Row */}
+          <div
+            onClick={handleStoreClick}
+            className="flex items-center gap-1.5 text-xs text-slate-400 mt-1 hover:text-emerald-400 transition-colors cursor-pointer w-fit group/store"
+          >
+            <Store className="w-3.5 h-3.5 text-slate-400 group-hover/store:text-emerald-400 shrink-0" />
+            <span className="truncate font-medium group-hover/store:underline">
+              {storeName}
+            </span>
+          </div>
         </div>
 
-        {/* Title */}
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors mb-2">
-          {product.name}
-        </h3>
+        {/* Subtle Horizontal Divider */}
+        <div className="border-t border-slate-800 my-3" />
 
-        {/* Rating and Reviews */}
-        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-3">
-          <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-sm font-bold text-xs">
-            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-            <span>{product.rating || 4.8}</span>
-          </div>
-          <span className="text-slate-400 dark:text-slate-500">({product.reviews_count || 12})</span>
-        </div>
-
-        {/* Price & Add to Cart Container */}
-        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 mt-auto flex items-center justify-between gap-2">
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
-                {formatPrice(product.discounted_price)}
-              </span>
-              {(product.original_price || 0) > (product.discounted_price || 0) && (
-                <span className="text-sm text-slate-400 dark:text-slate-500 line-through tabular-nums">
-                  {formatPrice(product.original_price)}
-                </span>
-              )}
-            </div>
-
-            {/* Distance from chosen location */}
-            <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="truncate">
-                {distanceInfo?.distanceText || translateDurationText('0.8 km', language)} {t('common.away')}
-              </span>
-            </div>
-
-            {product.stock <= 5 && product.stock > 0 && (
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                {t('common.onlyLeft', { count: product.stock })}
-              </span>
-            )}
-            {!product.in_stock && (
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">
-                {t('common.outOfStock')}
+        {/* Bottom Price & Cart Row */}
+        <div className="flex items-center justify-between mt-auto">
+          {/* Left: Price Block */}
+          <div className="flex items-baseline gap-2 whitespace-nowrap min-w-0">
+            <span className="text-white font-extrabold text-xl tabular-nums">
+              {formatPrice(discPrice)}
+            </span>
+            {origPrice > discPrice && (
+              <span className="text-xs text-slate-500 line-through font-normal tabular-nums">
+                {formatPrice(origPrice)}
               </span>
             )}
           </div>
 
-          {/* Stepper or Add Button with Spring Taps */}
-          <div className="shrink-0">
-            {!product.in_stock ? (
-              <button
-                disabled
-                className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed whitespace-nowrap"
-              >
-                {t('common.soldOut')}
-              </button>
-            ) : quantityInCart > 0 ? (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="flex items-center bg-emerald-600 text-white rounded-xl shadow-xs overflow-hidden"
-              >
-                <motion.button
-                  whileTap={{ scale: 0.8 }}
-                  onClick={handleDecrement}
-                  aria-label="Decrease quantity"
-                  className="p-2 px-2.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
-                >
-                  <Minus className="w-4 h-4" />
-                </motion.button>
-                <AnimatePresence mode="popLayout">
-                  <motion.span
-                    key={quantityInCart}
-                    initial={{ y: -6, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 6, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                    className="px-2 text-sm font-extrabold tabular-nums select-none min-w-[22px] text-center"
-                  >
-                    {quantityInCart}
-                  </motion.span>
-                </AnimatePresence>
-                <motion.button
-                  whileTap={{ scale: 0.8 }}
-                  onClick={handleIncrement}
-                  aria-label="Increase quantity"
-                  className="p-2 px-2.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                </motion.button>
-              </motion.div>
-            ) : (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleIncrement}
-                className="px-4 py-2 rounded-xl border border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold text-sm bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-600 dark:hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{t('common.add')}</span>
-              </motion.button>
-            )}
-          </div>
-
+          {/* Right: Square Rounded Cart Icon Button (38px × 38px) */}
+          <motion.button
+            whileHover={!isOutOfStock ? { scale: 1.08 } : undefined}
+            whileTap={!isOutOfStock ? { scale: 0.92 } : undefined}
+            type="button"
+            disabled={isOutOfStock}
+            onClick={handleAddToCartClick}
+            aria-label={`Add ${product.name} to cart`}
+            className={`w-[38px] h-[38px] rounded-xl border flex items-center justify-center transition-colors shrink-0 ${
+              isOutOfStock
+                ? 'opacity-40 cursor-not-allowed bg-slate-800/50 border-slate-700 text-slate-500'
+                : 'bg-slate-800/80 border-slate-700 hover:border-emerald-500 hover:bg-emerald-600 text-slate-200 hover:text-white cursor-pointer shadow-sm'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4" />
+          </motion.button>
         </div>
       </div>
     </motion.div>

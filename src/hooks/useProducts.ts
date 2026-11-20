@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { categoryService, productService, ProductQueryParams, vendorService } from '../services';
 import { Category, Product, ReviewItem, Vendor } from '../types';
 
@@ -11,39 +11,67 @@ export function useProductDetail(id?: string) {
   const [error, setError] = useState<string | null>(null);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const loadProductAndReviews = useCallback(async () => {
     if (!id) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
       setError(null);
       setReviewsError(null);
 
-      const prod = await productService.getProductById(id);
-      setProduct(prod);
-
-      const [simRes, revRes] = await Promise.allSettled([
-        productService.getSimilarProducts(id),
-        productService.getProductReviews(id),
+      const [prodRes, simRes, revRes] = await Promise.allSettled([
+        productService.getProductById(id, { signal: controller.signal }),
+        productService.getSimilarProducts(id, { signal: controller.signal }),
+        productService.getProductReviews(id, { signal: controller.signal }),
       ]);
-      if (simRes.status === 'fulfilled') {
-        setSimilarProducts(simRes.value.results || []);
-      }
-      if (revRes.status === 'fulfilled') {
-        setReviews(revRes.value.results || []);
-        setAvgRating(revRes.value.average_rating || prod.rating || 5);
+
+      if (controller.signal.aborted) return;
+
+      if (prodRes.status === 'fulfilled') {
+        const prod = prodRes.value;
+        setProduct(prod);
+
+        if (simRes.status === 'fulfilled') {
+          setSimilarProducts(simRes.value.results || []);
+        }
+
+        if (revRes.status === 'fulfilled') {
+          setReviews(revRes.value.results || []);
+          setAvgRating(revRes.value.average_rating || prod.rating || 5);
+        } else {
+          setReviewsError('Unable to load customer reviews right now.');
+          setAvgRating(prod.rating || 5);
+        }
       } else {
-        setReviewsError('Unable to load customer reviews right now.');
-        setAvgRating(prod.rating || 5);
+        if (prodRes.reason?.name !== 'AbortError') {
+          setError(prodRes.reason instanceof Error ? prodRes.reason.message : 'Failed to load product details.');
+        }
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Failed to load product details.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [id]);
 
   useEffect(() => {
     loadProductAndReviews();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [loadProductAndReviews]);
 
   const submitReview = useCallback(

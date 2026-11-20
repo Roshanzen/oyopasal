@@ -31,7 +31,17 @@ export default function OrderReceiptSidebar({
   onSelectAddress,
 }: OrderReceiptSidebarProps) {
   const refPos = riderPosition || hubCoords;
-  const orderAddrCoords = resolveAddressCoords(order.delivery_address, currentCoordinates);
+  const deliveryAddr = order?.delivery_address || {
+    id: 'addr-order',
+    title: 'Order Address',
+    street: '',
+    area: '',
+    city: 'Kathmandu',
+    phone: '',
+    recipient_name: 'Customer',
+    is_default: true,
+  };
+  const orderAddrCoords = resolveAddressCoords(order?.delivery_address, currentCoordinates);
   const orderAddrDist = calculateDistanceInKm(refPos.lat, refPos.lng, orderAddrCoords.lat, orderAddrCoords.lng);
 
   return (
@@ -56,10 +66,10 @@ export default function OrderReceiptSidebar({
               <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <span className="text-sm font-bold text-slate-900 dark:text-white block">
-                  Order Address ({order.delivery_address.title})
+                  Order Address ({deliveryAddr.title || 'Selected Pin'})
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
-                  {order.delivery_address.street}, {order.delivery_address.area}
+                  {deliveryAddr.street || ''}{deliveryAddr.area ? `, ${deliveryAddr.area}` : ''}
                 </span>
               </div>
             </div>
@@ -126,13 +136,13 @@ export default function OrderReceiptSidebar({
         <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wide pb-2 border-b border-slate-100 dark:border-slate-800">
           {t('track.orderReceipt')}
         </h3>
-        {order.items_by_vendor.map((vendorGroup, idx) => (
+        {(order.items_by_vendor || []).map((vendorGroup, idx) => (
           <div key={idx} className="space-y-2 text-sm">
             <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
               <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>{vendorGroup.vendor.name}</span>
+              <span>{vendorGroup?.vendor?.name || 'Local Store'}</span>
             </div>
-            {vendorGroup.items.map((item, i) => (
+            {(vendorGroup?.items || []).map((item, i) => (
               <div key={i} className="flex justify-between text-slate-600 dark:text-slate-400 pl-5">
                 <span className="truncate max-w-[200px]">
                   {item.quantity}x {item.product_name}

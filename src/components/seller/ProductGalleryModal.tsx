@@ -1,107 +1,132 @@
-import React from 'react';
-import { RefreshCw, Trash2, Upload, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, Save, X } from 'lucide-react';
 import { Product } from '../../types';
+import { sellerService } from '../../services';
+import { useToastContext } from '../../context/ToastContext';
+import ProductImageUploadGrid from './ProductImageUploadGrid';
 
-interface ProductGalleryModalProps {
+export interface ProductGalleryModalProps {
   product: Product | null;
-  modalImgUrl: string;
-  setModalImgUrl: (v: string) => void;
-  modalUploading: boolean;
   onClose: () => void;
-  onUploadFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onAddUrl: (isPrimary: boolean) => void;
-  onDeleteImage: (imageId: number) => void;
+  onProductUpdated?: (updatedProduct: Product) => void;
+  modalImgUrl?: string;
+  setModalImgUrl?: (v: string) => void;
+  modalUploading?: boolean;
+  onUploadFile?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAddUrl?: (isPrimary: boolean) => void;
+  onDeleteImage?: (imageId: number) => void;
 }
 
 export default function ProductGalleryModal({
   product,
-  modalImgUrl,
-  setModalImgUrl,
-  modalUploading,
   onClose,
-  onUploadFile,
-  onAddUrl,
-  onDeleteImage,
+  onProductUpdated,
 }: ProductGalleryModalProps) {
+  const { showToast } = useToastContext();
+  const [images, setImages] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (product) {
+      if (Array.isArray(product.gallery) && product.gallery.length > 0) {
+        setImages(product.gallery.slice(0, 6));
+      } else if (product.image_url) {
+        setImages([product.image_url]);
+      } else {
+        setImages([]);
+      }
+    }
+  }, [product]);
+
   if (!product) return null;
 
-  const items =
-    product.gallery_items && product.gallery_items.length > 0
-      ? product.gallery_items
-      : product.gallery.map((url, idx) => ({ id: -(idx + 1), image_url: url, is_primary: idx === 0 }));
+  const handleSave = async () => {
+    if (images.length === 0) {
+      showToast('Please keep at least 1 cover image for the product.', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await sellerService.updateSellerProduct(product.id, {
+        images: images.slice(0, 6),
+        image_url: images[0],
+        gallery_urls: images.slice(1, 6),
+      });
+
+      if (res.success && res.product) {
+        showToast('Product images updated successfully!', 'success');
+        if (onProductUpdated) {
+          onProductUpdated(res.product);
+        }
+        onClose();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update product images';
+      showToast(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs select-none">
+      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
           <div>
-            <h3 className="text-lg font-bold text-white">Product Gallery</h3>
-            <p className="text-xs text-slate-400">{product.name}</p>
+            <h3 className="text-lg font-bold text-white">Manage Product Images</h3>
+            <p className="text-xs text-slate-400 mt-0.5 truncate max-w-sm">{product.name}</p>
           </div>
           <button
             type="button"
+            disabled={saving}
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
-          {items.map((item) => (
-            <div key={item.id} className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 aspect-square">
-              <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-              {item.is_primary && (
-                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
-                  PRIMARY
-                </span>
-              )}
-              {item.id > 0 && (
-                <button
-                  type="button"
-                  disabled={modalUploading}
-                  onClick={() => onDeleteImage(item.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center cursor-pointer"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          ))}
+        {/* 6-Slot Multi-Image Gallery Grid */}
+        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
+          <ProductImageUploadGrid
+            images={images}
+            onChange={setImages}
+            maxImages={6}
+            disabled={saving}
+          />
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-slate-800">
-          <label className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer">
-            {modalUploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            <span>{modalUploading ? 'Uploading...' : 'Upload & Attach New Photo'}</span>
-            <input type="file" accept="image/*" onChange={onUploadFile} className="hidden" />
-          </label>
+        {/* Modal Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
+          >
+            Cancel
+          </button>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={modalImgUrl}
-              onChange={(e) => setModalImgUrl(e.target.value)}
-              placeholder="Or paste image URL..."
-              className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
-            />
-            <button
-              type="button"
-              disabled={modalUploading || !modalImgUrl.trim()}
-              onClick={() => onAddUrl(false)}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer disabled:opacity-40"
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              disabled={modalUploading || !modalImgUrl.trim()}
-              onClick={() => onAddUrl(true)}
-              className="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40"
-            >
-              Set Primary
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={saving || images.length === 0}
+            onClick={handleSave}
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-md shadow-emerald-950/30"
+          >
+            {saving ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving Changes...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Images</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

@@ -217,37 +217,6 @@ class ResolveImageUrlView(APIView):
             'is_resolved': resolved != raw_url
         }, status=status.HTTP_200_OK)
 
-
-class PublicSettingsView(APIView):
-    """
-    Public platform configuration: delivery fee tiers, commission policies,
-    operating hours, and brand support contacts.
-    """
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        return Response({
-            'delivery_fees': {
-                'baseDeliveryFee': 35,
-                'freeDeliveryThreshold': 499,
-                'handlingFee': 15,
-                'defaultEtaMins': 12,
-            },
-            'commission_policy': {
-                'defaultCommissionRate': 10,
-                'newSellerZeroCommissionDays': 30,
-            },
-            'store_support': {
-                'brandName': 'OyoPasal',
-                'tagline': '10–15 MIN DELIVERY',
-                'email': 'support@oyopasal.com.np',
-                'phone': '+977 1-4782910',
-                'address': 'New Baneshwor, Kathmandu, Nepal',
-                'hours': '6:00 AM – 11:00 PM Daily',
-            },
-        }, status=status.HTTP_200_OK)
-
-
     def post(self, request):
         raw_url = request.data.get('url', '').strip()
         from apps.common.services.image_resolver import resolve_image_url
@@ -288,6 +257,58 @@ class PublicSettingsView(APIView):
                 'hours': '6:00 AM – 11:00 PM Daily',
             },
         }, status=status.HTTP_200_OK)
+
+
+class DbStatusView(APIView):
+    """
+    Returns live database row counts and connectivity status for system monitoring and profile statistics.
+    """
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Database Status and Row Counts",
+        description="Returns live table row counts and connectivity status.",
+        responses={200: dict}
+    )
+    def get(self, request):
+        from apps.catalogue.models import Product, Category
+        from apps.vendors.models import VendorProfile
+        from apps.orders.models import Order
+        from apps.delivery.models import DeliveryZone
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        db_engine = settings.DATABASES.get('default', {}).get('ENGINE', '')
+        engine_name = 'MySQL' if 'mysql' in db_engine else ('PostgreSQL' if 'postgresql' in db_engine else 'SQLite')
+
+        try:
+            counts = {
+                'products': Product.objects.count(),
+                'categories': Category.objects.count(),
+                'vendors': VendorProfile.objects.count(),
+                'orders': Order.objects.count(),
+                'users': User.objects.count(),
+                'zones': DeliveryZone.objects.count(),
+            }
+            return Response({
+                'status': 'connected',
+                'database': settings.DATABASES.get('default', {}).get('NAME', 'oyopasal_db'),
+                'engine': engine_name,
+                'counts': counts,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e),
+                'counts': {
+                    'products': 0,
+                    'categories': 0,
+                    'vendors': 0,
+                    'orders': 0,
+                    'users': 0,
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 

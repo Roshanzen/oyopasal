@@ -157,17 +157,27 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         if hasattr(user, 'vendor_profile'):
             vp = user.vendor_profile
+            has_verified_store = vp.stores.filter(is_verified=True).exists()
+            is_approved = (vp.status == 'APPROVED') or has_verified_store
+            effective_status = 'APPROVED' if is_approved else vp.status
+            approval_status = 'approved' if is_approved else str(effective_status).lower()
             data['user']['vendor'] = {
                 'id': str(vp.id),
                 'business_name': vp.business_name,
-                'status': vp.status,
+                'status': effective_status,
+                'approval_status': approval_status,
+                'is_approved': is_approved,
+                'is_verified': is_approved,
                 'slug': vp.slug
             }
             data['vendor'] = {
                 'id': str(vp.id),
                 'name': vp.business_name,
                 'business_name': vp.business_name,
-                'status': vp.status,
+                'status': effective_status,
+                'approval_status': approval_status,
+                'is_approved': is_approved,
+                'is_verified': is_approved,
                 'slug': vp.slug
             }
         elif hasattr(user, 'supplier_profile'):
@@ -353,11 +363,18 @@ class UserDetailSerializer(serializers.ModelSerializer):
             }
         elif hasattr(obj, 'vendor_profile'):
             vp = obj.vendor_profile
+            has_verified_store = vp.stores.filter(is_verified=True).exists()
+            is_approved = (vp.status == 'APPROVED') or has_verified_store
+            effective_status = 'APPROVED' if is_approved else vp.status
+            approval_status = 'approved' if is_approved else str(effective_status).lower()
             return {
                 'id': str(vp.id),
                 'business_name': vp.business_name,
                 'slug': vp.slug,
-                'status': vp.status,
+                'status': effective_status,
+                'approval_status': approval_status,
+                'is_approved': is_approved,
+                'is_verified': is_approved,
                 'pan_vat_number': vp.pan_vat_number,
                 'logo_url': vp.logo_url,
             }

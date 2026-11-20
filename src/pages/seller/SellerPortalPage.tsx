@@ -54,8 +54,14 @@ export default function SellerPortalPage() {
   }
 
   const effectiveVendor = s.storeProfile || s.currentSeller;
-  const approvalStatus = effectiveVendor.approval_status || (effectiveVendor.verified ? 'approved' : 'pending');
-  const isApproved = approvalStatus === 'approved';
+  const isApproved = Boolean(
+    effectiveVendor.is_verified ||
+    effectiveVendor.verified ||
+    effectiveVendor.is_approved ||
+    String(effectiveVendor.status).toUpperCase() === 'APPROVED' ||
+    String(effectiveVendor.approval_status).toLowerCase() === 'approved'
+  );
+  const approvalStatus = isApproved ? 'approved' : String(effectiveVendor.approval_status || effectiveVendor.status || 'pending').toLowerCase();
   const lowStockItems = s.sellerProducts.filter((p) => p.stock <= (p.low_stock_threshold ?? 5) || !p.in_stock);
   const healthyItems = s.sellerProducts.filter((p) => p.stock > (p.low_stock_threshold ?? 5) && p.in_stock);
   const activeOrdersList = s.sellerOrders.filter((o) =>
@@ -553,13 +559,11 @@ export default function SellerPortalPage() {
 
       <ProductGalleryModal
         product={s.galleryModalProduct}
-        modalImgUrl={s.modalImgUrl}
-        setModalImgUrl={s.setModalImgUrl}
-        modalUploading={s.modalUploading}
         onClose={() => s.setGalleryModalProduct(null)}
-        onUploadFile={s.handleModalGalleryFile}
-        onAddUrl={s.handleModalAddUrl}
-        onDeleteImage={s.handleModalDeleteImage}
+        onProductUpdated={(updated) => {
+          s.setSellerProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+          s.setGalleryModalProduct(null);
+        }}
       />
 
       <ConfirmDialog

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { APP_CONFIG } from '../config';
-import { authService, httpClient, sellerService } from '../services';
+import { ApiRequestError, authService, httpClient, sellerService } from '../services';
 import { SellerLoginPayload, Vendor } from '../types';
 import { safeStorage } from '../utils';
 import { useAuthContext } from './AuthContext';
@@ -48,15 +48,20 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const storeRes = await sellerService.getSellerStore(savedSeller?.id);
+        const storeRes = await sellerService.getSellerStore(savedSeller?.id, {
+          bypassCache: true,
+          headers: { 'Cache-Control': 'no-cache, no-store' },
+        });
         if (storeRes?.vendor) {
           setCurrentSeller(storeRes.vendor);
           safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
         }
-      } catch {
-        httpClient.clearSellerToken();
-        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-        setCurrentSeller(null);
+      } catch (err: unknown) {
+        if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
+          httpClient.clearSellerToken();
+          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+          setCurrentSeller(null);
+        }
       }
     };
     verifySellerSession();

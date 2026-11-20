@@ -1,9 +1,26 @@
-import { Advertisement, DRFPaginatedResponse, Promotion, PublicSettings, Vendor } from '../types';
-import { httpClient } from './httpClient';
+import { Advertisement, DRFPaginatedResponse, HeroBanner, Promotion, PublicSettings, StoreDetail, Vendor } from '../types';
+import { httpClient, RequestOptions } from './httpClient';
 
 export const vendorService = {
-  getVendors(): Promise<DRFPaginatedResponse<Vendor>> {
-    return httpClient.request<DRFPaginatedResponse<Vendor>>('/vendors/');
+  getStoreBySlug(slug: string, options?: RequestOptions): Promise<StoreDetail> {
+    return httpClient.request<StoreDetail>(`/stores/${encodeURIComponent(slug)}/`, {
+      cacheTtlMs: 5000,
+      ...options,
+    });
+  },
+
+  getHeroBanners(options?: RequestOptions): Promise<HeroBanner[]> {
+    return httpClient.request<HeroBanner[]>('/hero-banners/', {
+      cacheTtlMs: 2000,
+      bypassCache: true,
+      ...options,
+    });
+  },
+  getVendors(options?: RequestOptions): Promise<DRFPaginatedResponse<Vendor>> {
+    return httpClient.request<DRFPaginatedResponse<Vendor>>('/vendors/', {
+      cacheTtlMs: 30000,
+      ...options,
+    });
   },
 
   registerVendor(data: {
@@ -24,21 +41,30 @@ export const vendorService = {
     });
   },
 
-  getPromotions(placement?: string): Promise<DRFPaginatedResponse<Promotion>> {
+  getPromotions(placement?: string, options?: RequestOptions): Promise<DRFPaginatedResponse<Promotion>> {
     const qs = placement ? `?placement=${encodeURIComponent(placement)}` : '';
-    return httpClient.request<DRFPaginatedResponse<Promotion>>(`/promotions/${qs}`);
+    return httpClient.request<DRFPaginatedResponse<Promotion>>(`/promotions/${qs}`, {
+      cacheTtlMs: 20000,
+      ...options,
+    });
   },
 
-  getAdvertisements(placement?: string): Promise<{ count: number; results: Advertisement[] }> {
+  getAdvertisements(placement?: string, options?: RequestOptions): Promise<{ count: number; results: Advertisement[] }> {
     const qs = placement ? `?placement=${encodeURIComponent(placement)}` : '';
-    return httpClient.request(`/advertisements/${qs}`);
+    return httpClient.request(`/advertisements/${qs}`, {
+      cacheTtlMs: 20000,
+      ...options,
+    });
   },
 
   trackAdvertisementClick(id: string | number): Promise<{ success: boolean }> {
     return httpClient.request(`/advertisements/${id}/click/`, { method: 'POST' });
   },
 
-  getPublicSettings(): Promise<PublicSettings> {
-    return httpClient.request<PublicSettings>('/settings/public/');
+  getPublicSettings(options?: RequestOptions): Promise<PublicSettings> {
+    return httpClient.request<PublicSettings>('/settings/public/', {
+      cacheTtlMs: 60000,
+      ...options,
+    });
   },
 };

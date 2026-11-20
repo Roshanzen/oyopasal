@@ -29,12 +29,12 @@ export interface Order {
   payment_method: PaymentMethod;
   payment_status: 'PAID' | 'PENDING';
   payment_id?: number | null;
-  items_by_vendor: {
+  items_by_vendor?: {
     vendor: { id: string; name: string; lat?: number; lng?: number; area?: string };
     fulfillment_status?: string;
-    fulfillment_id?: number;
+    fulfillment_id?: string | number;
     items: {
-      id?: number;
+      id?: string | number;
       product_id?: string | null;
       product_name: string;
       unit: string;

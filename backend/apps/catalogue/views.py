@@ -99,11 +99,19 @@ class PublicProductListView(generics.ListAPIView):
 
         store_slug = self.request.query_params.get('store')
         if store_slug:
-            qs = qs.filter(store__slug=store_slug)
+            from apps.common.utils import is_valid_uuid
+            if is_valid_uuid(store_slug):
+                qs = qs.filter(Q(store_id=store_slug) | Q(store__slug=store_slug))
+            else:
+                qs = qs.filter(store__slug=store_slug)
 
         vendor_slug = self.request.query_params.get('vendor')
         if vendor_slug:
-            qs = qs.filter(vendor__slug=vendor_slug)
+            from apps.common.utils import is_valid_uuid
+            if is_valid_uuid(vendor_slug):
+                qs = qs.filter(Q(vendor_id=vendor_slug) | Q(vendor__slug=vendor_slug) | Q(store_id=vendor_slug))
+            else:
+                qs = qs.filter(Q(vendor__slug=vendor_slug) | Q(store__slug=vendor_slug) | Q(vendor__business_name__iexact=vendor_slug))
 
         is_featured = self.request.query_params.get('is_featured')
         if is_featured is not None:

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import (
@@ -10,11 +11,17 @@ from drf_spectacular.views import (
 from apps.common.views import (
     ApiHomepageView,
     HealthCheckView,
+    DbStatusView,
     ImageKitAuthView,
     ResolveImageUrlView,
     PublicSettingsView,
     api_not_found_view,
     api_server_error_view
+)
+from apps.common.media_views import (
+    MediaUploadView,
+    MediaAssetListView,
+    MediaAssetDetailView
 )
 from apps.promotions.views import (
     PublicAdvertisementListView,
@@ -36,13 +43,21 @@ urlpatterns = [
 
     # Health Check & Common Utilities
     path('api/v1/health/', HealthCheckView.as_view(), name='health_check'),
+    path('api/v1/db/status/', DbStatusView.as_view(), name='db_status'),
     path('api/v1/settings/public/', PublicSettingsView.as_view(), name='public_settings'),
     path('api/v1/advertisements/', PublicAdvertisementListView.as_view(), name='public_advertisements'),
     path('api/v1/advertisements/<str:id>/click/', AdvertisementClickView.as_view(), name='advertisement_click'),
     path('api/v1/wishlist/', WishlistListView.as_view(), name='wishlist_list'),
     path('api/v1/wishlist/toggle/', WishlistToggleView.as_view(), name='wishlist_toggle'),
+    path('api/v1/media/upload/', MediaUploadView.as_view(), name='media_upload'),
+    path('api/v1/media/', MediaAssetListView.as_view(), name='media_list'),
+    path('api/v1/media/<int:pk>/', MediaAssetDetailView.as_view(), name='media_detail'),
     path('api/v1/media/imagekit-auth/', ImageKitAuthView.as_view(), name='imagekit_auth'),
     path('api/v1/media/resolve-image/', ResolveImageUrlView.as_view(), name='resolve_image_url'),
+
+    # Direct static file serving for /uploads/ and assets
+    re_path(r'^uploads/(?P<path>.*)$', serve, {'document_root': settings.BASE_DIR.parent / 'public' / 'uploads'}),
+    re_path(r'^(?P<path>(src/assets/images|assets/images)/.*)$', serve, {'document_root': settings.BASE_DIR.parent / 'public'}),
 
     # Checkout & Cart Validation
     path('api/v1/checkout/validate/', ValidateCheckoutView.as_view(), name='checkout_validate'),
@@ -87,6 +102,14 @@ urlpatterns = [
     path('api/v1/ai/', include('apps.ai.urls', namespace='ai')),
     path('api/v1/audit/', include('apps.audit.urls', namespace='audit')),
     path('api/v1/promotions/', include('apps.promotions.urls', namespace='promotions')),
+    path('api/hero-banners/', __import__('apps.promotions.views', fromlist=['HeroBannerPublicListView']).HeroBannerPublicListView.as_view(), name='public_hero_banners_root'),
+    path('api/admin/hero-banners/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerListCreateView']).AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_root'),
+    path('api/admin/hero-banners/<int:pk>/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerDetailView']).AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_root'),
+    path('api/admin/hero-banners/reorder/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerReorderView']).AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_root'),
+    path('api/v1/hero-banners/', __import__('apps.promotions.views', fromlist=['HeroBannerPublicListView']).HeroBannerPublicListView.as_view(), name='public_hero_banners_v1'),
+    path('api/v1/admin/hero-banners/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerListCreateView']).AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_v1'),
+    path('api/v1/admin/hero-banners/<int:pk>/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerDetailView']).AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_v1'),
+    path('api/v1/admin/hero-banners/reorder/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerReorderView']).AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_v1'),
     path('api/v1/reviews/', include('apps.reviews.urls', namespace='reviews')),
     path('api/v1/notifications/', include('apps.notifications.urls', namespace='notifications')),
     path('api/v1/support/', include('apps.support.urls', namespace='support')),
@@ -100,6 +123,10 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
 
 handler404 = 'apps.common.views.api_not_found_view'
 handler500 = 'apps.common.views.api_server_error_view'

@@ -6,6 +6,7 @@ import {
   Bike,
   CreditCard,
   FileText,
+  Image as ImageIcon,
   LifeBuoy,
   LogOut,
   Megaphone,
@@ -24,6 +25,7 @@ import AdminOverviewTab from '../../components/admin/AdminOverviewTab';
 import AdminSellersTab from '../../components/admin/AdminSellersTab';
 import AdminOrdersDispatchTab from '../../components/admin/AdminOrdersDispatchTab';
 import AdminProductsTab from '../../components/admin/AdminProductsTab';
+import AdminHeroBannersTab from '../../components/admin/AdminHeroBannersTab';
 import AdminCmsTab from '../../components/admin/AdminCmsTab';
 import AdminAdsTab from '../../components/admin/AdminAdsTab';
 import {
@@ -40,6 +42,7 @@ import {
 
 const ADMIN_TABS: { id: AdminTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
   { id: 'sellers', label: 'Sellers & KYC', icon: Store },
   { id: 'orders', label: 'Orders & Dispatch', icon: ShoppingBag },
   { id: 'products', label: 'Products Moderation', icon: Package },
@@ -184,6 +187,10 @@ export default function AdminPortalPage() {
           onAssignRider={admin.handleAssignRider}
           formatPrice={admin.formatPrice}
         />
+      )}
+
+      {admin.activeTab === 'hero-banners' && (
+        <AdminHeroBannersTab showToast={admin.showToast} />
       )}
 
       {admin.activeTab === 'products' && (

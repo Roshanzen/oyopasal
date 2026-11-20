@@ -5,3 +5,9 @@ class StoresConfig(AppConfig):
     name = 'apps.stores'
     verbose_name = 'Store Management'
 
+    def ready(self):
+        try:
+            import apps.stores.signals  # noqa: F401
+        except ImportError:
+            pass
+

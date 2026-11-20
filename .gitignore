@@ -9,4 +9,5 @@ coverage/
 *.sqlite3
 database/backups/*.sql
 database/backups/*.json
+backend_express_deprecated/
 

@@ -8,24 +8,24 @@ import {
   SellerSettlementItem,
   Vendor,
 } from '../types';
-import { httpClient } from './httpClient';
+import { httpClient, RequestOptions } from './httpClient';
 
 export const sellerService = {
-  getSellerDashboard(vendorId?: string): Promise<SellerDashboardResponse> {
+  getSellerDashboard(vendorId?: string, options?: RequestOptions): Promise<SellerDashboardResponse> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request<SellerDashboardResponse>(`/seller/dashboard/${qs}`, {}, true);
+    return httpClient.request<SellerDashboardResponse>(`/seller/dashboard/${qs}`, options, true);
   },
 
-  getSellerAnalytics(vendorId?: string, months = 6): Promise<SellerAnalyticsResponse> {
+  getSellerAnalytics(vendorId?: string, months = 6, options?: RequestOptions): Promise<SellerAnalyticsResponse> {
     const qs = new URLSearchParams();
     if (vendorId) qs.set('vendor_id', vendorId);
     qs.set('months', String(months));
-    return httpClient.request<SellerAnalyticsResponse>(`/seller/analytics/?${qs.toString()}`, {}, true);
+    return httpClient.request<SellerAnalyticsResponse>(`/seller/analytics/?${qs.toString()}`, options, true);
   },
 
-  getSellerProducts(vendorId?: string): Promise<{ count: number; results: Product[] }> {
+  getSellerProducts(vendorId?: string, options?: RequestOptions): Promise<{ count: number; results: Product[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/products/${qs}`, {}, true);
+    return httpClient.request(`/seller/products/${qs}`, options, true);
   },
 
   createSellerProduct(data: {
@@ -41,6 +41,7 @@ export const sellerService = {
     description?: string;
     image_url?: string;
     gallery_urls?: string[];
+    images?: string[];
     sections?: string[];
   }): Promise<{ success: boolean; message: string; product: Product }> {
     return httpClient.request(
@@ -50,7 +51,10 @@ export const sellerService = {
     );
   },
 
-  updateSellerProduct(productId: string, data: Partial<Product>): Promise<{ success: boolean; product: Product }> {
+  updateSellerProduct(
+    productId: string,
+    data: Partial<Product> & { images?: string[]; gallery_urls?: string[] }
+  ): Promise<{ success: boolean; product: Product }> {
     return httpClient.request(
       `/seller/products/${productId}/`,
       { method: 'PUT', body: JSON.stringify(data) },
@@ -94,24 +98,25 @@ export const sellerService = {
   },
 
   getSellerReviews(
-    vendorId?: string
+    vendorId?: string,
+    options?: RequestOptions
   ): Promise<{ count: number; average_rating: number; results: SellerReviewItem[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/reviews/${qs}`, {}, true);
+    return httpClient.request(`/seller/reviews/${qs}`, options, true);
   },
 
-  getSellerInventoryMovements(vendorId?: string): Promise<{ count: number; results: InventoryMovementItem[] }> {
+  getSellerInventoryMovements(vendorId?: string, options?: RequestOptions): Promise<{ count: number; results: InventoryMovementItem[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/inventory/movements/${qs}`, {}, true);
+    return httpClient.request(`/seller/inventory/movements/${qs}`, options, true);
   },
 
-  getSellerOrders(vendorId?: string): Promise<{ count: number; results: SellerFulfillmentItem[] }> {
+  getSellerOrders(vendorId?: string, options?: RequestOptions): Promise<{ count: number; results: SellerFulfillmentItem[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/orders/${qs}`, {}, true);
+    return httpClient.request(`/seller/orders/${qs}`, options, true);
   },
 
   updateSellerFulfillmentStatus(
-    fulfillmentId: number,
+    fulfillmentId: string | number,
     status: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED',
     vendorId?: string
   ): Promise<{ success: boolean; status: string }> {
@@ -123,9 +128,20 @@ export const sellerService = {
     );
   },
 
-  getSellerStore(vendorId?: string): Promise<{ vendor: Vendor; settlements: SellerSettlementItem[] }> {
+  getSellerOrderTracking(
+    orderIdOrFulfillmentId: string | number,
+    options?: RequestOptions
+  ): Promise<DeliveryTrackingTelemetry> {
+    return httpClient.request<DeliveryTrackingTelemetry>(
+      `/delivery/orders/${orderIdOrFulfillmentId}/tracking/`,
+      options,
+      true
+    );
+  },
+
+  getSellerStore(vendorId?: string, options?: RequestOptions): Promise<{ vendor: Vendor; settlements: SellerSettlementItem[] }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
-    return httpClient.request(`/seller/store/${qs}`, {}, true);
+    return httpClient.request(`/seller/store/${qs}`, options, true);
   },
 
   updateSellerStore(

@@ -58,3 +58,13 @@ class Store(BaseModel, SoftDeletableModel):
             self.slug = slug
         super().save(*args, **kwargs)
 
+        # Ensure vendor status stays in sync with store verification
+        if self.is_verified and self.vendor_id:
+            try:
+                from apps.vendors.models import VendorProfile, VendorStatus
+                vendor = getattr(self, 'vendor', None)
+                if vendor and vendor.status != VendorStatus.APPROVED:
+                    VendorProfile.objects.filter(id=self.vendor_id).update(status=VendorStatus.APPROVED)
+            except Exception:
+                pass
+

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { orderService } from '../services';
 import { Address, DeliveryTrackingTelemetry, Order } from '../types';
@@ -56,26 +56,50 @@ export function useOrderTracking(orderId?: string) {
     return () => window.removeEventListener('gmp-quota-exceeded', handleQuota as EventListener);
   }, []);
 
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const orderStatusRef = useRef<string | undefined>(undefined);
+  orderStatusRef.current = order?.status;
+
   const fetchOrderAndTracking = useCallback(
     async (showSpinner = false) => {
-      if (!orderId) return;
+      if (!orderId || isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
         if (showSpinner) setLoading(true);
         else setRefreshing(true);
         setLoadError(null);
 
-        const ordRes = await orderService.getOrderById(orderId);
-        setOrder(ordRes);
+        const [ordResult, trackResult] = await Promise.allSettled([
+          orderService.getOrderById(orderId, { signal: controller.signal }),
+          orderService.getOrderTracking(orderId, { signal: controller.signal }),
+        ]);
 
-        try {
-          const trackRes = await orderService.getOrderTracking(orderId);
-          setTracking(trackRes);
-        } catch {
+        if (controller.signal.aborted) return;
+
+        if (ordResult.status === 'fulfilled') {
+          setOrder(ordResult.value);
+        } else if (ordResult.reason?.name !== 'AbortError') {
+          setLoadError(ordResult.reason instanceof Error ? ordResult.reason.message : 'Unable to load order tracking');
+        }
+
+        if (trackResult.status === 'fulfilled') {
+          setTracking(trackResult.value);
+        } else if (trackResult.reason?.name !== 'AbortError') {
           setTracking(null);
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         setLoadError(err instanceof Error ? err.message : 'Unable to load order tracking');
       } finally {
+        isFetchingRef.current = false;
         setLoading(false);
         setRefreshing(false);
       }
@@ -85,16 +109,58 @@ export function useOrderTracking(orderId?: string) {
 
   useEffect(() => {
     fetchOrderAndTracking(true);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchOrderAndTracking, user?.id]);
 
-  // Real 5-second server polling while order is active
+  // Non-overlapping adaptive polling while order is active
   useEffect(() => {
-    if (!order || order.status === 'DELIVERED' || order.status === 'CANCELLED') return;
-    const poll = setInterval(() => {
-      fetchOrderAndTracking(false);
-    }, 5000);
-    return () => clearInterval(poll);
-  }, [order, fetchOrderAndTracking]);
+    if (!orderId) return;
+
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
+
+    const pollLoop = async () => {
+      if (isCancelled) return;
+      const status = orderStatusRef.current;
+      if (status === 'DELIVERED' || status === 'CANCELLED') return;
+
+      if (document.visibilityState === 'visible') {
+        await fetchOrderAndTracking(false);
+      }
+
+      if (!isCancelled) {
+        const nextStatus = orderStatusRef.current;
+        if (nextStatus !== 'DELIVERED' && nextStatus !== 'CANCELLED') {
+          timerId = setTimeout(pollLoop, 8000);
+        }
+      }
+    };
+
+    timerId = setTimeout(pollLoop, 8000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const status = orderStatusRef.current;
+        if (status !== 'DELIVERED' && status !== 'CANCELLED') {
+          fetchOrderAndTracking(false);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      isCancelled = true;
+      if (timerId) clearTimeout(timerId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [orderId, fetchOrderAndTracking]);
 
   const hubInfo = useMemo(() => {
     const vendorId = order?.items_by_vendor?.[0]?.vendor?.id;

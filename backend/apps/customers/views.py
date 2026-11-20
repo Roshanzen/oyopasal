@@ -22,10 +22,21 @@ class CustomerAddressViewSet(viewsets.ModelViewSet):
     Customer address book management across Nepal administrative divisions.
     """
     serializer_class = AddressSerializer
-    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def list(self, request, *args, **kwargs):
+        if not request.user or not request.user.is_authenticated:
+            return Response({'count': 0, 'next': None, 'previous': None, 'results': []}, status=status.HTTP_200_OK)
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
+            return Address.objects.none()
+        if not self.request.user or not self.request.user.is_authenticated:
             return Address.objects.none()
         profile, _ = CustomerProfile.objects.get_or_create(user=self.request.user)
         return Address.objects.filter(customer=profile)
@@ -42,7 +53,7 @@ class CustomerAddressViewSet(viewsets.ModelViewSet):
         serializer.save(customer=profile, is_default_shipping=is_default)
 
     def perform_update(self, serializer):
-        profile = self.request.user.customer_profile
+        profile, _ = CustomerProfile.objects.get_or_create(user=self.request.user)
         is_default = serializer.validated_data.get('is_default_shipping', False)
         if is_default:
             Address.objects.filter(customer=profile, is_default_shipping=True).exclude(id=self.get_object().id).update(is_default_shipping=False)

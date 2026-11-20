@@ -12,6 +12,7 @@ import {
 import { motion } from 'motion/react';
 import { translateCategoryName, TranslatorFn } from '../../i18n';
 import { Category, Language, Product, Vendor } from '../../types';
+import ProductImageUploadGrid from './ProductImageUploadGrid';
 
 const PRESET_UNITS = ['250g', '500g', '1 kg', '2 kg', '1L', '500ml', 'Pack of 1', 'Pack of 2', '12 Pcs'];
 
@@ -267,72 +268,16 @@ export default function SellerAddProductTab({
               <span>{t('seller.certifiedOrganic')}</span>
             </label>
 
-            <div className="space-y-2.5 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
-              <label className="block text-sm font-bold text-slate-300">
-                {t('seller.productImage')} <span className="text-red-400">*</span>
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer shrink-0">
-                  {uploadingPrimaryImg ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  <span>{uploadingPrimaryImg ? 'Uploading...' : 'Upload Image File'}</span>
-                  <input type="file" accept="image/*" onChange={onPrimaryImageUpload} className="hidden" />
-                </label>
-                <input
-                  type="text"
-                  value={customImageUrl}
-                  onChange={(e) => setCustomImageUrl(e.target.value)}
-                  placeholder={
-                    language === 'ne'
-                      ? 'वा फोटोको URL राख्नुहोस् (https://...)'
-                      : 'Or paste image URL (https://... or /uploads/...)'
-                  }
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                <span className="text-xs font-bold text-slate-400 block">Additional Gallery Images (Optional)</span>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer shrink-0 border border-slate-700">
-                    {uploadingGalleryImg ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
-                    <span>{uploadingGalleryImg ? 'Uploading...' : 'Add Gallery File'}</span>
-                    <input type="file" accept="image/*" onChange={onGalleryImageUpload} className="hidden" />
-                  </label>
-                  <input
-                    type="text"
-                    value={galleryUrlInput}
-                    onChange={(e) => setGalleryUrlInput(e.target.value)}
-                    placeholder="Additional gallery image URL..."
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={onAddGalleryUrl}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold cursor-pointer border border-slate-700"
-                  >
-                    Add URL
-                  </button>
-                </div>
-                {galleryUrls.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {galleryUrls.map((url, idx) => (
-                      <div
-                        key={`${url}-${idx}`}
-                        className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-700 bg-slate-900 group"
-                      >
-                        <img src={url} alt="" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setGalleryUrls((prev) => prev.filter((_, i) => i !== idx))}
-                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+              <ProductImageUploadGrid
+                images={[customImageUrl, ...galleryUrls].filter(Boolean)}
+                onChange={(newImages) => {
+                  setCustomImageUrl(newImages[0] || '');
+                  setGalleryUrls(newImages.slice(1));
+                }}
+                maxImages={6}
+                disabled={submittingProduct}
+              />
             </div>
 
             <div>
@@ -425,6 +370,22 @@ export default function SellerAddProductTab({
                   </div>
                 )}
               </div>
+
+              {/* Gallery Mini-strip in preview */}
+              {galleryUrls.length > 0 && (
+                <div className="flex items-center gap-1.5 p-2 bg-slate-900 border-t border-slate-800/80 overflow-x-auto">
+                  {[customImageUrl, ...galleryUrls].filter(Boolean).map((img, i) => (
+                    <div
+                      key={i}
+                      className={`w-9 h-9 rounded-md overflow-hidden border shrink-0 bg-slate-950 ${
+                        i === 0 ? 'border-emerald-500 ring-1 ring-emerald-500/30' : 'border-slate-800'
+                      }`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="p-4">
                 <div className="flex items-center justify-between text-xs text-emerald-400 mb-1">
                   <span className="font-semibold truncate max-w-[160px]">{effectiveVendor.name}</span>

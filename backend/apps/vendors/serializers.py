@@ -51,6 +51,18 @@ class VendorProfileSerializer(serializers.ModelSerializer):
         from apps.stores.serializers import StoreDetailSerializer
         return StoreDetailSerializer(obj.stores.all(), many=True).data
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        has_verified_store = instance.stores.filter(is_verified=True).exists()
+        is_approved = (instance.status == 'APPROVED') or has_verified_store
+        effective_status = 'APPROVED' if is_approved else instance.status
+        data['status'] = effective_status
+        data['is_approved'] = is_approved
+        data['is_verified'] = is_approved
+        data['verified'] = is_approved
+        data['approval_status'] = 'approved' if is_approved else str(effective_status).lower()
+        return data
+
 
 class VendorOverviewSalesSerializer(serializers.Serializer):
     today_sales = serializers.CharField()

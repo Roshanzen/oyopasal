@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { useApp } from '../context';
@@ -71,16 +71,33 @@ export function useAccountPortal() {
     }
   }, [user]);
 
+  const inFlightOrdersRef = useRef(false);
+  const ordersAbortRef = useRef<AbortController | null>(null);
+
   const loadOrders = useCallback(async () => {
-    if (!user) return;
+    if (!user || inFlightOrdersRef.current) return;
+    inFlightOrdersRef.current = true;
+
+    if (ordersAbortRef.current) {
+      ordersAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    ordersAbortRef.current = controller;
+
     try {
       setLoadingOrders(true);
-      const res = await orderService.getOrders();
-      setOrders(res.results || []);
-    } catch (err) {
+      const res = await orderService.getOrders({ signal: controller.signal });
+      if (!controller.signal.aborted) {
+        setOrders(res.results || []);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       console.error(err);
     } finally {
-      setLoadingOrders(false);
+      inFlightOrdersRef.current = false;
+      if (!controller.signal.aborted) {
+        setLoadingOrders(false);
+      }
     }
   }, [user]);
 
@@ -95,7 +112,14 @@ export function useAccountPortal() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === 'orders') loadOrders();
+    if (activeTab === 'orders') {
+      loadOrders();
+    }
+    return () => {
+      if (ordersAbortRef.current) {
+        ordersAbortRef.current.abort();
+      }
+    };
   }, [activeTab, loadOrders]);
 
   useEffect(() => {

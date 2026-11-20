@@ -134,3 +134,19 @@ class Advertisement(BaseModel):
         return f"{self.title} ({self.placement})"
 
 
+class HeroBanner(models.Model):
+    image = models.ImageField(upload_to='hero_banners/')
+    target_url = models.CharField(max_length=255, blank=True, default='/')
+    alt_text = models.CharField(max_length=150, blank=True, default='OyoPasal Promotional Banner')
+    display_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return f"HeroBanner #{self.id} - {self.alt_text} (Order: {self.display_order}, Active: {self.is_active})"
+
+
+

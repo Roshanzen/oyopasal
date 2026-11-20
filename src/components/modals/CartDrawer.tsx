@@ -14,7 +14,8 @@ import {
   Store,
   Info,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -39,6 +40,7 @@ export default function CartDrawer() {
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponApplying, setCouponApplying] = useState(false);
+  const [cartImgErrors, setCartImgErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (cartDrawerOpen) {
@@ -165,7 +167,7 @@ export default function CartDrawer() {
                 )}
 
                 {/* Empty State */}
-                {(!cart || cart.items.length === 0) && (
+                {(!cart || !cart.items || cart.items.length === 0) && (
                   <div className="py-16 text-center space-y-4">
                     <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
                       <ShoppingBag className="w-8 h-8" />
@@ -200,11 +202,11 @@ export default function CartDrawer() {
                           <div className="flex items-center gap-2">
                             <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
-                              {group.vendor.name}
+                              {group?.vendor?.name || (group as any)?.vendor_name || 'Local Store'}
                             </span>
                           </div>
                           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                            {group.delivery_fee === 0 ? (
+                            {(group?.delivery_fee ?? 0) === 0 ? (
                               <span className="text-emerald-700 dark:text-emerald-400 font-bold">{t('common.freeDelivery')}</span>
                             ) : (
                               t('cart.deliveryLabel', { amount: formatPrice(group.delivery_fee) })
@@ -214,28 +216,48 @@ export default function CartDrawer() {
 
                         {/* Vendor Items */}
                         <div className="space-y-3">
-                          {group.items.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between gap-3 text-sm"
-                            >
-                              <img
-                                src={item.product.image_url}
-                                alt={item.product.name}
-                                referrerPolicy="no-referrer"
-                                className="w-13 h-13 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                                  {item.product.name}
-                                </h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                  {item.product.unit}
-                                </p>
-                                <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">
-                                  {formatPrice(item.unit_price)}
-                                </span>
-                              </div>
+                          {(group.items || []).map((item) => {
+                            const isUnavailable = !item.product || item.product.in_stock === false;
+                            const productName = item.product?.name || (item as any)?.product_name || 'Product';
+                            const productUnit = item.product?.unit || 'piece';
+                            const itemImg = item.product?.image_url;
+                            const hasValidImg = Boolean(itemImg) && !cartImgErrors[item.id];
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between gap-3 text-sm"
+                              >
+                                {hasValidImg ? (
+                                  <img
+                                    src={itemImg!}
+                                    alt={productName}
+                                    referrerPolicy="no-referrer"
+                                    onError={() => setCartImgErrors((prev) => ({ ...prev, [item.id]: true }))}
+                                    className="w-13 h-13 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-13 h-13 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center shrink-0">
+                                    <Sparkles className="w-5 h-5 text-emerald-500" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                                      {productName}
+                                    </h4>
+                                    {isUnavailable && (
+                                      <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 rounded">
+                                        Unavailable
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {productUnit}
+                                  </p>
+                                  <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+                                    {formatPrice(item.unit_price)}
+                                  </span>
+                                </div>
 
                               {/* Stepper with Spring Taps */}
                               <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
@@ -269,7 +291,8 @@ export default function CartDrawer() {
                                 <Trash2 className="w-3.5 h-3.5" />
                               </motion.button>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -277,7 +300,7 @@ export default function CartDrawer() {
                 )}
 
                 {/* Coupons Section */}
-                {cart && cart.items.length > 0 && (
+                {cart && cart.items && cart.items.length > 0 && (
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">
                       <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -343,7 +366,7 @@ export default function CartDrawer() {
                           Retry
                         </button>
                       </div>
-                    ) : activeCoupons.length > 0 ? (
+                    ) : Array.isArray(activeCoupons) && activeCoupons.length > 0 ? (
                       <div className="mt-2.5 space-y-1.5">
                         {activeCoupons.map((c) => (
                           <div
@@ -378,7 +401,7 @@ export default function CartDrawer() {
                 )}
 
                 {/* Bill Details */}
-                {cart && cart.items.length > 0 && (
+                {cart && cart.items && cart.items.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-sm">
                     <span className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
                       {t('cart.billSummary')}
@@ -421,7 +444,7 @@ export default function CartDrawer() {
               </div>
 
               {/* Footer Checkout CTA */}
-              {cart && cart.items.length > 0 && (
+              {cart && cart.items && cart.items.length > 0 && (
                 <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0f1422]">
                   <motion.button
                     whileHover={{ scale: 1.02 }}

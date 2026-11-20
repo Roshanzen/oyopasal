@@ -1,9 +1,12 @@
 import { Category, DRFPaginatedResponse } from '../types';
-import { httpClient } from './httpClient';
+import { httpClient, RequestOptions } from './httpClient';
 
 export const categoryService = {
-  async getCategories(): Promise<DRFPaginatedResponse<Category>> {
-    const data = await httpClient.request<unknown>('/categories/');
+  async getCategories(options?: RequestOptions): Promise<DRFPaginatedResponse<Category>> {
+    const data = await httpClient.request<unknown>('/categories/', {
+      cacheTtlMs: 30000,
+      ...options,
+    });
     if (Array.isArray(data)) {
       return {
         count: data.length,

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 @custom-variant dark (&:where(.dark, .dark *));
 @import "./variables.css";
 @import "./themes.css";
@@ -33,3 +34,32 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* Leaflet map integration adjustments */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1;
+}
+
+.leaflet-control-zoom a {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-tooltip {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+}
+
+.leaflet-tooltip-top:before {
+  border-top-color: #0f172a !important;
+}
+

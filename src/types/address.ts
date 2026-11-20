@@ -15,6 +15,11 @@ export interface Address {
   is_default: boolean;
   lat?: number;
   lng?: number;
+  postal_code?: string;
+  ward_number?: number;
+  district?: string;
+  municipality?: string;
+  province?: string;
 }
 
 export interface DeliveryZoneItem {

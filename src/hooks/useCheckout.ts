@@ -37,13 +37,19 @@ export function useCheckout() {
         setValidationError(msg);
       }
     }
-    if (cart && cart.items.length > 0 && !paymentChallenge) {
+    if (cart && cart.items && cart.items.length > 0 && !paymentChallenge) {
       checkCart();
     }
   }, [cart?.item_count, paymentChallenge]);
 
   useEffect(() => {
-    cartService.getActiveCoupons().then((res) => setActiveCoupons(res.results || [])).catch(() => {});
+    cartService
+      .getActiveCoupons()
+      .then((res: any) => {
+        const list = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
+        setActiveCoupons(list);
+      })
+      .catch(() => {});
   }, []);
 
   const handleApplyCoupon = useCallback(
@@ -63,12 +69,18 @@ export function useCheckout() {
   );
 
   const handlePlaceOrder = useCallback(async () => {
+    if (submittingOrder) return;
+
     if (!user) {
       showToast(
         language === 'ne' ? 'अर्डर गर्न कृपया पहिले लगइन गर्नुहोस्' : 'Please sign in to place your order',
         'info'
       );
       setLoginModalOpen(true);
+      return;
+    }
+    if (!cart || !cart.items || cart.items.length === 0) {
+      showToast('Your basket is empty. Please add items before checking out.', 'error');
       return;
     }
     if (!currentAddress) {
@@ -90,6 +102,10 @@ export function useCheckout() {
         delivery_option: deliveryOption,
         notes: orderNotes,
       });
+
+      if (!newOrder || !newOrder.id) {
+        throw new Error('Order creation was not acknowledged by the server. Please check your past orders.');
+      }
 
       setCartDrawerOpen(false);
       await refreshCart();
@@ -121,6 +137,7 @@ export function useCheckout() {
       setSubmittingOrder(false);
     }
   }, [
+    cart,
     currentAddress,
     deliveryOption,
     language,
@@ -132,6 +149,7 @@ export function useCheckout() {
     setLocationModalOpen,
     setLoginModalOpen,
     showToast,
+    submittingOrder,
     user,
   ]);
 

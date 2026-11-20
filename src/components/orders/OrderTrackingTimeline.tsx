@@ -23,7 +23,7 @@ export default function OrderTrackingTimeline({
           {t('track.milestonesTitle')}
         </h3>
         <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-          {steps.map((step, idx) => (
+          {(steps || []).map((step, idx) => (
             <div key={idx} className="relative">
               <div
                 className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white ${

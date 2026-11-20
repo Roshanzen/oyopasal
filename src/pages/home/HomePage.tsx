@@ -2,22 +2,19 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Advertisement } from '../../types';
 import { useApp } from '../../context';
-import { useBanners, useHomeData } from '../../hooks';
+import { useHeroBanners, useHomeData } from '../../hooks';
 import { isExternalHttpUrl } from '../../utils';
 import PromotionalCarousel from '../../components/common/PromotionalCarousel';
 import ProductSection from '../../components/common/ProductSection';
 import { VendorMapModal } from '../../components/modals/VendorMapModal';
 import { ErrorAlert } from '../../components/feedback/ErrorAlert';
 import {
-  ShieldCheck,
-  Zap,
   Store,
   Clock,
   Sparkles,
   ArrowRight,
   Star,
   CheckCircle,
-  Truck,
   MapPin,
   Megaphone
 } from 'lucide-react';
@@ -32,6 +29,8 @@ export default function HomePage() {
     vendors,
     categories,
     sections,
+    advertisements,
+    topAds,
     midAds,
     bottomAds,
     loading,
@@ -43,10 +42,11 @@ export default function HomePage() {
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const {
     banners,
+    heroBanners,
     loading: bannersLoading,
     error: bannersError,
     refetch: refetchBanners,
-  } = useBanners();
+  } = useHeroBanners();
 
   const markBrokenImage = (key: string) => {
     setBrokenImages((prev) => ({ ...prev, [key]: true }));
@@ -78,7 +78,7 @@ export default function HomePage() {
     <div className="pb-16 md:pb-12">
       {/* Dynamic Promotional Banner Carousel */}
       <PromotionalCarousel
-        banners={banners}
+        banners={heroBanners && heroBanners.length > 0 ? heroBanners : banners}
         loading={bannersLoading}
         error={bannersError}
         onRetry={refetchBanners}
@@ -86,80 +86,10 @@ export default function HomePage() {
 
       {/* Error + Retry State */}
       {error && (
-        <div className="w-full px-4 sm:px-6 lg:px-10 pt-5">
+        <div className="w-full px-4 sm:px-6 lg:px-10 pt-4">
           <ErrorAlert message={error} onRetry={loadHomeData} />
         </div>
       )}
-
-      {/* Trust & Speed Highlights Strip */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="w-full px-4 sm:px-6 lg:px-10 pt-6 select-none"
-      >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <motion.div
-            whileHover={{ y: -3, transition: { duration: 0.18 } }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
-          >
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-slate-900 dark:text-white">{t('home.trustSpeedTitle')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('home.trustSpeedSub')}</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -3, transition: { duration: 0.18 } }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
-              <Store className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-slate-900 dark:text-white">{t('home.trustVendorTitle')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('home.trustVendorSub')}</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -3, transition: { duration: 0.18 } }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
-          >
-            <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-slate-900 dark:text-white">{t('home.trustFreshTitle')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('home.trustFreshSub')}</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -3, transition: { duration: 0.18 } }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-slate-800 shadow-2xs cursor-default"
-          >
-            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-slate-900 dark:text-white">{t('home.trustFreeTitle')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {publicSettings?.delivery_fees
-                  ? `Free over Rs. ${publicSettings.delivery_fees.freeDeliveryThreshold}`
-                  : t('home.trustFreeSub')}
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      </motion.div>
 
       {/* Empty Catalog State */}
       {!loading && !error && products.length === 0 && (
@@ -419,7 +349,7 @@ export default function HomePage() {
                   key={vendor.id}
                   whileHover={{ y: -4, transition: { duration: 0.18 } }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate(`/search?vendor=${vendor.id}`)}
+                  onClick={() => navigate(`/stores/${vendor.slug || vendor.id}`)}
                   className="rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 p-4 transition-colors hover:shadow-lg cursor-pointer bg-slate-50/50 dark:bg-[#111726] hover:bg-white dark:hover:bg-slate-800/80 group"
                 >
                   <div className="relative h-36 rounded-xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-800">
@@ -574,7 +504,10 @@ export default function HomePage() {
         isOpen={vendorMapOpen}
         onClose={() => setVendorMapOpen(false)}
         vendors={vendors}
-        onSelectVendor={(vId) => navigate(`/search?vendor=${vId}`)}
+        onSelectVendor={(vId) => {
+          const v = vendors.find((vend) => vend.id === vId);
+          navigate(`/stores/${v?.slug || vId}`);
+        }}
       />
     </div>
   );

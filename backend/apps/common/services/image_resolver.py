@@ -82,5 +82,9 @@ def resolve_image_url(url: str) -> str:
         except Exception as e:
             logger.warning(f"Could not resolve share link {url}: {e}")
 
+    if url.startswith('http://') and not any(h in url for h in ['localhost', '127.0.0.1', '0.0.0.0']):
+        if 'twobrothersindiashop.com' in url or 'unsplash.com' in url or 'shopify.com' in url:
+            url = url.replace('http://', 'https://')
+
     return url
 

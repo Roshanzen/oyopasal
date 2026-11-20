@@ -59,3 +59,35 @@ class AdvertisementSerializer(serializers.ModelSerializer):
         ]
 
 
+class HeroBannerSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import HeroBanner
+        model = HeroBanner
+        fields = [
+            'id',
+            'image',
+            'image_url',
+            'target_url',
+            'alt_text',
+            'display_order',
+            'is_active',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'image_url', 'created_at']
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return ''
+        try:
+            url = obj.image.url
+        except Exception:
+            return ''
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+
+

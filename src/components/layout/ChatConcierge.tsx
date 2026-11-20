@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
+  ArrowUpRight,
   AudioLines,
   Bot,
   ChevronDown,
@@ -124,9 +125,10 @@ const ChatConciergeInner: React.FC = () => {
   return (
     <>
       {!isOpen && (
-        <button
-          type="button"
+        <div
           data-testid="chat-concierge-trigger"
+          role="button"
+          tabIndex={0}
           aria-expanded={false}
           aria-haspopup="dialog"
           onClick={(e) => {
@@ -134,22 +136,64 @@ const ChatConciergeInner: React.FC = () => {
             setIsMinimized(false);
             setIsOpen(true);
           }}
-          className="fixed bottom-20 sm:bottom-6 right-5 z-[44] flex items-center gap-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-3 rounded-full shadow-xl shadow-emerald-900/25 group focus:outline-none focus:ring-4 focus:ring-emerald-400/40 select-none cursor-pointer transition-transform duration-150 hover:scale-105 active:scale-95"
-          title="Open OyoPasal AI Direct Shopper & Voice Assistant"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsMinimized(false);
+              setIsOpen(true);
+            }
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #059669 0%, #064E3B 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+          }}
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-2.5 rounded-full select-none cursor-pointer shadow-lg shadow-emerald-950/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+          title="Open OyoPasal AI Shopper"
         >
-          <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-white/20">
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+          {/* Left Icon Badge: 36px x 36px circular translucent frosted container with gold sparkle icon */}
+          <div className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs">
+            <Sparkles className="w-4.5 h-4.5 text-[#FACC15] fill-[#FACC15]/20 animate-pulse" />
           </div>
-          <div className="text-left">
-            <div className="text-sm font-bold leading-tight flex items-center gap-1.5">
-              <span>{t('chat.aiBadge')}</span>
-              <span className="bg-amber-300 text-slate-950 text-[11px] font-black uppercase px-1.5 py-0.5 rounded-full">
-                Auto-Order
-              </span>
-            </div>
-            <div className="text-xs text-emerald-100 font-medium">{t('chat.subBadge')}</div>
+
+          {/* Brand Title: Crisp bold white text */}
+          <span className="font-extrabold text-sm sm:text-base text-white tracking-tight whitespace-nowrap font-display">
+            OyoPasal AI
+          </span>
+
+          {/* Model Badge: frosted-glass rounded rectangle with "Gemini 4" */}
+          <span className="px-2 py-0.5 rounded-md bg-white/15 backdrop-blur-xs border border-white/20 text-[11px] font-semibold text-white whitespace-nowrap shadow-2xs">
+            Gemini 4
+          </span>
+
+          {/* Voice Trigger Pill: frosted translucent button with yellow audio waveform icon */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              liveVoice.toggleVoice();
+            }}
+            aria-label={isVoiceActive ? 'End voice conversation' : 'Start voice conversation'}
+            title={isVoiceActive ? 'Stop Voice Conversation' : 'Start Voice Conversation'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/20 text-white font-bold text-xs transition-all duration-150 cursor-pointer shadow-xs whitespace-nowrap shrink-0 active:scale-95 ${
+              isVoiceActive
+                ? 'bg-rose-500/80 hover:bg-rose-600'
+                : 'bg-white/15 hover:bg-white/25'
+            }`}
+          >
+            <AudioLines className={`w-3.5 h-3.5 text-[#FACC15] shrink-0 ${isVoiceActive ? 'animate-bounce' : ''}`} />
+            <span className="text-white font-bold">
+              {isVoiceActive ? (language === 'ne' ? 'रोक्नुहोस्' : 'End') : 'Voice'}
+            </span>
+          </button>
+
+          {/* Expand Icon: clean white diagonal expand arrow icon (↗) */}
+          <div
+            className="flex items-center justify-center w-7 h-7 rounded-full text-white/80 group-hover:text-white transition-colors shrink-0"
+            aria-hidden="true"
+          >
+            <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
           </div>
-        </button>
+        </div>
       )}
 
       {isOpen && (
@@ -157,7 +201,7 @@ const ChatConciergeInner: React.FC = () => {
           data-testid="chat-concierge-drawer"
           role="dialog"
           aria-label={t('chat.title')}
-          className={`fixed z-[48] ${
+          className={`fixed z-[52] ${
             isMinimized
               ? 'bottom-20 sm:bottom-6 right-4 sm:right-5 w-80'
               : 'bottom-4 sm:bottom-6 right-3 sm:right-6 w-[calc(100vw-24px)] sm:w-[460px] max-w-[480px] h-[min(640px,88vh)]'

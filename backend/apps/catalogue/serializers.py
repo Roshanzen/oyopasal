@@ -111,7 +111,16 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         total = InventoryItem.objects.filter(
             variant=instance
         ).aggregate(avail=Sum(F('quantity_on_hand') - F('quantity_reserved')))['avail']
-        ret['stock_quantity'] = max(0, total) if total is not None else 0
+        stock_qty = max(0, total) if total is not None else 0
+        ret['stock_quantity'] = stock_qty
+        sel_price = float(instance.selling_price) if instance.selling_price else 0.0
+        reg_price = float(instance.regular_price) if instance.regular_price else sel_price
+        ret['price'] = sel_price
+        ret['original_price'] = reg_price
+        ret['stock'] = stock_qty
+        attrs = instance.attributes or {}
+        ret['name'] = attrs.get('name') or instance.sku or 'Standard'
+        ret['unit'] = attrs.get('unit') or getattr(instance.product, 'unit', 'piece')
         return ret
 
     @extend_schema_field(serializers.BooleanField())
@@ -149,7 +158,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'slug', 'base_sku', 'short_description',
+            'id', 'name', 'slug', 'base_sku', 'short_description', 'unit', 'is_organic', 'sections',
             'category_name', 'category_slug', 'brand_name', 'brand_slug',
             'vendor_name', 'vendor_slug', 'store_name', 'store_slug', 'store_address',
             'store_latitude', 'store_longitude',
@@ -184,20 +193,24 @@ class ProductListSerializer(serializers.ModelSerializer):
         img = ret.get('primary_image') or ''
         ret['image_url'] = img
         ret['image'] = img
+        images = list(instance.images.all())
+        ret['gallery'] = [im.image_url for im in images] if images else ([img] if img else [])
         # Stock & ratings
         ret['in_stock'] = bool(ret.get('is_in_stock', True))
         ret['stock'] = ret.get('stock_quantity', 50)
         ret['rating'] = 4.8
         ret['reviews_count'] = 16
-        ret['unit'] = 'Standard'
+        ret['unit'] = getattr(instance, 'unit', None) or 'piece'
+        ret['is_organic'] = getattr(instance, 'is_organic', False)
         ret['description'] = instance.short_description or getattr(instance, 'description', '') or ''
         # Sections for homepage carousels
-        sec = []
-        if instance.is_featured:
-            sec.extend(['best_sellers', 'trending'])
-        if (ret.get('discount_percentage') or 0) > 10:
-            sec.append('top_deals')
-        sec.append('fresh_arrivals')
+        sec = list(getattr(instance, 'sections', None) or [])
+        if not sec:
+            if instance.is_featured:
+                sec.extend(['best_sellers', 'trending'])
+            if (ret.get('discount_percentage') or 0) > 10:
+                sec.append('top_deals')
+            sec.append('fresh_arrivals')
         ret['sections'] = sec
         return ret
 
@@ -309,12 +322,62 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'slug', 'base_sku', 'short_description', 'description',
+            'unit', 'is_organic', 'sections',
             'status', 'category', 'brand', 'brand_slug', 'vendor_name', 'vendor_slug',
             'store_name', 'store_slug', 'store_address', 'store_latitude', 'store_longitude',
             'tax_rate', 'is_featured', 'is_returnable', 'warranty_info',
             'variants', 'images', 'is_in_stock', 'stock_quantity', 'created_at'
         ]
         read_only_fields = ['id', 'slug', 'status', 'created_at']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Ensure category object
+        ret['category'] = {
+            'id': str(instance.category.id) if instance.category else '',
+            'name': instance.category.name if instance.category else 'General',
+            'slug': instance.category.slug if instance.category else 'general'
+        }
+        # Ensure vendor object
+        vendor_name = instance.vendor.business_name if instance.vendor else 'Local Mart'
+        ret['vendor'] = {
+            'id': str(instance.vendor.slug if instance.vendor else 'v-local'),
+            'name': vendor_name,
+            'rating': 4.8,
+            'delivery_time_mins': '10-15 mins'
+        }
+        # Prices from variants
+        active_variants = [v for v in instance.variants.all() if v.is_active]
+        default_v = next((v for v in active_variants if v.is_default), active_variants[0] if active_variants else None)
+        sel_price = float(default_v.selling_price) if default_v and default_v.selling_price else 0.0
+        reg_price = float(default_v.regular_price) if default_v and default_v.regular_price else sel_price
+        ret['selling_price'] = sel_price
+        ret['regular_price'] = reg_price
+        ret['discounted_price'] = sel_price
+        ret['original_price'] = reg_price
+        ret['price'] = sel_price
+        ret['discount_percentage'] = float(default_v.discount_percentage) if default_v else 0.0
+        ret['default_variant_id'] = str(default_v.id) if default_v else None
+
+        # Images & Gallery
+        images = list(instance.images.all())
+        primary_img = next((img for img in images if img.is_primary), images[0] if images else None)
+        img_url = primary_img.image_url if primary_img else ''
+        ret['primary_image'] = img_url
+        ret['image_url'] = img_url
+        ret['image'] = img_url
+        ret['gallery'] = [img.image_url for img in images] if images else ([img_url] if img_url else [])
+
+        # Stock & ratings
+        ret['in_stock'] = bool(ret.get('is_in_stock', True))
+        ret['stock'] = ret.get('stock_quantity', 50)
+        ret['rating'] = 4.8
+        ret['reviews_count'] = 16
+        ret['unit'] = getattr(instance, 'unit', None) or 'piece'
+        ret['is_organic'] = getattr(instance, 'is_organic', False)
+        ret['description'] = getattr(instance, 'description', '') or instance.short_description or ''
+        ret['origin'] = 'Kathmandu Valley'
+        return ret
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_in_stock(self, obj):

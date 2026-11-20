@@ -176,8 +176,13 @@ export function useLiveVoice({
       }
       if (wsRef.current) {
         try {
-          if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
-            wsRef.current.close();
+          const ws = wsRef.current;
+          ws.onopen = null;
+          ws.onmessage = null;
+          ws.onerror = null;
+          ws.onclose = null;
+          if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close();
           }
         } catch {
           // ignore
@@ -266,7 +271,28 @@ export function useLiveVoice({
       const ws = new WebSocket(`${wsProtocol}//${window.location.host}/api/v1/live`);
       wsRef.current = ws;
 
+      let connectTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          try {
+            ws.close();
+          } catch {
+            // ignore
+          }
+          setVoiceError(
+            language === 'ne'
+              ? 'लाइभ भ्वाइस सर्भर उपलब्ध छैन। कृपया टेक्स्ट च्याट प्रयोग गर्नुहोस्।'
+              : 'Live voice service is temporarily offline. Please use text chat to order directly.'
+          );
+          setVoiceStatus('error');
+          stopVoice(true);
+        }
+      }, 4000);
+
       ws.onopen = () => {
+        if (connectTimer) {
+          clearTimeout(connectTimer);
+          connectTimer = null;
+        }
         const token = safeStorage.get(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
         const sessionKey = safeStorage.get(APP_CONFIG.STORAGE_KEYS.SESSION_KEY);
         ws.send(
@@ -384,12 +410,24 @@ export function useLiveVoice({
       };
 
       ws.onerror = () => {
-        setVoiceError('Could not connect to Live Voice server.');
+        if (connectTimer) {
+          clearTimeout(connectTimer);
+          connectTimer = null;
+        }
+        setVoiceError(
+          language === 'ne'
+            ? 'लाइभ भ्वाइस सर्भर उपलब्ध छैन। कृपया टेक्स्ट च्याट प्रयोग गर्नुहोस्।'
+            : 'Live voice service is temporarily offline. Please use text chat to order.'
+        );
         setVoiceStatus('error');
         stopVoice(true);
       };
 
       ws.onclose = () => {
+        if (connectTimer) {
+          clearTimeout(connectTimer);
+          connectTimer = null;
+        }
         setVoiceStatus((prev) => (prev === 'error' ? 'error' : 'idle'));
       };
     } catch (err: unknown) {

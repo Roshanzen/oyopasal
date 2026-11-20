@@ -1,42 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { vendorService } from '../services';
-import { Promotion } from '../types';
+import { HeroBanner, Promotion } from '../types';
 
-export interface UseBannersOptions {
-  placement?: string;
+export interface UseHeroBannersOptions {
   enabled?: boolean;
 }
 
-export interface UseBannersResult {
+export interface UseHeroBannersResult {
+  heroBanners: HeroBanner[];
   banners: Promotion[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
-function isBannerCurrentlyActive(banner: Promotion, nowMs: number): boolean {
-  if (banner.is_active === false) return false;
-  if (banner.starts_at) {
-    const startMs = Date.parse(banner.starts_at);
-    if (!Number.isNaN(startMs) && startMs > nowMs) return false;
-  }
-  if (banner.ends_at) {
-    const endMs = Date.parse(banner.ends_at);
-    if (!Number.isNaN(endMs) && endMs < nowMs) return false;
-  }
-  return true;
-}
-
-function sortByDisplayPriority(a: Promotion, b: Promotion): number {
-  const priorityA = typeof a.sort_order === 'number' ? a.sort_order : Number.MAX_SAFE_INTEGER;
-  const priorityB = typeof b.sort_order === 'number' ? b.sort_order : Number.MAX_SAFE_INTEGER;
-  if (priorityA !== priorityB) return priorityA - priorityB;
-  return (a.db_id ?? 0) - (b.db_id ?? 0);
-}
-
-export function useBanners(options: UseBannersOptions = {}): UseBannersResult {
-  const { placement, enabled = true } = options;
-  const [banners, setBanners] = useState<Promotion[]>([]);
+export function useHeroBanners(options: UseHeroBannersOptions = {}): UseHeroBannersResult {
+  const { enabled = true } = options;
+  const [heroBanners, setHeroBanners] = useState<HeroBanner[]>([]);
+  const [legacyBanners, setLegacyBanners] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
@@ -51,24 +32,50 @@ export function useBanners(options: UseBannersOptions = {}): UseBannersResult {
     try {
       setLoading(true);
       setError(null);
-      const res = await vendorService.getPromotions(placement);
+
+      // Primary: Fetch live active HeroBanner records from /api/hero-banners/
+      const heroRes = await vendorService.getHeroBanners();
       if (seq !== requestSeqRef.current) return;
 
-      const nowMs = Date.now();
-      const activeSorted = (res.results || [])
-        .filter((banner) => isBannerCurrentlyActive(banner, nowMs))
-        .sort(sortByDisplayPriority);
+      const heroList: HeroBanner[] = Array.isArray(heroRes)
+        ? heroRes
+        : ((heroRes as unknown as { results: HeroBanner[] }).results || []);
 
-      setBanners(activeSorted);
+      const activeHero = heroList.filter((b) => b.is_active !== false);
+      setHeroBanners(activeHero);
+
+      // Convert HeroBanner[] to Promotion[] shape for backward compatibility
+      const mappedPromotions: Promotion[] = activeHero.map((b) => ({
+        id: `hero-${b.id}`,
+        db_id: b.id,
+        title: b.alt_text || 'OyoPasal Banner',
+        subtitle: '',
+        badge: '',
+        cta_text: 'Shop Now',
+        cta_category: '',
+        destination_url: b.target_url || '/',
+        image: b.image_url || b.image,
+        is_active: b.is_active,
+        sort_order: b.display_order,
+      }));
+
+      setLegacyBanners(mappedPromotions);
     } catch (err) {
       if (seq !== requestSeqRef.current) return;
-      setError(err instanceof Error ? err.message : 'Failed to load promotional banners');
+      // Secondary fallback to legacy promotions endpoint if error
+      try {
+        const fallbackRes = await vendorService.getPromotions('hero');
+        if (seq !== requestSeqRef.current) return;
+        setLegacyBanners(fallbackRes.results || []);
+      } catch {
+        setError(err instanceof Error ? err.message : 'Failed to load hero banners');
+      }
     } finally {
       if (seq === requestSeqRef.current) {
         setLoading(false);
       }
     }
-  }, [enabled, placement]);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
@@ -82,9 +89,13 @@ export function useBanners(options: UseBannersOptions = {}): UseBannersResult {
   }, [enabled, fetchBanners]);
 
   return {
-    banners,
+    heroBanners,
+    banners: legacyBanners,
     loading,
     error,
     refetch: fetchBanners,
   };
 }
+
+// Backward-compatible alias
+export const useBanners = useHeroBanners;

@@ -1,225 +1,36 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Clock, Crosshair, Maximize2, Navigation } from 'lucide-react';
-import {
-  AdvancedMarker,
-  APIProvider,
-  InfoWindow,
-  Map as GoogleMap,
-  Pin,
-  useMap,
-  useMapsLibrary,
-} from '@vis.gl/react-google-maps';
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Clock, Crosshair, Maximize2, Navigation } from 'lucide-react';
 import { LatLng } from '../../hooks/useOrderTracking';
 import { TranslatorFn } from '../../i18n';
 import { Address, DeliveryTrackingTelemetry, Language } from '../../types';
 
-function buildFallbackRoadPath(origin: LatLng, destination: LatLng, steps = 20): LatLng[] {
-  const points: LatLng[] = [];
-  const dLat = destination.lat - origin.lat;
-  const dLng = destination.lng - origin.lng;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    points.push({
-      lat: origin.lat + dLat * t,
-      lng: origin.lng + dLng * t,
-    });
-  }
-  return points;
-}
-
-interface GoogleBoundsLike {
-  extend: (latLng: LatLng) => void;
-}
-
-interface GoogleMapsGlobal {
-  maps?: {
-    LatLngBounds?: new () => GoogleBoundsLike;
-    Polyline?: new (opts: Record<string, unknown>) => { setMap: (m: unknown) => void };
-  };
-}
-
-interface LiveRouteLayerProps {
-  hubPosition: LatLng;
-  destinationPosition: LatLng;
-  riderPosition: LatLng | null;
-  followRider: boolean;
-  fitTrigger: number;
-  onRouteMetricsComputed: (distanceMeters?: number, durationMillis?: number) => void;
-}
-
-function LiveRouteLayer({
-  hubPosition,
-  destinationPosition,
-  riderPosition,
-  followRider,
-  fitTrigger,
-  onRouteMetricsComputed,
-}: LiveRouteLayerProps) {
-  const map = useMap();
-  const coreLib = useMapsLibrary('core') as unknown as { LatLngBounds?: new () => GoogleBoundsLike } | null;
-  const routesLib = useMapsLibrary('routes') as unknown as {
-    Route?: {
-      computeRoutes?: (req: Record<string, unknown>) => Promise<{
-        routes?: Array<{
-          path?: Array<{ lat: number | (() => number); lng: number | (() => number) }>;
-          distanceMeters?: number;
-          durationMillis?: number;
-          viewport?: unknown;
-        }>;
-      }>;
-    };
-  } | null;
-  const mapsLib = useMapsLibrary('maps') as unknown as {
-    Polyline?: new (opts: Record<string, unknown>) => { setMap: (m: unknown) => void };
-  } | null;
-
-  const [computedPath, setComputedPath] = useState<LatLng[]>(() =>
-    buildFallbackRoadPath(hubPosition, destinationPosition)
-  );
-  const completedLineRef = useRef<{ setMap: (m: unknown) => void } | null>(null);
-  const remainingLineRef = useRef<{ setMap: (m: unknown) => void } | null>(null);
-  const routeKeyRef = useRef<string>('');
-
-  const fitFullRoute = useCallback(() => {
-    const googleWindow = (window as unknown as { google?: GoogleMapsGlobal }).google;
-    const LatLngBoundsCtor = coreLib?.LatLngBounds || googleWindow?.maps?.LatLngBounds;
-    if (!map || !LatLngBoundsCtor) return;
-    const bounds = new LatLngBoundsCtor();
-    bounds.extend(hubPosition);
-    bounds.extend(destinationPosition);
-    if (riderPosition) bounds.extend(riderPosition);
-    map.fitBounds(bounds as unknown as Parameters<typeof map.fitBounds>[0], { top: 64, right: 64, bottom: 72, left: 64 });
-  }, [map, coreLib, hubPosition, destinationPosition, riderPosition]);
-
-  useEffect(() => {
-    const key = `${hubPosition.lat.toFixed(5)},${hubPosition.lng.toFixed(5)}->${destinationPosition.lat.toFixed(5)},${destinationPosition.lng.toFixed(5)}`;
-    if (routeKeyRef.current === key && computedPath.length > 2) return;
-    routeKeyRef.current = key;
-
-    const fallback = buildFallbackRoadPath(hubPosition, destinationPosition);
-    setComputedPath(fallback);
-
-    if (!routesLib || !map) return;
-    let cancelled = false;
-    const request = {
-      origin: hubPosition,
-      destination: destinationPosition,
-      travelMode: 'DRIVING',
-      fields: ['path', 'distanceMeters', 'durationMillis', 'viewport'],
-    };
-
-    const routeClass = routesLib.Route;
-    if (routeClass && typeof routeClass.computeRoutes === 'function') {
-      routeClass
-        .computeRoutes(request)
-        .then(({ routes }) => {
-          if (cancelled || !routes || routes.length === 0) return;
-          const primaryRoute = routes[0];
-          const rawPath = primaryRoute.path;
-          if (Array.isArray(rawPath) && rawPath.length >= 2) {
-            const normalized: LatLng[] = rawPath.map((pt) => ({
-              lat: typeof pt.lat === 'function' ? pt.lat() : pt.lat,
-              lng: typeof pt.lng === 'function' ? pt.lng() : pt.lng,
-            }));
-            setComputedPath(normalized);
-          }
-          onRouteMetricsComputed(primaryRoute.distanceMeters, primaryRoute.durationMillis);
-          if (primaryRoute.viewport) {
-            map.fitBounds(primaryRoute.viewport as Parameters<typeof map.fitBounds>[0], 60);
-          }
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [routesLib, map, hubPosition, destinationPosition, onRouteMetricsComputed, computedPath.length]);
-
-  useEffect(() => {
-    fitFullRoute();
-  }, [fitTrigger, fitFullRoute, hubPosition.lat, hubPosition.lng, destinationPosition.lat, destinationPosition.lng]);
-
-  useEffect(() => {
-    if (followRider && map && riderPosition) {
-      map.panTo(riderPosition);
-    }
-  }, [followRider, map, riderPosition]);
-
-  useEffect(() => {
-    if (!map || !mapsLib) return;
-
-    if (completedLineRef.current) completedLineRef.current.setMap(null);
-    if (remainingLineRef.current) remainingLineRef.current.setMap(null);
-
-    const googleWindow = (window as unknown as { google?: GoogleMapsGlobal }).google;
-    const PolylineCtor = mapsLib.Polyline || googleWindow?.maps?.Polyline;
-    if (!PolylineCtor) return;
-
-    const completedPath = riderPosition ? [hubPosition, riderPosition] : [hubPosition];
-    const remainingPath = riderPosition ? [riderPosition, destinationPosition] : computedPath;
-
-    if (completedPath.length >= 2) {
-      completedLineRef.current = new PolylineCtor({
-        path: completedPath,
-        geodesic: true,
-        strokeColor: '#10b981',
-        strokeOpacity: 0.95,
-        strokeWeight: 5,
-        map,
-      });
-    }
-
-    remainingLineRef.current = new PolylineCtor({
-      path: remainingPath,
-      geodesic: true,
-      strokeColor: '#38bdf8',
-      strokeOpacity: 0,
-      icons: [
-        {
-          icon: {
-            path: 'M 0,-1 0,1',
-            strokeOpacity: 0.95,
-            strokeColor: '#38bdf8',
-            scale: 3.5,
-          },
-          offset: '0',
-          repeat: '14px',
-        },
-      ],
-      map,
-    });
-
-    return () => {
-      if (completedLineRef.current) {
-        completedLineRef.current.setMap(null);
-        completedLineRef.current = null;
-      }
-      if (remainingLineRef.current) {
-        remainingLineRef.current.setMap(null);
-        remainingLineRef.current = null;
-      }
-    };
-  }, [map, mapsLib, computedPath, hubPosition, destinationPosition, riderPosition]);
-
-  return null;
-}
-
 interface OrderTrackingMapCardProps {
-  apiKey: string;
-  mapsQuotaError: boolean;
+  apiKey?: string;
+  mapsQuotaError?: boolean;
   isDelivered: boolean;
   isCancelled: boolean;
-  assignment: DeliveryTrackingTelemetry['assignment'];
-  hubInfo: { name: string; area: string; coords: LatLng };
+  assignment?: {
+    id: string | number;
+    agent?: {
+      full_name: string;
+      phone?: string;
+      phone_number?: string;
+      vehicle_type: string;
+      vehicle_number: string;
+    } | null;
+  } | null;
+  hubInfo: { name: string; area?: string; address?: string; coords: LatLng };
   destinationCoords: LatLng;
-  targetSavedAddress: Address | null;
+  targetSavedAddress?: Address | null;
   riderPosition: LatLng | null;
   riderBearing: number;
   totalRouteKm: number;
   remainingDistanceKm: number;
   speedKmh: number;
   etaDisplay: string;
+  telemetry?: DeliveryTrackingTelemetry | null;
   followRider: boolean;
   fitTrigger: number;
   activeMarkerInfo: 'hub' | 'rider' | 'destination' | null;
@@ -228,12 +39,133 @@ interface OrderTrackingMapCardProps {
   onToggleFollowRider: () => void;
   onFitFullRoute: () => void;
   onSelectMarkerInfo: (info: 'hub' | 'rider' | 'destination' | null) => void;
-  onRouteMetricsComputed: (distanceMeters?: number, durationMillis?: number) => void;
+  onRouteMetricsComputed?: (distanceMeters?: number, durationMillis?: number) => void;
+}
+
+function createHubIcon(hubName: string) {
+  return L.divIcon({
+    className: 'custom-hub-pin',
+    html: `
+      <div style="position: relative; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+        <div style="
+          padding: 2px 8px;
+          margin-bottom: 4px;
+          border-radius: 6px;
+          background: rgba(15, 23, 42, 0.9);
+          color: #6ee7b7;
+          border: 1px solid rgba(16, 185, 129, 0.6);
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        ">${hubName}</div>
+        <div style="
+          width: 32px;
+          height: 32px;
+          background: #059669;
+          border: 2px solid #ffffff;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 4px 10px rgba(5, 150, 105, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="width: 10px; height: 10px; background: #ffffff; border-radius: 50%;"></div>
+        </div>
+      </div>
+    `,
+    iconSize: [32, 40],
+    iconAnchor: [16, 40],
+  });
+}
+
+function createDestinationIcon(title: string) {
+  return L.divIcon({
+    className: 'custom-destination-pin',
+    html: `
+      <div style="position: relative; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+        <div style="
+          padding: 2px 8px;
+          margin-bottom: 4px;
+          border-radius: 6px;
+          background: #ea580c;
+          color: #ffffff;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        ">${title}</div>
+        <div style="
+          width: 34px;
+          height: 34px;
+          background: #ea580c;
+          border: 2px solid #ffffff;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 4px 12px rgba(234, 88, 12, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="width: 10px; height: 10px; background: #ffffff; border-radius: 50%;"></div>
+        </div>
+      </div>
+    `,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+  });
+}
+
+function createRiderIcon(agentName: string, distanceKm: number, bearing: number) {
+  return L.divIcon({
+    className: 'custom-rider-pin',
+    html: `
+      <div style="position: relative; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+        <div style="
+          padding: 3px 8px;
+          margin-bottom: 4px;
+          border-radius: 9999px;
+          background: #059669;
+          color: #ffffff;
+          border: 1.5px solid rgba(255, 255, 255, 0.8);
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #ffffff;"></span>
+          <span>${agentName} · ${distanceKm.toFixed(2)} km</span>
+        </div>
+        <div style="
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #0f172a;
+          border: 2.5px solid #10b981;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #34d399;
+          transform: rotate(${Math.round(bearing)}deg);
+        ">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+  });
 }
 
 export default function OrderTrackingMapCard({
-  apiKey,
-  mapsQuotaError,
   isDelivered,
   isCancelled,
   assignment,
@@ -246,6 +178,7 @@ export default function OrderTrackingMapCard({
   remainingDistanceKm,
   speedKmh,
   etaDisplay,
+  telemetry,
   followRider,
   fitTrigger,
   activeMarkerInfo,
@@ -254,13 +187,189 @@ export default function OrderTrackingMapCard({
   onToggleFollowRider,
   onFitFullRoute,
   onSelectMarkerInfo,
-  onRouteMetricsComputed,
 }: OrderTrackingMapCardProps) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const hubMarkerRef = useRef<L.Marker | null>(null);
+  const destinationMarkerRef = useRef<L.Marker | null>(null);
+  const riderMarkerRef = useRef<L.Marker | null>(null);
+  const coveredLineRef = useRef<L.Polyline | null>(null);
+  const remainingLineRef = useRef<L.Polyline | null>(null);
+
+  // Initialize Leaflet Map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (mapRef.current) return;
+
+    const initialCenter = riderPosition || destinationCoords;
+    const map = L.map(mapContainerRef.current, {
+      center: [initialCenter.lat, initialCenter.lng],
+      zoom: 14,
+      zoomControl: false,
+    });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Hub Marker
+    const hubMarker = L.marker([hubInfo.coords.lat, hubInfo.coords.lng], {
+      icon: createHubIcon(hubInfo.name),
+      title: hubInfo.name,
+    }).addTo(map);
+
+    hubMarker.bindTooltip(
+      `<strong>${hubInfo.name}</strong><br/>Fulfillment Center`,
+      { direction: 'top', offset: [0, -38] }
+    );
+    hubMarker.on('click', () => onSelectMarkerInfo('hub'));
+    hubMarkerRef.current = hubMarker;
+
+    // Destination Marker
+    const destTitle = targetSavedAddress?.title || 'Delivery Destination';
+    const destMarker = L.marker([destinationCoords.lat, destinationCoords.lng], {
+      icon: createDestinationIcon(destTitle),
+      title: destTitle,
+    }).addTo(map);
+
+    destMarker.bindTooltip(
+      `<strong>${destTitle}</strong><br/>${targetSavedAddress?.area || 'Delivery Destination'}`,
+      { direction: 'top', offset: [0, -40] }
+    );
+    destMarker.on('click', () => onSelectMarkerInfo('destination'));
+    destinationMarkerRef.current = destMarker;
+
+    // Route Polylines
+    coveredLineRef.current = L.polyline([], {
+      color: '#059669',
+      weight: 5,
+      opacity: 0.85,
+    }).addTo(map);
+
+    remainingLineRef.current = L.polyline([], {
+      color: '#38bdf8',
+      weight: 4,
+      dashArray: '8, 8',
+      opacity: 0.85,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    // Initial fit bounds
+    const bounds = L.latLngBounds([
+      [hubInfo.coords.lat, hubInfo.coords.lng],
+      [destinationCoords.lat, destinationCoords.lng],
+    ]);
+    if (riderPosition) {
+      bounds.extend([riderPosition.lat, riderPosition.lng]);
+    }
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      map.remove();
+      mapRef.current = null;
+      hubMarkerRef.current = null;
+      destinationMarkerRef.current = null;
+      riderMarkerRef.current = null;
+      coveredLineRef.current = null;
+      remainingLineRef.current = null;
+    };
+  }, []);
+
+  // Update Rider Marker, Routes, and Telemetry
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // Update Destination position
+    destinationMarkerRef.current?.setLatLng([destinationCoords.lat, destinationCoords.lng]);
+    hubMarkerRef.current?.setLatLng([hubInfo.coords.lat, hubInfo.coords.lng]);
+
+    // Handle Rider Position
+    if (riderPosition && !isCancelled) {
+      const riderName = assignment?.agent?.full_name?.split(' ')[0] || 'Rider';
+      if (!riderMarkerRef.current) {
+        const marker = L.marker([riderPosition.lat, riderPosition.lng], {
+          icon: createRiderIcon(riderName, remainingDistanceKm, riderBearing),
+          zIndexOffset: 100,
+          title: `Delivery Rider: ${riderName}`,
+        }).addTo(map);
+        marker.on('click', () => onSelectMarkerInfo('rider'));
+        riderMarkerRef.current = marker;
+      } else {
+        riderMarkerRef.current.setLatLng([riderPosition.lat, riderPosition.lng]);
+        riderMarkerRef.current.setIcon(
+          createRiderIcon(riderName, remainingDistanceKm, riderBearing)
+        );
+      }
+
+      // Route lines: Hub -> Rider (covered), Rider -> Destination (remaining)
+      coveredLineRef.current?.setLatLngs([
+        [hubInfo.coords.lat, hubInfo.coords.lng],
+        [riderPosition.lat, riderPosition.lng],
+      ]);
+      remainingLineRef.current?.setLatLngs([
+        [riderPosition.lat, riderPosition.lng],
+        [destinationCoords.lat, destinationCoords.lng],
+      ]);
+
+      if (followRider) {
+        map.panTo([riderPosition.lat, riderPosition.lng], { animate: true, duration: 0.6 });
+      }
+    } else {
+      // No active rider: line direct from hub to destination
+      if (riderMarkerRef.current) {
+        riderMarkerRef.current.remove();
+        riderMarkerRef.current = null;
+      }
+      coveredLineRef.current?.setLatLngs([]);
+      remainingLineRef.current?.setLatLngs([
+        [hubInfo.coords.lat, hubInfo.coords.lng],
+        [destinationCoords.lat, destinationCoords.lng],
+      ]);
+    }
+  }, [
+    riderPosition,
+    riderBearing,
+    remainingDistanceKm,
+    assignment,
+    isCancelled,
+    followRider,
+    destinationCoords,
+    hubInfo.coords,
+  ]);
+
+  // Handle Fit Route Trigger
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const bounds = L.latLngBounds([
+      [hubInfo.coords.lat, hubInfo.coords.lng],
+      [destinationCoords.lat, destinationCoords.lng],
+    ]);
+    if (riderPosition) {
+      bounds.extend([riderPosition.lat, riderPosition.lng]);
+    }
+    mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+  }, [fitTrigger]);
+
   return (
     <div className="bg-white dark:bg-[#111726] rounded-3xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
       <div className="p-4 sm:px-5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/70">
         <div className="flex items-center gap-2.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${riderPosition && !isDelivered ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+          <div
+            className={`w-2.5 h-2.5 rounded-full ${
+              riderPosition && !isDelivered ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'
+            }`}
+          />
           <div>
             <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white block">
               {t('track.mapHeader')}
@@ -312,129 +421,12 @@ export default function OrderTrackingMapCard({
         </div>
       )}
 
-      {(mapsQuotaError || !apiKey) && (
-        <div className="px-4 py-2.5 bg-amber-950/60 border-b border-amber-800/70 text-amber-200 text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>
-            {!apiKey
-              ? 'Google Maps API key is not configured; live DB telemetry coordinates remain active below.'
-              : 'Google Maps API notice detected. Live telemetry coordinates continue updating.'}
-          </span>
-        </div>
-      )}
-
+      {/* Leaflet OpenStreetMap Container */}
       <div className="h-[380px] sm:h-[460px] w-full relative bg-slate-900">
-        <APIProvider apiKey={apiKey}>
-          <GoogleMap
-            defaultCenter={riderPosition || destinationCoords}
-            defaultZoom={14}
-            mapId="DEMO_MAP_ID"
-            internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-            className="w-full h-full"
-            gestureHandling="greedy"
-          >
-            <LiveRouteLayer
-              hubPosition={hubInfo.coords}
-              destinationPosition={destinationCoords}
-              riderPosition={riderPosition}
-              followRider={followRider}
-              fitTrigger={fitTrigger}
-              onRouteMetricsComputed={onRouteMetricsComputed}
-            />
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-            <AdvancedMarker
-              position={hubInfo.coords}
-              onClick={() => onSelectMarkerInfo('hub')}
-              title={hubInfo.name}
-            >
-              <div className="flex flex-col items-center cursor-pointer">
-                <div className="px-2.5 py-0.5 mb-1 rounded-md bg-slate-950/90 text-emerald-300 border border-emerald-500/60 text-xs font-bold whitespace-nowrap shadow-md">
-                  {hubInfo.name}
-                </div>
-                <Pin background="#059669" borderColor="#064e3b" glyphColor="#ffffff" scale={1.1} />
-              </div>
-            </AdvancedMarker>
-
-            {riderPosition && !isCancelled && (
-              <AdvancedMarker
-                position={riderPosition}
-                onClick={() => onSelectMarkerInfo('rider')}
-                title={assignment?.agent?.full_name || 'Delivery Rider'}
-                zIndex={50}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer">
-                  <div className="px-2.5 py-0.5 mb-1 rounded-full bg-emerald-600 text-white text-xs font-extrabold shadow-lg border border-white/60 whitespace-nowrap flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    <span>
-                      {assignment?.agent?.full_name?.split(' ')[0] || 'Rider'} · {remainingDistanceKm.toFixed(2)} km
-                    </span>
-                  </div>
-                  <div
-                    className="relative w-11 h-11 rounded-full bg-slate-950 border-2 border-emerald-400 shadow-xl flex items-center justify-center text-emerald-400"
-                    style={{ transform: `rotate(${Math.round(riderBearing)}deg)` }}
-                  >
-                    <Navigation className="w-5 h-5 fill-emerald-400 text-emerald-300" />
-                  </div>
-                </div>
-              </AdvancedMarker>
-            )}
-
-            <AdvancedMarker
-              position={destinationCoords}
-              onClick={() => onSelectMarkerInfo('destination')}
-              title={targetSavedAddress?.title || 'Destination'}
-              zIndex={40}
-            >
-              <div className="flex flex-col items-center cursor-pointer">
-                <div className="px-2.5 py-0.5 mb-1 rounded-md bg-orange-600 text-white text-xs font-extrabold whitespace-nowrap shadow-md border border-white/40">
-                  {targetSavedAddress?.title || 'Saved Address'} ({targetSavedAddress?.area})
-                </div>
-                <Pin background="#ea580c" borderColor="#9a3412" glyphColor="#ffffff" scale={1.25} />
-              </div>
-            </AdvancedMarker>
-
-            {activeMarkerInfo === 'hub' && (
-              <InfoWindow position={hubInfo.coords} onCloseClick={() => onSelectMarkerInfo(null)}>
-                <div className="p-1.5 text-slate-900">
-                  <p className="text-xs font-extrabold uppercase text-emerald-700">Fulfillment Hub</p>
-                  <h4 className="font-bold text-base">{hubInfo.name}</h4>
-                  <p className="text-xs text-slate-500">Total distance: {totalRouteKm.toFixed(2)} km</p>
-                </div>
-              </InfoWindow>
-            )}
-
-            {activeMarkerInfo === 'rider' && riderPosition && !isCancelled && (
-              <InfoWindow position={riderPosition} onCloseClick={() => onSelectMarkerInfo(null)}>
-                <div className="p-1.5 text-slate-900">
-                  <span className="text-xs font-extrabold uppercase text-emerald-700">Live Delivery Agent</span>
-                  <h4 className="font-bold text-base mt-0.5">{assignment?.agent?.full_name || 'Assigned Rider'}</h4>
-                  <p className="text-xs text-slate-600">
-                    {assignment?.agent?.vehicle_type || 'EV'} · {assignment?.agent?.vehicle_number || ''}
-                  </p>
-                  <p className="text-xs font-bold text-emerald-700 mt-1">
-                    {remainingDistanceKm.toFixed(2)} km away · ETA {etaDisplay}
-                  </p>
-                </div>
-              </InfoWindow>
-            )}
-
-            {activeMarkerInfo === 'destination' && (
-              <InfoWindow position={destinationCoords} onCloseClick={() => onSelectMarkerInfo(null)}>
-                <div className="p-1.5 text-slate-900">
-                  <span className="text-xs font-extrabold uppercase text-orange-700">Delivery Address</span>
-                  <h4 className="font-bold text-base mt-0.5">
-                    {targetSavedAddress?.title} · {targetSavedAddress?.recipient_name}
-                  </h4>
-                  <p className="text-xs text-slate-600">
-                    {targetSavedAddress?.street}, {targetSavedAddress?.area}
-                  </p>
-                </div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
-        </APIProvider>
-
-        <div className="absolute top-3 left-3 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-lg flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-800 dark:text-slate-200 pointer-events-none">
+        {/* Legend Overlay */}
+        <div className="absolute top-3 left-3 z-400 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-lg flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-800 dark:text-slate-200 pointer-events-none">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-1 rounded-full bg-emerald-500 inline-block" />
             <span>{t('track.covered')}</span>
@@ -448,26 +440,39 @@ export default function OrderTrackingMapCard({
 
       {/* Live DB Telemetry Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
-        <div className="p-3.5 sm:p-4">
-          <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">{t('track.awayFromAddress')}</span>
-          <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5 block">
-            {remainingDistanceKm === 0 ? t('track.here') : `${remainingDistanceKm.toFixed(2)} km`}
+        <div className="p-3.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+            {t('track.liveEta')}
+          </span>
+          <span className="text-base sm:text-lg font-extrabold text-emerald-800 dark:text-emerald-400 block mt-0.5">
+            {isDelivered ? 'Delivered' : isCancelled ? 'Cancelled' : etaDisplay}
           </span>
         </div>
-        <div className="p-3.5 sm:p-4">
-          <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">{t('track.liveEtaCountdown')}</span>
-          <span className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums mt-0.5 block">{etaDisplay}</span>
-        </div>
-        <div className="p-3.5 sm:p-4">
-          <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">{t('track.courierSpeed')}</span>
-          <span className="text-lg font-extrabold text-sky-600 dark:text-sky-400 tabular-nums mt-0.5 block">
-            {riderPosition ? `${speedKmh} km/h` : language === 'ne' ? 'प्रतीक्षामा' : 'Standby'}
+
+        <div className="p-3.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+            {t('track.awayFromAddress')}
+          </span>
+          <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white block mt-0.5 tabular-nums">
+            {remainingDistanceKm.toFixed(2)} km
           </span>
         </div>
-        <div className="p-3.5 sm:p-4">
-          <span className="text-xs uppercase tracking-wider font-bold text-slate-400 block">{t('track.agentGpsCoords')}</span>
-          <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300 tabular-nums mt-1 block">
-            {riderPosition ? `${riderPosition.lat.toFixed(4)}, ${riderPosition.lng.toFixed(4)}` : 'Not Dispatched'}
+
+        <div className="p-3.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+            {t('track.courierSpeed')}
+          </span>
+          <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white block mt-0.5 tabular-nums">
+            {speedKmh > 0 ? `${speedKmh.toFixed(0)} km/h` : '18 km/h'}
+          </span>
+        </div>
+
+        <div className="p-3.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+            {language === 'ne' ? 'डेलिभरी सवारी' : 'Delivery Vehicle'}
+          </span>
+          <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white block mt-0.5 truncate">
+            {assignment?.agent?.vehicle_number || assignment?.agent?.vehicle_type || 'Super Soco CPx'}
           </span>
         </div>
       </div>

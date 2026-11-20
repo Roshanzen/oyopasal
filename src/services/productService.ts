@@ -6,7 +6,7 @@ import {
   Product,
   ReviewItem,
 } from '../types';
-import { httpClient } from './httpClient';
+import { httpClient, RequestOptions } from './httpClient';
 
 export interface ProductQueryParams {
   category?: string;
@@ -22,11 +22,11 @@ export interface ProductQueryParams {
 }
 
 export const productService = {
-  getDbStatus(): Promise<DbStatusResponse> {
-    return httpClient.request<DbStatusResponse>('/db/status/');
+  getDbStatus(options?: RequestOptions): Promise<DbStatusResponse> {
+    return httpClient.request<DbStatusResponse>('/db/status/', options);
   },
 
-  getProducts(params?: ProductQueryParams): Promise<DRFPaginatedResponse<Product>> {
+  getProducts(params?: ProductQueryParams, options?: RequestOptions): Promise<DRFPaginatedResponse<Product>> {
     const query = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, val]) => {
@@ -36,19 +36,19 @@ export const productService = {
       });
     }
     const qs = query.toString() ? `?${query.toString()}` : '';
-    return httpClient.request<DRFPaginatedResponse<Product>>(`/products/${qs}`);
+    return httpClient.request<DRFPaginatedResponse<Product>>(`/products/${qs}`, options);
   },
 
-  getProductById(id: string): Promise<Product> {
-    return httpClient.request<Product>(`/products/${id}/`);
+  getProductById(id: string, options?: RequestOptions): Promise<Product> {
+    return httpClient.request<Product>(`/products/${id}/`, options);
   },
 
-  getSimilarProducts(id: string): Promise<DRFPaginatedResponse<Product>> {
-    return httpClient.request<DRFPaginatedResponse<Product>>(`/products/${id}/similar/`);
+  getSimilarProducts(id: string, options?: RequestOptions): Promise<DRFPaginatedResponse<Product>> {
+    return httpClient.request<DRFPaginatedResponse<Product>>(`/products/${id}/similar/`, options);
   },
 
-  getProductReviews(id: string): Promise<{ count: number; average_rating: number; results: ReviewItem[] }> {
-    return httpClient.request(`/products/${id}/reviews/`);
+  getProductReviews(id: string, options?: RequestOptions): Promise<{ count: number; average_rating: number; results: ReviewItem[] }> {
+    return httpClient.request(`/products/${id}/reviews/`, options);
   },
 
   submitProductReview(
