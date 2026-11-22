@@ -75,9 +75,23 @@ class CartSerializer(serializers.ModelSerializer):
             v = p.vendor if p else None
             cat = p.category if p else None
 
-            # Get image URL safely
-            img_url = ''
-            if p:
+            # Get image URL safely (check variant-specific image first)
+            attrs = it.variant.attributes or {} if it.variant else {}
+            color = attrs.get('color') or attrs.get('color_name') or ''
+            color_code = attrs.get('color_code') or attrs.get('color_value') or ''
+            size = attrs.get('size') or ''
+            var_name = attrs.get('name') or (f"{color} / {size}" if color and size else (color or size or ''))
+
+            var_img = ''
+            if it.variant:
+                v_img = it.variant.images.first()
+                if v_img:
+                    var_img = v_img.image_url
+                elif attrs.get('image_url'):
+                    var_img = attrs.get('image_url')
+
+            img_url = var_img
+            if not img_url and p:
                 first_img = p.images.filter(is_primary=True).first() or p.images.first()
                 if first_img:
                     img_url = first_img.image_url
@@ -111,6 +125,12 @@ class CartSerializer(serializers.ModelSerializer):
                     'rating': 4.8,
                     'reviews_count': 12,
                     'image_url': img_url,
+                    'gallery': [img_url] if img_url else [],
+                    'images': [{'image_url': img_url, 'is_primary': True}] if img_url else [],
+                    'variants': [],
+                    'has_variants': False,
+                    'available_colors': [],
+                    'available_sizes': [],
                     'description': p.short_description or '',
                     'sections': ['best_sellers']
                 }
@@ -131,6 +151,12 @@ class CartSerializer(serializers.ModelSerializer):
                     'rating': 0,
                     'reviews_count': 0,
                     'image_url': '',
+                    'gallery': [],
+                    'images': [],
+                    'variants': [],
+                    'has_variants': False,
+                    'available_colors': [],
+                    'available_sizes': [],
                     'description': 'This product is currently unavailable.',
                     'sections': []
                 }
@@ -143,6 +169,14 @@ class CartSerializer(serializers.ModelSerializer):
                 'product': prod_dict,
                 'quantity': it.quantity,
                 'selected_variant_id': str(it.variant_id) if it.variant_id else '',
+                'variant_id': str(it.variant_id) if it.variant_id else '',
+                'variant_sku': it.variant.sku if it.variant else '',
+                'variant_name': var_name,
+                'color': color,
+                'color_code': color_code,
+                'size': size,
+                'image_url': img_url,
+                'attributes': attrs,
                 'unit_price': u_price,
                 'total_price': t_price
             }

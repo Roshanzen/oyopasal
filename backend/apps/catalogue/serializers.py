@@ -118,9 +118,25 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         ret['price'] = sel_price
         ret['original_price'] = reg_price
         ret['stock'] = stock_qty
+        ret['in_stock'] = bool(stock_qty > 0 and instance.is_active)
+        ret['is_available'] = bool(stock_qty > 0 and instance.is_active)
+
         attrs = instance.attributes or {}
         ret['name'] = attrs.get('name') or instance.sku or 'Standard'
         ret['unit'] = attrs.get('unit') or getattr(instance.product, 'unit', 'piece')
+        ret['color'] = attrs.get('color') or attrs.get('color_name') or ''
+        ret['color_name'] = attrs.get('color_name') or attrs.get('color') or ''
+        ret['color_code'] = attrs.get('color_code') or attrs.get('color_value') or ''
+        ret['size'] = attrs.get('size') or ''
+
+        # Variant specific image
+        var_img = None
+        var_img_obj = instance.images.first()
+        if var_img_obj:
+            var_img = var_img_obj.image_url
+        elif attrs.get('image_url'):
+            var_img = attrs.get('image_url')
+        ret['image_url'] = var_img
         return ret
 
     @extend_schema_field(serializers.BooleanField())
@@ -195,6 +211,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         ret['image'] = img
         images = list(instance.images.all())
         ret['gallery'] = [im.image_url for im in images] if images else ([img] if img else [])
+        ret['images'] = [ProductImageSerializer(im).data for im in images] if images else []
         # Stock & ratings
         ret['in_stock'] = bool(ret.get('is_in_stock', True))
         ret['stock'] = ret.get('stock_quantity', 50)
@@ -212,6 +229,45 @@ class ProductListSerializer(serializers.ModelSerializer):
                 sec.append('top_deals')
             sec.append('fresh_arrivals')
         ret['sections'] = sec
+
+        # Variants, Colors and Sizes for vendor and catalog lists
+        active_variants = [v for v in instance.variants.all() if v.is_active]
+        if active_variants:
+            var_data_list = [ProductVariantSerializer(v, context=self.context).data for v in active_variants]
+            ret['variants'] = var_data_list
+            colors = []
+            sizes = []
+            color_seen = set()
+            size_seen = set()
+            for vd in var_data_list:
+                c_name = vd.get('color') or vd.get('color_name')
+                if c_name and c_name not in color_seen:
+                    color_seen.add(c_name)
+                    colors.append({
+                        'name': c_name,
+                        'color_code': vd.get('color_code') or '',
+                        'image_url': vd.get('image_url'),
+                        'in_stock': vd.get('in_stock', True),
+                    })
+                s_name = vd.get('size')
+                if s_name and s_name not in size_seen:
+                    size_seen.add(s_name)
+                    sizes.append(s_name)
+
+            has_real_variants = len(var_data_list) > 1 or any(
+                c['name'].lower() not in ['standard', 'default', 'none', 'n/a', ''] for c in colors
+            ) or any(
+                s.lower() not in ['standard', 'default', 'one size', 'free size', 'none', 'n/a', ''] for s in sizes
+            )
+            ret['has_variants'] = has_real_variants
+            ret['available_colors'] = colors if has_real_variants else []
+            ret['available_sizes'] = sizes if has_real_variants else []
+        else:
+            ret['variants'] = []
+            ret['has_variants'] = False
+            ret['available_colors'] = []
+            ret['available_sizes'] = []
+
         return ret
 
     @extend_schema_field(serializers.BooleanField())
@@ -377,6 +433,39 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         ret['is_organic'] = getattr(instance, 'is_organic', False)
         ret['description'] = getattr(instance, 'description', '') or instance.short_description or ''
         ret['origin'] = 'Kathmandu Valley'
+
+        # Enriched Variants & Helpers
+        active_variants = [v for v in instance.variants.all() if v.is_active]
+        var_data_list = [ProductVariantSerializer(v, context=self.context).data for v in active_variants]
+        ret['variants'] = var_data_list
+
+        colors = []
+        sizes = []
+        color_seen = set()
+        size_seen = set()
+        for vd in var_data_list:
+            c_name = vd.get('color') or vd.get('color_name')
+            if c_name and c_name not in color_seen:
+                color_seen.add(c_name)
+                colors.append({
+                    'name': c_name,
+                    'color_code': vd.get('color_code') or '',
+                    'image_url': vd.get('image_url'),
+                    'in_stock': vd.get('in_stock', True),
+                })
+            s_name = vd.get('size')
+            if s_name and s_name not in size_seen:
+                size_seen.add(s_name)
+                sizes.append(s_name)
+
+        has_real_variants = len(var_data_list) > 1 or any(
+            c['name'].lower() not in ['standard', 'default', 'none', 'n/a', ''] for c in colors
+        ) or any(
+            s.lower() not in ['standard', 'default', 'one size', 'free size', 'none', 'n/a', ''] for s in sizes
+        )
+        ret['has_variants'] = has_real_variants
+        ret['available_colors'] = colors if has_real_variants else []
+        ret['available_sizes'] = sizes if has_real_variants else []
         return ret
 
     @extend_schema_field(serializers.BooleanField())

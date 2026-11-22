@@ -293,11 +293,22 @@ export default function CheckoutPage() {
                     </div>
                     <div className="space-y-2">
                       {(group.items || []).map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-sm">
-                          <span className="text-slate-800 dark:text-slate-300 truncate font-semibold">
-                            {item.quantity}x {item.product?.name || (item as any)?.product_name || 'Product'} ({item.product?.unit || 'piece'})
-                          </span>
-                          <span className="font-extrabold text-slate-900 dark:text-white tabular-nums">{formatPrice(item.total_price)}</span>
+                        <div key={item.id} className="flex items-center justify-between text-sm py-1">
+                          <div className="flex flex-col truncate pr-2">
+                            <span className="text-slate-800 dark:text-slate-300 truncate font-semibold">
+                              {item.quantity}x {item.product?.name || (item as any)?.product_name || 'Product'} ({item.product?.unit || 'piece'})
+                            </span>
+                            {(item.color || item.size || item.variant_name) && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                {[
+                                  item.color ? `Color: ${item.color}` : '',
+                                  item.size ? `Size: ${item.size}` : '',
+                                  !item.color && !item.size && item.variant_name && item.variant_name !== 'Standard' ? item.variant_name : ''
+                                ].filter(Boolean).join(' • ')}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-extrabold text-slate-900 dark:text-white tabular-nums shrink-0">{formatPrice(item.total_price)}</span>
                         </div>
                       ))}
                     </div>

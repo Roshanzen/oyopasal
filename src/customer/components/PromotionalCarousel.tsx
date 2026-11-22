@@ -62,7 +62,7 @@ export default function PromotionalCarousel({
 }: PromotionalCarouselProps) {
   const isControlled = propBanners !== undefined;
   const fallback = useHeroBanners({ enabled: !isControlled });
-  const rawBanners = propBanners ?? (fallback.heroBanners.length > 0 ? fallback.heroBanners : fallback.banners);
+  const rawBanners = propBanners ?? ((Array.isArray(fallback.heroBanners) && fallback.heroBanners.length > 0) ? fallback.heroBanners : (fallback.banners || []));
   const loading = isControlled ? Boolean(propLoading) : fallback.loading;
 
   const navigate = useNavigate();

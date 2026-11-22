@@ -16,6 +16,14 @@ export interface CartItem {
   product: Product;
   quantity: number;
   selected_variant_id?: string;
+  variant_id?: string;
+  variant_sku?: string;
+  variant_name?: string;
+  color?: string;
+  color_code?: string;
+  size?: string;
+  image_url?: string;
+  attributes?: Record<string, any>;
   unit_price: number;
   total_price: number;
 }

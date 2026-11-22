@@ -63,7 +63,7 @@ export default function LoginModal() {
       return;
     }
 
-    const passwordErr = validatePassword(password, 6);
+    const passwordErr = validatePassword(password, mode === 'create' ? 8 : 6);
     if (passwordErr) {
       setError(passwordErr);
       return;
@@ -176,11 +176,10 @@ export default function LoginModal() {
                     setMode('signin');
                     setError('');
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
-                    mode === 'signin'
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${mode === 'signin'
                       ? 'bg-white dark:bg-[#111726] text-emerald-700 dark:text-emerald-400 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <LogIn className="w-4 h-4" />
                   <span>{t('login.tabSignIn')}</span>
@@ -191,11 +190,10 @@ export default function LoginModal() {
                     setMode('create');
                     setError('');
                   }}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
-                    mode === 'create'
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${mode === 'create'
                       ? 'bg-white dark:bg-[#111726] text-emerald-700 dark:text-emerald-400 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>{t('login.tabCreate')}</span>
@@ -272,6 +270,11 @@ export default function LoginModal() {
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
+                  {mode === 'create' && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Must contain at least 8 characters.
+                    </p>
+                  )}
                 </div>
 
                 <button

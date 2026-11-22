@@ -11,6 +11,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        attrs = instance.attributes_snapshot or {}
+        ret['color'] = attrs.get('color') or attrs.get('color_name') or ''
+        ret['color_code'] = attrs.get('color_code') or attrs.get('color_value') or ''
+        ret['size'] = attrs.get('size') or ''
+        ret['variant_name'] = attrs.get('name') or ''
+        return ret
+
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):
     changed_by_name = serializers.CharField(source='changed_by.full_name', read_only=True, default='System')

@@ -251,7 +251,35 @@ export default function CartDrawer() {
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+
+                                  {/* Variant Details (Color & Size) */}
+                                  {(item.color || item.size || item.variant_name) && (
+                                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
+                                      {item.color && (
+                                        <span className="inline-flex items-center gap-1 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                          {item.color_code && (
+                                            <span
+                                              className="w-2.5 h-2.5 rounded-full border border-slate-300 dark:border-slate-600 shrink-0"
+                                              style={{ backgroundColor: item.color_code }}
+                                            />
+                                          )}
+                                          <span>Color: {item.color}</span>
+                                        </span>
+                                      )}
+                                      {item.size && (
+                                        <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-slate-700 dark:text-slate-300">
+                                          Size: {item.size}
+                                        </span>
+                                      )}
+                                      {!item.color && !item.size && item.variant_name && item.variant_name !== 'Standard' && (
+                                        <span className="font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-slate-600 dark:text-slate-400">
+                                          {item.variant_name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                     {productUnit}
                                   </p>
                                   <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">

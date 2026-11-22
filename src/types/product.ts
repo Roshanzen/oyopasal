@@ -12,13 +12,31 @@ export interface Category {
   description: string;
 }
 
+export interface ProductColorOption {
+  name: string;
+  color_code?: string;
+  image_url?: string | null;
+  in_stock?: boolean;
+}
+
 export interface ProductVariant {
   id: string;
+  sku?: string;
   name: string;
-  unit: string;
+  unit?: string;
   price: number;
   original_price: number;
   stock: number;
+  stock_quantity?: number;
+  in_stock?: boolean;
+  is_available?: boolean;
+  is_default?: boolean;
+  color?: string;
+  color_name?: string;
+  color_code?: string;
+  size?: string;
+  image_url?: string | null;
+  attributes?: Record<string, any>;
 }
 
 export interface Product {
@@ -44,6 +62,9 @@ export interface Product {
   description: string;
   origin: string;
   variants: ProductVariant[];
+  has_variants?: boolean;
+  available_colors?: ProductColorOption[];
+  available_sizes?: string[];
   sections: string[];
 }
 

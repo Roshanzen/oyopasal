@@ -1,6 +1,7 @@
 import re
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils.text import slugify
 from rest_framework import serializers
@@ -222,7 +223,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         confirm_password = attrs.get('confirm_password')
         if confirm_password and password != confirm_password:
             raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
-        validate_password(password)
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': list(e.messages)})
 
         phone_or_email = attrs.get('phone_or_email', '').strip()
         email = attrs.get('email', '').strip()

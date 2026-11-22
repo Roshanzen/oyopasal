@@ -87,6 +87,18 @@ export function useSellerPortal() {
   const [galleryUrlInput, setGalleryUrlInput] = useState('');
   const [uploadingGalleryImg, setUploadingGalleryImg] = useState(false);
   const [selectedSections, setSelectedSections] = useState<string[]>(['fresh_arrivals', 'best_sellers']);
+  const [hasVariants, setHasVariants] = useState(false);
+  const [variantsList, setVariantsList] = useState<Array<{
+    id?: string;
+    color?: string;
+    color_code?: string;
+    size?: string;
+    price?: number;
+    original_price?: number;
+    stock?: number;
+    image_url?: string;
+    is_active?: boolean;
+  }>>([]);
   const [searchCatalogQuery, setSearchCatalogQuery] = useState('');
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockingAll, setRestockingAll] = useState(false);
@@ -457,6 +469,7 @@ export function useSellerPortal() {
         gallery_urls: sanitizedGallery.length > 0 ? sanitizedGallery : undefined,
         images: allImages,
         sections: selectedSections.length > 0 ? selectedSections : ['fresh_arrivals', 'best_sellers'],
+        variants: hasVariants && variantsList.length > 0 ? variantsList : undefined,
       });
 
       if (res.success && res.product) {
@@ -473,6 +486,8 @@ export function useSellerPortal() {
         setDescription('');
         setCustomImageUrl('');
         setGalleryUrls([]);
+        setHasVariants(false);
+        setVariantsList([]);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : language === 'ne' ? 'सामान प्रकाशित गर्न सकिएन' : 'Failed to publish product';
@@ -526,6 +541,10 @@ export function useSellerPortal() {
       setDeletingProduct(false);
     }
   };
+
+  const updateLocalProduct = useCallback((updated: Product) => {
+    setSellerProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }, []);
 
   const handleRestock = async (productId: string, addQuantity = 25) => {
     setRestockingId(productId);
@@ -808,6 +827,10 @@ export function useSellerPortal() {
     handleGalleryImageUpload,
     handleAddGalleryUrl,
     handleCreateProduct,
+    hasVariants,
+    setHasVariants,
+    variantsList,
+    setVariantsList,
     handleToggleStock,
     confirmDeleteProduct,
     handleRestock,
@@ -819,5 +842,8 @@ export function useSellerPortal() {
     handleModalGalleryFile,
     handleModalAddUrl,
     handleModalDeleteImage,
+    showToast,
+    setSellerProducts,
+    updateLocalProduct,
   };
 }

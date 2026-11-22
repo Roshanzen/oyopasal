@@ -43,6 +43,7 @@ export const sellerService = {
     gallery_urls?: string[];
     images?: string[];
     sections?: string[];
+    variants?: any[];
   }): Promise<{ success: boolean; message: string; product: Product }> {
     return httpClient.request(
       '/seller/products/',
@@ -51,9 +52,13 @@ export const sellerService = {
     );
   },
 
+  getSellerProductDetail(productId: string): Promise<{ success: boolean; product: Product }> {
+    return httpClient.request(`/seller/products/${productId}/`, undefined, true);
+  },
+
   updateSellerProduct(
     productId: string,
-    data: Partial<Product> & { images?: string[]; gallery_urls?: string[] }
+    data: Partial<Product> & { images?: string[]; gallery_urls?: string[]; variants?: any[] }
   ): Promise<{ success: boolean; product: Product }> {
     return httpClient.request(
       `/seller/products/${productId}/`,
@@ -62,17 +67,22 @@ export const sellerService = {
     );
   },
 
-  toggleProductStock(productId: string): Promise<{ success: boolean; in_stock: boolean; product: Product }> {
-    return httpClient.request(`/seller/products/${productId}/toggle-stock/`, { method: 'PATCH' }, true);
+  toggleProductStock(productId: string, variantId?: string): Promise<{ success: boolean; in_stock: boolean; product: Product }> {
+    return httpClient.request(
+      `/seller/products/${productId}/toggle-stock/`,
+      { method: 'PATCH', body: JSON.stringify(variantId ? { variant_id: variantId } : {}) },
+      true
+    );
   },
 
   restockProduct(
     productId: string,
-    addStock = 25
+    addStock = 25,
+    variantId?: string
   ): Promise<{ success: boolean; message: string; stock: number; in_stock: boolean; product: Product }> {
     return httpClient.request(
       `/seller/products/${productId}/restock/`,
-      { method: 'PATCH', body: JSON.stringify({ add_stock: addStock }) },
+      { method: 'PATCH', body: JSON.stringify({ add_stock: addStock, ...(variantId ? { variant_id: variantId } : {}) }) },
       true
     );
   },

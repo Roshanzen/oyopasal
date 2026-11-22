@@ -26,12 +26,14 @@ import SellerLedgerTab from '../../components/seller/SellerLedgerTab';
 import SellerOrdersTab from '../../components/seller/SellerOrdersTab';
 import SellerReviewsTab from '../../components/seller/SellerReviewsTab';
 import SellerSettingsTab from '../../components/seller/SellerSettingsTab';
+import SellerVariantsModal from '../../components/seller/SellerVariantsModal';
 import SellerVisualSummary from '../../components/seller/SellerVisualSummary';
 import { useSellerPortal } from '../../hooks/useSellerPortal';
 
 export default function SellerPortalPage() {
   const navigate = useNavigate();
   const s = useSellerPortal();
+  const [variantsModalProduct, setVariantsModalProduct] = React.useState<any>(null);
 
   if (!s.currentSeller) {
     return (
@@ -120,11 +122,10 @@ export default function SellerPortalPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{effectiveVendor.name}</h1>
                   <span
-                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
-                      isApproved
+                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${isApproved
                         ? 'bg-emerald-950 text-emerald-300 border-emerald-800/80'
                         : 'bg-amber-950 text-amber-300 border-amber-800/80'
-                    }`}
+                      }`}
                   >
                     <CheckCircle2 className={`w-3.5 h-3.5 ${isApproved ? 'text-emerald-400' : 'text-amber-400'}`} />
                     {isApproved ? s.t('seller.verifiedVendor') : approvalStatus.toUpperCase()}
@@ -197,11 +198,10 @@ export default function SellerPortalPage() {
                 s.setActiveTab('products');
                 s.setInventoryFilter('low');
               }}
-              className={`rounded-xl p-3 border transition-all text-left cursor-pointer ${
-                lowStockItems.length > 0
+              className={`rounded-xl p-3 border transition-all text-left cursor-pointer ${lowStockItems.length > 0
                   ? 'bg-red-950/50 border-red-700/80 hover:bg-red-950/80 ring-1 ring-red-500/30'
                   : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 uppercase tracking-wider block font-semibold">
@@ -214,9 +214,8 @@ export default function SellerPortalPage() {
                 )}
               </div>
               <span
-                className={`text-xl font-bold font-mono tabular-nums ${
-                  lowStockItems.length > 0 ? 'text-red-400' : 'text-emerald-400'
-                }`}
+                className={`text-xl font-bold font-mono tabular-nums ${lowStockItems.length > 0 ? 'text-red-400' : 'text-emerald-400'
+                  }`}
               >
                 {lowStockItems.length} {lowStockItems.length === 1 ? s.t('common.item') : s.t('common.items')}
               </span>
@@ -243,11 +242,10 @@ export default function SellerPortalPage() {
             <button
               type="button"
               onClick={() => s.setActiveTab('orders')}
-              className={`rounded-xl p-3 border transition-all text-left cursor-pointer ${
-                (s.dashboardStats?.pending_orders ?? activeOrdersList.length) > 0
+              className={`rounded-xl p-3 border transition-all text-left cursor-pointer ${(s.dashboardStats?.pending_orders ?? activeOrdersList.length) > 0
                   ? 'bg-amber-950/40 border-amber-700/80 hover:bg-amber-950/70 ring-1 ring-amber-500/30'
                   : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 uppercase tracking-wider block font-semibold">
@@ -300,11 +298,10 @@ export default function SellerPortalPage() {
         <div className="flex items-center gap-2 mb-6 border-b border-slate-800 pb-2 overflow-x-auto">
           <button
             onClick={() => s.setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'analytics'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'analytics'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <BarChart3 className="w-4 h-4" />
             <span>{s.t('seller.tabAnalytics')}</span>
@@ -312,11 +309,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('add')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'add'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'add'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <PlusCircle className="w-4 h-4" />
             <span>{s.t('seller.tabAdd')}</span>
@@ -324,11 +320,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('products')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'products'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'products'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <Package className="w-4 h-4" />
             <span>{s.t('seller.tabProducts', { count: s.sellerProducts.length })}</span>
@@ -342,11 +337,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('orders')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'orders'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'orders'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <Clock className="w-4 h-4" />
             <span>
@@ -356,11 +350,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('reviews')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'reviews'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'reviews'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <MessageSquare className="w-4 h-4" />
             <span>
@@ -370,11 +363,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('ledger')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'ledger'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'ledger'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <History className="w-4 h-4" />
             <span>{s.language === 'ne' ? 'स्टक खाता' : 'Inventory Ledger'}</span>
@@ -382,11 +374,10 @@ export default function SellerPortalPage() {
 
           <button
             onClick={() => s.setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-              s.activeTab === 'settings'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${s.activeTab === 'settings'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <Settings className="w-4 h-4" />
             <span>{s.language === 'ne' ? 'पसल सेटिङ र भुक्तानी' : 'Store & Payouts'}</span>
@@ -440,6 +431,10 @@ export default function SellerPortalPage() {
             setStockCount={s.setStockCount}
             isOrganic={s.isOrganic}
             setIsOrganic={s.setIsOrganic}
+            hasVariants={s.hasVariants}
+            setHasVariants={s.setHasVariants}
+            variantsList={s.variantsList}
+            setVariantsList={s.setVariantsList}
             description={s.description}
             setDescription={s.setDescription}
             customImageUrl={s.customImageUrl}
@@ -484,6 +479,7 @@ export default function SellerPortalPage() {
             onToggleStock={s.handleToggleStock}
             onRequestDelete={(prod) => s.setDeleteTarget({ id: prod.id, name: prod.name })}
             onOpenGallery={(prod) => s.setGalleryModalProduct(prod)}
+            onManageVariants={(prod) => setVariantsModalProduct(prod)}
           />
         )}
 
@@ -561,10 +557,24 @@ export default function SellerPortalPage() {
         product={s.galleryModalProduct}
         onClose={() => s.setGalleryModalProduct(null)}
         onProductUpdated={(updated) => {
-          s.setSellerProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+          s.updateLocalProduct(updated);
           s.setGalleryModalProduct(null);
         }}
       />
+
+      {variantsModalProduct && (
+        <SellerVariantsModal
+          product={variantsModalProduct}
+          isOpen={Boolean(variantsModalProduct)}
+          onClose={() => setVariantsModalProduct(null)}
+          onProductUpdated={(updated) => {
+            s.updateLocalProduct(updated);
+            setVariantsModalProduct(updated);
+          }}
+          formatPrice={s.formatPrice}
+          showToast={s.showToast}
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(s.deleteTarget)}

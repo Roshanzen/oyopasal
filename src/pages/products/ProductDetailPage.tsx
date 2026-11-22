@@ -71,6 +71,11 @@ export default function ProductDetailPage() {
   const [mainImgError, setMainImgError] = useState(false);
   const [brokenThumbIdx, setBrokenThumbIdx] = useState<Record<number, boolean>>({});
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [colorWarning, setColorWarning] = useState(false);
+  const [sizeWarning, setSizeWarning] = useState(false);
+
   const [buyQuantity, setBuyQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -81,13 +86,191 @@ export default function ProductDetailPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Color helper mappings
+  const getColorStyle = (name: string, code?: string) => {
+    if (code && (code.startsWith('#') || code.startsWith('rgb') || code.startsWith('hsl'))) {
+      return { backgroundColor: code };
+    }
+    const standardColors: Record<string, string> = {
+      black: '#0F172A',
+      white: '#FFFFFF',
+      red: '#EF4444',
+      blue: '#3B82F6',
+      navy: '#1E3A8A',
+      'navy blue': '#1E3A8A',
+      green: '#10B981',
+      emerald: '#059669',
+      yellow: '#F59E0B',
+      amber: '#D97706',
+      gray: '#6B7280',
+      grey: '#6B7280',
+      silver: '#E2E8F0',
+      gold: '#F59E0B',
+      orange: '#F97316',
+      purple: '#8B5CF6',
+      violet: '#7C3AED',
+      pink: '#EC4899',
+      rose: '#F43F5E',
+      brown: '#78350F',
+      beige: '#F5F5DC',
+      olive: '#65A30D',
+      teal: '#0D9488',
+      cyan: '#06B6D4',
+      maroon: '#800000',
+      coral: '#FF7F50',
+    };
+    const lower = name.toLowerCase().trim();
+    if (standardColors[lower]) {
+      return { backgroundColor: standardColors[lower] };
+    }
+    return { backgroundColor: code || '#059669' };
+  };
+
+  const isLightColor = (code?: string, name?: string) => {
+    const n = (name || '').toLowerCase().trim();
+    if (['white', 'cream', 'ivory', 'beige', 'yellow', 'silver', 'light gray', 'light grey'].includes(n)) return true;
+    if (code && code.startsWith('#')) {
+      const hex = code.replace('#', '');
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 180;
+      }
+    }
+    return false;
+  };
+
+  // 1. Color Options Extraction from real variant data
+  const colorOptions = useMemo(() => {
+    const map = new Map<string, { name: string; color_code?: string; image_url?: string; in_stock: boolean }>();
+    product?.variants?.forEach((v) => {
+      const cName = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+      if (cName && typeof cName === 'string') {
+        const cCode = v.color_code || v.attributes?.color_code || v.attributes?.color_value;
+        const img = v.image_url || v.attributes?.image_url;
+        const isAvailable = (v.stock ?? 0) > 0 && v.is_available !== false && v.in_stock !== false;
+        if (!map.has(cName)) {
+          map.set(cName, { name: cName, color_code: cCode, image_url: img, in_stock: isAvailable });
+        } else if (isAvailable) {
+          map.get(cName)!.in_stock = true;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [product?.variants]);
+
+  // 2. All Size Options Extraction from real variant data
+  const allSizeOptions = useMemo(() => {
+    const sizes = new Set<string>();
+    product?.variants?.forEach((v) => {
+      const sName = v.size || v.attributes?.size;
+      if (sName && typeof sName === 'string') sizes.add(sName);
+    });
+    return Array.from(sizes);
+  }, [product?.variants]);
+
+  const hasColorVariants = colorOptions.length > 0;
+  const hasSizeVariants = allSizeOptions.length > 0;
+  const hasGenericVariants = !hasColorVariants && !hasSizeVariants && (product?.variants?.length || 0) > 1;
+
+  // 3. Size availability dynamically computed based on selected color
+  const sizeAvailabilityForColor = useMemo(() => {
+    const map: Record<string, { inStock: boolean; stock: number; variant: (typeof product.variants)[0] | null }> = {};
+    allSizeOptions.forEach((sz) => {
+      const matching = product?.variants?.find((v) => {
+        const cName = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+        const sName = v.size || v.attributes?.size;
+        const matchesColor = !selectedColor || cName === selectedColor;
+        return matchesColor && sName === sz;
+      });
+      const inStock = matching ? (matching.stock ?? 0) > 0 && matching.in_stock !== false && matching.is_available !== false : false;
+      map[sz] = {
+        inStock,
+        stock: matching?.stock ?? 0,
+        variant: matching || null,
+      };
+    });
+    return map;
+  }, [product?.variants, allSizeOptions, selectedColor]);
+
+  // 4. Resolve Active Selected Variant
+  const selectedVariant = useMemo(() => {
+    if (!product?.variants || product.variants.length === 0) return null;
+
+    if (hasColorVariants && hasSizeVariants) {
+      const match = product.variants.find((v) => {
+        const cName = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+        const sName = v.size || v.attributes?.size;
+        return cName === selectedColor && sName === selectedSize;
+      });
+      if (match) return match;
+    }
+
+    if (hasColorVariants && !hasSizeVariants) {
+      const match = product.variants.find((v) => {
+        const cName = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+        return cName === selectedColor;
+      });
+      if (match) return match;
+    }
+
+    if (!hasColorVariants && hasSizeVariants) {
+      const match = product.variants.find((v) => {
+        const sName = v.size || v.attributes?.size;
+        return sName === selectedSize;
+      });
+      if (match) return match;
+    }
+
+    return (
+      product.variants.find((v) => v.id === selectedVariantId) ||
+      product.variants.find((v) => v.is_default) ||
+      product.variants[0] ||
+      null
+    );
+  }, [product?.variants, hasColorVariants, hasSizeVariants, selectedColor, selectedSize, selectedVariantId]);
+
+  // Gallery list incorporating primary image, gallery images, and variant-specific images
+  const galleryList = useMemo(() => {
+    if (!product) return [];
+    const list: string[] = [];
+    if (product.image_url) list.push(product.image_url);
+    if (Array.isArray(product.gallery)) {
+      product.gallery.forEach((img) => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    }
+    // Include variant images so clicking thumbnails works seamlessly
+    product.variants?.forEach((v) => {
+      const vImg = v.image_url || v.attributes?.image_url;
+      if (vImg && !list.includes(vImg)) {
+        list.push(vImg);
+      }
+    });
+    return list;
+  }, [product]);
+
+  // Initialize selected variants on product load
   useEffect(() => {
     setSelectedImageIndex(0);
     setMainImgError(false);
     setBrokenThumbIdx({});
-    if (product?.variants && product.variants.length > 0) {
-      setSelectedVariantId(product.variants[0].id);
+    setColorWarning(false);
+    setSizeWarning(false);
+
+    const vars = product?.variants || [];
+    if (vars.length > 0) {
+      const preferredVar = vars.find((v) => (v.stock ?? 0) > 0 && v.in_stock !== false) || vars[0];
+      const initialColor = preferredVar.color || preferredVar.color_name || preferredVar.attributes?.color || preferredVar.attributes?.color_name || '';
+      const initialSize = preferredVar.size || preferredVar.attributes?.size || '';
+      setSelectedColor(initialColor);
+      setSelectedSize(initialSize);
+      setSelectedVariantId(preferredVar.id);
     } else {
+      setSelectedColor('');
+      setSelectedSize('');
       setSelectedVariantId('');
     }
     setBuyQuantity(1);
@@ -98,20 +281,7 @@ export default function ProductDetailPage() {
     setMainImgError(false);
   }, [selectedImageIndex, product?.id]);
 
-  const galleryList = useMemo(() => {
-    if (!product) return [];
-    if (Array.isArray(product.gallery) && product.gallery.length > 0) {
-      return product.gallery;
-    }
-    return product.image_url ? [product.image_url] : [];
-  }, [product]);
-
   const activeImage = galleryList[selectedImageIndex] || product?.image_url || '';
-
-  const selectedVariant = useMemo(() => {
-    if (!product?.variants || product.variants.length === 0) return null;
-    return product.variants.find((v) => v.id === selectedVariantId) || product.variants[0] || null;
-  }, [product, selectedVariantId]);
 
   // Only explicitly out of stock if stock is strictly 0 or in_stock/inStock is explicitly false
   const isOutOfStock = useMemo(() => {
@@ -121,6 +291,17 @@ export default function ProductDetailPage() {
     if ((product as unknown as Record<string, unknown>).inStock === false) return true;
     return false;
   }, [product]);
+
+  // Specific variant stock status
+  const isSelectedVariantOutOfStock = useMemo(() => {
+    if (!product) return false;
+    if (selectedVariant) {
+      if ((selectedVariant.stock ?? 0) <= 0) return true;
+      if (selectedVariant.in_stock === false || selectedVariant.is_available === false) return true;
+      return false;
+    }
+    return isOutOfStock;
+  }, [product, selectedVariant, isOutOfStock]);
 
   const currentPrice = selectedVariant ? selectedVariant.price : (product?.discounted_price || 0);
   const originalPrice = selectedVariant ? selectedVariant.original_price : (product?.original_price || currentPrice);
@@ -132,20 +313,91 @@ export default function ProductDetailPage() {
   const distanceInfo = product?.vendor ? getDistanceToVendor(product) : { etaText: '10-15 mins', distanceText: '1.2 km' };
 
   const cartItem = cart?.items.find(
-    (item) => item.product_id === product?.id && item.selected_variant_id === (selectedVariantId || undefined)
+    (item) => item.product_id === product?.id && item.selected_variant_id === (selectedVariant?.id || selectedVariantId || undefined)
   );
   const quantityInCart = cartItem ? cartItem.quantity : 0;
   const wishlisted = product ? isWishlisted(product.id) : false;
 
+  // Handler: Selecting Color Swatch
+  const handleSelectColor = (colorName: string) => {
+    setSelectedColor(colorName);
+    setColorWarning(false);
+
+    // Update main product image if this color has a specific image
+    const matchingVarWithImg = product?.variants?.find((v) => {
+      const c = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+      const img = v.image_url || v.attributes?.image_url;
+      return c === colorName && Boolean(img);
+    });
+
+    const targetImg = matchingVarWithImg?.image_url || matchingVarWithImg?.attributes?.image_url;
+    if (targetImg) {
+      const imgIdx = galleryList.indexOf(targetImg);
+      if (imgIdx !== -1) {
+        setSelectedImageIndex(imgIdx);
+      }
+    }
+
+    // Auto-adjust selected size if current selectedSize is out of stock in new color
+    if (hasSizeVariants) {
+      const variantsInColor = (product?.variants || []).filter((v) => {
+        const c = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;
+        return c === colorName;
+      });
+      const currentSizeStillValid = variantsInColor.some((v) => {
+        const s = v.size || v.attributes?.size;
+        return s === selectedSize && (v.stock ?? 0) > 0;
+      });
+      if (!currentSizeStillValid) {
+        const firstInStockSize = variantsInColor.find((v) => (v.stock ?? 0) > 0);
+        if (firstInStockSize) {
+          const s = firstInStockSize.size || firstInStockSize.attributes?.size;
+          if (s) setSelectedSize(s);
+        }
+      }
+    }
+  };
+
+  // Handler: Selecting Size Button
+  const handleSelectSize = (sizeName: string) => {
+    setSelectedSize(sizeName);
+    setSizeWarning(false);
+  };
+
   const handleAddToCart = async () => {
-    if (!product || isOutOfStock) return;
+    if (!product) return;
+    if (hasColorVariants && !selectedColor) {
+      setColorWarning(true);
+      showToast(language === 'ne' ? 'कृपया एउटा रङ छान्नुहोस्' : 'Please select a color first', 'info');
+      return;
+    }
+    if (hasSizeVariants && !selectedSize) {
+      setSizeWarning(true);
+      showToast(language === 'ne' ? 'कृपया साइज छान्नुहोस्' : 'Please select a size first', 'info');
+      return;
+    }
+    if (isSelectedVariantOutOfStock) {
+      showToast(
+        language === 'ne'
+          ? 'छानिएको प्रकार हाल स्टकमा छैन'
+          : 'The selected variant combination is currently out of stock',
+        'error'
+      );
+      return;
+    }
+
     try {
       const variantToUse = selectedVariant?.id || selectedVariantId || undefined;
+      const variantDesc = [selectedColor ? `Color: ${selectedColor}` : '', selectedSize ? `Size: ${selectedSize}` : ''].filter(Boolean).join(' • ');
+      const toastMsg = variantDesc
+        ? `Added ${buyQuantity} × ${product.name} (${variantDesc}) to basket`
+        : `Added ${buyQuantity} × ${product.name} to basket`;
+
       await addToCart(
         product.id,
         buyQuantity,
         variantToUse,
-        `Added ${buyQuantity} × ${product.name} to cart`
+        toastMsg
       );
     } catch {
       // Error is caught and surfaced in addToCart
@@ -153,7 +405,27 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = async () => {
-    if (!product || isOutOfStock) return;
+    if (!product) return;
+    if (hasColorVariants && !selectedColor) {
+      setColorWarning(true);
+      showToast(language === 'ne' ? 'कृपया एउटा रङ छान्नुहोस्' : 'Please select a color first', 'info');
+      return;
+    }
+    if (hasSizeVariants && !selectedSize) {
+      setSizeWarning(true);
+      showToast(language === 'ne' ? 'कृपया साइज छान्नुहोस्' : 'Please select a size first', 'info');
+      return;
+    }
+    if (isSelectedVariantOutOfStock) {
+      showToast(
+        language === 'ne'
+          ? 'छानिएको प्रकार हाल स्टकमा छैन'
+          : 'The selected variant combination is currently out of stock',
+        'error'
+      );
+      return;
+    }
+
     try {
       const variantToUse = selectedVariant?.id || selectedVariantId || undefined;
       await addToCart(product.id, buyQuantity, variantToUse, null);
@@ -700,24 +972,155 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Product Variants (if applicable) */}
-            {product.variants && product.variants.length > 0 && (
-              <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+            {/* ================================================================
+                COLOR & SIZE VARIANT SELECTORS
+               ================================================================ */}
+            {/* 1. Choose Color Section */}
+            {hasColorVariants && (
+              <div className={`bg-white dark:bg-[#111726] rounded-2xl border p-4 transition-all shadow-2xs ${
+                colorWarning ? 'border-amber-400 dark:border-amber-600 ring-2 ring-amber-400/20' : 'border-slate-200 dark:border-slate-800'
+              }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Choose Color:</span>
+                    <span className="text-slate-900 dark:text-white font-extrabold text-xs normal-case">
+                      {selectedColor || 'Select a color'}
+                    </span>
+                  </label>
+                  {selectedColor && (
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+                      Selected
+                    </span>
+                  )}
+                </div>
+
+                {colorOptions.length === 1 ? (
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+                    <span
+                      className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 shrink-0 shadow-2xs"
+                      style={getColorStyle(colorOptions[0].name, colorOptions[0].color_code)}
+                    />
+                    <span>{colorOptions[0].name}</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {colorOptions.map((c) => {
+                      const isSelected = selectedColor === c.name;
+                      const isAvailable = c.in_stock;
+                      const isLight = isLightColor(c.color_code, c.name);
+
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => handleSelectColor(c.name)}
+                          className={`group flex flex-col items-center gap-1 cursor-pointer transition-transform ${
+                            !isAvailable ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 active:scale-95'
+                          }`}
+                        >
+                          <div
+                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all relative shadow-xs ${
+                              isSelected
+                                ? 'ring-2 ring-[#059669] ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-2 border-emerald-600'
+                                : 'border-2 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                            }`}
+                            style={getColorStyle(c.name, c.color_code)}
+                            title={isAvailable ? c.name : `${c.name} (Out of Stock)`}
+                          >
+                            {isSelected && (
+                              <Check className={`w-4 h-4 stroke-[3] ${isLight ? 'text-slate-900' : 'text-white'}`} />
+                            )}
+                            {!isAvailable && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-full h-0.5 bg-rose-500 -rotate-45" />
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-[11px] font-semibold tracking-tight ${
+                            isSelected
+                              ? 'text-[#059669] dark:text-emerald-400 font-bold'
+                              : 'text-slate-600 dark:text-slate-400'
+                          }`}>
+                            {c.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. Select Size Section */}
+            {hasSizeVariants && (
+              <div className={`bg-white dark:bg-[#111726] rounded-2xl border p-4 transition-all shadow-2xs ${
+                sizeWarning ? 'border-amber-400 dark:border-amber-600 ring-2 ring-amber-400/20' : 'border-slate-200 dark:border-slate-800'
+              }`}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Select Size:</span>
+                    <span className="text-slate-900 dark:text-white font-extrabold text-xs normal-case">
+                      {selectedSize || 'Select a size'}
+                    </span>
+                  </label>
+                  {selectedVariant && (selectedVariant.stock ?? 0) > 0 && (selectedVariant.stock ?? 0) <= 5 && (
+                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
+                      Only {selectedVariant.stock} left!
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2.5">
+                  {allSizeOptions.map((sz) => {
+                    const isSelected = selectedSize === sz;
+                    const info = sizeAvailabilityForColor[sz];
+                    const isAvailable = info?.inStock;
+
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        disabled={!isAvailable}
+                        onClick={() => handleSelectSize(sz)}
+                        className={`min-w-[48px] h-10 px-3.5 py-1.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#ECFDF5] dark:bg-emerald-950/70 border-[#059669] text-emerald-900 dark:text-emerald-200 shadow-2xs ring-1 ring-emerald-500/50'
+                            : isAvailable
+                            ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-600'
+                            : 'opacity-40 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 line-through bg-slate-50 dark:bg-slate-900/40 cursor-not-allowed'
+                        }`}
+                      >
+                        <span>{sz}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Generic Variant fallback for products with non-standard options */}
+            {hasGenericVariants && (
+              <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2.5">
-                  Select Size / Option
+                  Select Option
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {product.variants.map((v) => {
-                    const isSelected = selectedVariantId === v.id;
+                    const isSelected = selectedVariant?.id === v.id;
+                    const isAvail = (v.stock ?? 0) > 0 && v.in_stock !== false;
                     return (
                       <button
                         key={v.id}
                         type="button"
+                        disabled={!isAvail}
                         onClick={() => setSelectedVariantId(v.id)}
                         className={`px-3.5 py-2 rounded-xl border text-left cursor-pointer transition-colors ${
                           isSelected
                             ? 'bg-[#ECFDF5] dark:bg-emerald-950/70 border-[#059669] text-emerald-900 dark:text-emerald-200 shadow-2xs'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                            : isAvail
+                            ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                            : 'opacity-40 border-dashed border-slate-300 line-through cursor-not-allowed'
                         }`}
                       >
                         <p className="text-xs font-bold">{v.name}</p>
@@ -746,7 +1149,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
                     <button
                       type="button"
-                      disabled={buyQuantity <= 1 || isOutOfStock}
+                      disabled={buyQuantity <= 1 || isSelectedVariantOutOfStock}
                       onClick={() => setBuyQuantity((q) => Math.max(1, q - 1))}
                       className="w-8 h-8 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer transition-colors"
                     >
@@ -757,7 +1160,14 @@ export default function ProductDetailPage() {
                     </span>
                     <button
                       type="button"
-                      disabled={isOutOfStock || (typeof product.stock === 'number' && product.stock > 0 ? buyQuantity >= product.stock : false)}
+                      disabled={
+                        isSelectedVariantOutOfStock ||
+                        (typeof selectedVariant?.stock === 'number' && selectedVariant.stock > 0
+                          ? buyQuantity >= selectedVariant.stock
+                          : typeof product.stock === 'number' && product.stock > 0
+                          ? buyQuantity >= product.stock
+                          : false)
+                      }
                       onClick={() => setBuyQuantity((q) => q + 1)}
                       className="w-8 h-8 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer transition-colors"
                     >
@@ -767,7 +1177,7 @@ export default function ProductDetailPage() {
 
                   {/* Stock Status Indicator */}
                   <div className="flex items-center gap-1.5 text-xs font-bold">
-                    {isOutOfStock ? (
+                    {isSelectedVariantOutOfStock ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-rose-500" />
                         <span className="text-rose-600 dark:text-rose-400">Out of stock</span>
@@ -775,7 +1185,9 @@ export default function ProductDetailPage() {
                     ) : (
                       <>
                         <span className="w-2 h-2 rounded-full bg-[#059669] animate-pulse" />
-                        <span className="text-[#059669] dark:text-emerald-400">In stock</span>
+                        <span className="text-[#059669] dark:text-emerald-400">
+                          In stock {selectedVariant && (selectedVariant.stock ?? 0) > 0 ? `(${selectedVariant.stock} available)` : ''}
+                        </span>
                       </>
                     )}
                   </div>
@@ -786,37 +1198,37 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-3 pt-4">
                 {/* Outlined Emerald Button: Add to Cart */}
                 <motion.button
-                  whileHover={!isOutOfStock ? { scale: 1.02 } : undefined}
-                  whileTap={!isOutOfStock ? { scale: 0.98 } : undefined}
+                  whileHover={!isSelectedVariantOutOfStock ? { scale: 1.02 } : undefined}
+                  whileTap={!isSelectedVariantOutOfStock ? { scale: 0.98 } : undefined}
                   type="button"
-                  disabled={isOutOfStock}
+                  disabled={isSelectedVariantOutOfStock}
                   onClick={handleAddToCart}
-                  style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: isOutOfStock ? '#CBD5E1' : '#059669' }}
+                  style={{ borderWidth: '1.5px', borderStyle: 'solid', borderColor: isSelectedVariantOutOfStock ? '#CBD5E1' : '#059669' }}
                   className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors shadow-2xs ${
-                    isOutOfStock
+                    isSelectedVariantOutOfStock
                       ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50 dark:bg-slate-900/50'
                       : 'text-[#059669] dark:text-emerald-400 bg-white dark:bg-[#111726] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer'
                   }`}
                 >
-                  <ShoppingCart className={`w-4 h-4 ${isOutOfStock ? 'text-slate-400' : 'text-[#059669] dark:text-emerald-400'}`} />
-                  <span>Add to Cart</span>
+                  <ShoppingCart className={`w-4 h-4 ${isSelectedVariantOutOfStock ? 'text-slate-400' : 'text-[#059669] dark:text-emerald-400'}`} />
+                  <span>{isSelectedVariantOutOfStock ? 'Unavailable' : 'Add to Cart'}</span>
                 </motion.button>
 
                 {/* Solid Emerald Button: Buy Now */}
                 <motion.button
-                  whileHover={!isOutOfStock ? { scale: 1.02 } : undefined}
-                  whileTap={!isOutOfStock ? { scale: 0.98 } : undefined}
+                  whileHover={!isSelectedVariantOutOfStock ? { scale: 1.02 } : undefined}
+                  whileTap={!isSelectedVariantOutOfStock ? { scale: 0.98 } : undefined}
                   type="button"
-                  disabled={isOutOfStock}
+                  disabled={isSelectedVariantOutOfStock}
                   onClick={handleBuyNow}
                   className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-950/20 ${
-                    isOutOfStock
+                    isSelectedVariantOutOfStock
                       ? 'opacity-40 cursor-not-allowed bg-slate-300 dark:bg-slate-700 text-slate-500'
                       : 'bg-[#059669] hover:bg-emerald-700 text-white cursor-pointer'
                   }`}
                 >
                   <ShoppingBag className="w-4 h-4 text-white" />
-                  <span>Buy Now</span>
+                  <span>{isSelectedVariantOutOfStock ? 'Unavailable' : 'Buy Now'}</span>
                 </motion.button>
               </div>
 

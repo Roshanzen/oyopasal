@@ -194,8 +194,22 @@ class HttpClient {
               } else {
                 errorDetail = errJson.error.message || errJson.error.detail || errorDetail;
               }
-            } else {
-              errorDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
+            } else if (errJson?.message) {
+              errorDetail = String(errJson.message);
+            } else if (errJson?.detail) {
+              errorDetail = String(errJson.detail);
+            } else if (errJson && typeof errJson === 'object') {
+              const keys = Object.keys(errJson);
+              if (keys.length > 0) {
+                const firstKey = keys[0];
+                const firstVal = errJson[firstKey];
+                const msg = Array.isArray(firstVal) ? String(firstVal[0]) : String(firstVal);
+                errorDetail = (firstKey === 'non_field_errors' || firstKey === 'detail' || firstKey === 'error')
+                  ? msg
+                  : `${firstKey.replace(/_/g, ' ')}: ${msg}`;
+              } else {
+                errorDetail = JSON.stringify(errJson);
+              }
             }
           } catch {
             // default error message kept

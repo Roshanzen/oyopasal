@@ -128,13 +128,17 @@ export interface SellerFulfillmentItem {
   net_payout: number;
   created_at: string;
   items: {
-    id: number;
+    id: number | string;
     product_name: string;
     quantity: number;
     unit: string;
     unit_price: number;
-    total_price: number;
-    image: string;
+    total_price?: number;
+    total?: number;
+    image?: string;
+    color?: string;
+    size?: string;
+    variant_name?: string;
   }[];
 }
 

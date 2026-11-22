@@ -420,16 +420,6 @@ class SellerProductsView(APIView):
                 base_sku=base_sku
             )
 
-            variant = ProductVariant.objects.create(
-                product=product,
-                sku=f"{base_sku}-STD",
-                regular_price=original_price,
-                selling_price=discounted_price,
-                attributes={"name": "Standard", "unit": unit},
-                is_default=True,
-                is_active=True
-            )
-
             warehouse = Warehouse.objects.filter(is_active=True).first()
             if not warehouse:
                 warehouse = Warehouse.objects.create(
@@ -439,22 +429,88 @@ class SellerProductsView(APIView):
                     is_active=True
                 )
 
-            inv_item, _ = InventoryItem.objects.get_or_create(
-                variant=variant,
-                warehouse=warehouse,
-                defaults={
-                    'quantity_on_hand': stock,
-                    'reorder_threshold': 5
-                }
-            )
-            if inv_item.quantity_on_hand != stock:
-                inv_item.quantity_on_hand = stock
-                inv_item.save(update_fields=['quantity_on_hand', 'updated_at'])
+            variants_input = request.data.get('variants')
+            if isinstance(variants_input, str):
+                import json
+                try:
+                    variants_input = json.loads(variants_input)
+                except (ValueError, TypeError):
+                    variants_input = None
+
+            created_variants = []
+            if variants_input and isinstance(variants_input, list) and len(variants_input) > 0:
+                for idx, v_item in enumerate(variants_input):
+                    c_name = str(v_item.get('color') or v_item.get('color_name') or '').strip()
+                    c_code = str(v_item.get('color_code') or v_item.get('color_value') or '').strip()
+                    s_name = str(v_item.get('size') or '').strip()
+                    v_sell = Decimal(str(v_item.get('price') or v_item.get('discounted_price') or discounted_price))
+                    v_reg = Decimal(str(v_item.get('original_price') or v_item.get('regular_price') or original_price))
+                    v_stock = int(v_item.get('stock') or v_item.get('stock_quantity') or stock)
+                    v_img = str(v_item.get('image_url') or '').strip()
+                    v_sku = str(v_item.get('sku') or f"{base_sku}-V{idx+1}")
+
+                    attrs = {
+                        'name': f"{c_name} / {s_name}" if c_name and s_name else (c_name or s_name or f"Option {idx+1}"),
+                        'unit': unit
+                    }
+                    if c_name:
+                        attrs['color'] = c_name
+                        attrs['color_name'] = c_name
+                    if c_code:
+                        attrs['color_code'] = c_code
+                    if s_name:
+                        attrs['size'] = s_name
+                    if v_img:
+                        attrs['image_url'] = v_img
+
+                    new_v = ProductVariant.objects.create(
+                        product=product,
+                        sku=v_sku,
+                        regular_price=v_reg,
+                        selling_price=v_sell,
+                        attributes=attrs,
+                        is_default=(idx == 0),
+                        is_active=bool(v_item.get('is_active', True))
+                    )
+                    created_variants.append((new_v, v_stock, v_img))
+            else:
+                variant = ProductVariant.objects.create(
+                    product=product,
+                    sku=f"{base_sku}-STD",
+                    regular_price=original_price,
+                    selling_price=discounted_price,
+                    attributes={"name": "Standard", "unit": unit},
+                    is_default=True,
+                    is_active=True
+                )
+                created_variants.append((variant, stock, clean_image_url))
+
+            for v_obj, v_stk, v_pic in created_variants:
+                inv_item, _ = InventoryItem.objects.get_or_create(
+                    variant=v_obj,
+                    warehouse=warehouse,
+                    defaults={
+                        'quantity_on_hand': v_stk,
+                        'reorder_threshold': 5
+                    }
+                )
+                if inv_item.quantity_on_hand != v_stk:
+                    inv_item.quantity_on_hand = v_stk
+                    inv_item.save(update_fields=['quantity_on_hand', 'updated_at'])
+
+                if v_pic and is_valid_image_url(v_pic):
+                    ProductImage.objects.create(
+                        product=product,
+                        variant=v_obj,
+                        image_url=v_pic,
+                        is_primary=v_obj.is_default and not clean_image_url,
+                        ordering=10
+                    )
 
             if clean_image_url:
                 ProductImage.objects.create(
                     product=product,
-                    variant=variant,
+                    variant=created_variants[0][0],
                     image_url=clean_image_url,
                     is_primary=True,
                     ordering=0
@@ -464,7 +520,7 @@ class SellerProductsView(APIView):
                 if g_url != clean_image_url:
                     ProductImage.objects.create(
                         product=product,
-                        variant=variant,
+                        variant=created_variants[0][0],
                         image_url=g_url,
                         is_primary=False,
                         ordering=idx + 1
@@ -481,6 +537,15 @@ class SellerProductsView(APIView):
 class SellerProductDetailView(APIView):
     """Retrieve, update, or remove a vendor product."""
     permission_classes = [permissions.AllowAny]
+
+    def get(self, request, id):
+        product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
+        if not product:
+            return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'success': True,
+            'product': ProductDetailSerializer(product, context={'request': request}).data
+        })
 
     def put(self, request, id):
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
@@ -512,23 +577,76 @@ class SellerProductDetailView(APIView):
                     product.is_featured = True
             product.save()
 
-            variant = product.variants.first()
-            if variant:
-                if 'discounted_price' in request.data:
-                    variant.selling_price = Decimal(str(request.data['discounted_price']))
-                if 'original_price' in request.data:
-                    variant.regular_price = Decimal(str(request.data['original_price']))
-                if 'unit' in request.data:
-                    attrs = variant.attributes or {}
-                    attrs['unit'] = str(request.data['unit']).strip()
-                    variant.attributes = attrs
-                variant.save()
+            variants_payload = request.data.get('variants')
+            if variants_payload is not None and isinstance(variants_payload, list) and len(variants_payload) > 0:
+                warehouse = Warehouse.objects.filter(is_active=True).first()
+                product.variants.all().delete()
+                for idx, v_item in enumerate(variants_payload):
+                    c_name = str(v_item.get('color') or v_item.get('color_name') or '').strip()
+                    c_code = str(v_item.get('color_code') or v_item.get('color_value') or '').strip()
+                    s_name = str(v_item.get('size') or '').strip()
+                    v_sell = Decimal(str(v_item.get('price') or v_item.get('discounted_price') or '100'))
+                    v_reg = Decimal(str(v_item.get('original_price') or v_item.get('regular_price') or v_sell))
+                    v_stock = int(v_item.get('stock') or v_item.get('stock_quantity') or 20)
+                    v_img = str(v_item.get('image_url') or '').strip()
+                    v_sku = str(v_item.get('sku') or f"{product.base_sku}-V{idx+1}")
 
-                if 'stock' in request.data:
-                    inv = InventoryItem.objects.filter(variant=variant).first()
-                    if inv:
-                        inv.quantity_on_hand = int(request.data['stock'])
-                        inv.save(update_fields=['quantity_on_hand', 'updated_at'])
+                    attrs = {
+                        'name': f"{c_name} / {s_name}" if c_name and s_name else (c_name or s_name or f"Option {idx+1}"),
+                        'unit': product.unit
+                    }
+                    if c_name:
+                        attrs['color'] = c_name
+                        attrs['color_name'] = c_name
+                    if c_code:
+                        attrs['color_code'] = c_code
+                    if s_name:
+                        attrs['size'] = s_name
+                    if v_img:
+                        attrs['image_url'] = v_img
+
+                    new_v = ProductVariant.objects.create(
+                        product=product,
+                        sku=v_sku,
+                        regular_price=v_reg,
+                        selling_price=v_sell,
+                        attributes=attrs,
+                        is_default=(idx == 0),
+                        is_active=bool(v_item.get('is_active', True))
+                    )
+                    if warehouse:
+                        InventoryItem.objects.create(
+                            variant=new_v,
+                            warehouse=warehouse,
+                            quantity_on_hand=v_stock,
+                            reorder_threshold=5
+                        )
+                    if v_img and is_valid_image_url(v_img):
+                        ProductImage.objects.create(
+                            product=product,
+                            variant=new_v,
+                            image_url=v_img,
+                            is_primary=False,
+                            ordering=idx + 5
+                        )
+            else:
+                variant = product.variants.first()
+                if variant:
+                    if 'discounted_price' in request.data:
+                        variant.selling_price = Decimal(str(request.data['discounted_price']))
+                    if 'original_price' in request.data:
+                        variant.regular_price = Decimal(str(request.data['original_price']))
+                    if 'unit' in request.data:
+                        attrs = variant.attributes or {}
+                        attrs['unit'] = str(request.data['unit']).strip()
+                        variant.attributes = attrs
+                    variant.save()
+
+                    if 'stock' in request.data:
+                        inv = InventoryItem.objects.filter(variant=variant).first()
+                        if inv:
+                            inv.quantity_on_hand = int(request.data['stock'])
+                            inv.save(update_fields=['quantity_on_hand', 'updated_at'])
 
             # Multi-image sync (up to 6 images)
             images_payload = request.data.get('images')
@@ -582,10 +700,11 @@ class SellerProductDetailView(APIView):
                                 ordering=idx + 1
                             )
 
+        product.refresh_from_db()
         return Response({
             'success': True,
             'message': 'Product updated successfully.',
-            'product': ProductListSerializer(product).data
+            'product': ProductListSerializer(product, context={'request': request}).data
         })
 
     def delete(self, request, id):
@@ -600,7 +719,7 @@ class SellerProductDetailView(APIView):
 
 
 class SellerToggleStockView(APIView):
-    """Quick toggle in_stock status for a product."""
+    """Quick toggle in_stock status for a product or variant."""
     permission_classes = [permissions.AllowAny]
 
     def patch(self, request, id):
@@ -608,18 +727,27 @@ class SellerToggleStockView(APIView):
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        variant = product.variants.first()
+        variant_id = request.data.get('variant_id')
+        variant = None
+        if variant_id:
+            variant = product.variants.filter(id=variant_id).first()
+        if not variant:
+            variant = product.variants.first()
+
         new_status = True
         if variant:
-            inv = InventoryItem.objects.filter(variant=variant).first()
-            if inv:
-                if inv.quantity_on_hand > 0:
-                    inv.quantity_on_hand = 0
-                    new_status = False
-                else:
-                    inv.quantity_on_hand = 25
-                    new_status = True
-                inv.save(update_fields=['quantity_on_hand', 'updated_at'])
+            warehouse = Warehouse.objects.filter(is_active=True).first()
+            inv, _ = InventoryItem.objects.get_or_create(
+                variant=variant,
+                defaults={'warehouse': warehouse, 'quantity_on_hand': 25, 'reorder_threshold': 5}
+            )
+            if inv.quantity_on_hand > 0:
+                inv.quantity_on_hand = 0
+                new_status = False
+            else:
+                inv.quantity_on_hand = 25
+                new_status = True
+            inv.save(update_fields=['quantity_on_hand', 'updated_at'])
 
         return Response({
             'success': True,
@@ -629,7 +757,7 @@ class SellerToggleStockView(APIView):
 
 
 class SellerRestockView(APIView):
-    """Add stock to product inventory."""
+    """Add stock to product inventory or specific variant."""
     permission_classes = [permissions.AllowAny]
 
     def patch(self, request, id):
@@ -638,14 +766,23 @@ class SellerRestockView(APIView):
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         add_stock = int(request.data.get('add_stock', 25))
-        variant = product.variants.first()
+        variant_id = request.data.get('variant_id')
+        variant = None
+        if variant_id:
+            variant = product.variants.filter(id=variant_id).first()
+        if not variant:
+            variant = product.variants.first()
+
         stock_val = add_stock
         if variant:
-            inv = InventoryItem.objects.filter(variant=variant).first()
-            if inv:
-                inv.quantity_on_hand += add_stock
-                inv.save(update_fields=['quantity_on_hand', 'updated_at'])
-                stock_val = inv.quantity_on_hand
+            warehouse = Warehouse.objects.filter(is_active=True).first()
+            inv, _ = InventoryItem.objects.get_or_create(
+                variant=variant,
+                defaults={'warehouse': warehouse, 'quantity_on_hand': 0, 'reorder_threshold': 5}
+            )
+            inv.quantity_on_hand += add_stock
+            inv.save(update_fields=['quantity_on_hand', 'updated_at'])
+            stock_val = inv.quantity_on_hand
 
         return Response({
             'success': True,
@@ -702,6 +839,9 @@ class SellerOrdersView(APIView):
                 unit_str = getattr(prod, 'unit', 'piece') or 'piece' if prod else 'piece'
                 u_price = float(item.unit_price or 0.0)
                 t_price = float(item.total_price or (u_price * item.quantity))
+                attrs = getattr(item.variant, 'attributes', {}) or {} if item.variant else {}
+                color_val = attrs.get('color') or attrs.get('color_name') or ''
+                size_val = attrs.get('size') or ''
                 items_list.append({
                     'id': str(item.id),
                     'product_name': item.product_name,
@@ -710,6 +850,9 @@ class SellerOrdersView(APIView):
                     'unit_price': u_price,
                     'total': t_price,
                     'unit': unit_str,
+                    'color': color_val,
+                    'size': size_val,
+                    'variant_name': attrs.get('name') or '',
                 })
 
             results.append({

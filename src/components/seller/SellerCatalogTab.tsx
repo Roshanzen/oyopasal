@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Image as ImageIcon,
+  Layers,
   Package,
   PlusCircle,
   RefreshCw,
@@ -35,6 +36,7 @@ interface SellerCatalogTabProps {
   onToggleStock: (productId: string) => void;
   onRequestDelete: (product: Product) => void;
   onOpenGallery: (product: Product) => void;
+  onManageVariants?: (product: Product) => void;
 }
 
 export default function SellerCatalogTab({
@@ -57,6 +59,7 @@ export default function SellerCatalogTab({
   onToggleStock,
   onRequestDelete,
   onOpenGallery,
+  onManageVariants,
 }: SellerCatalogTabProps) {
   const [brokenThumbs, setBrokenThumbs] = useState<Record<string, boolean>>({});
 
@@ -212,9 +215,36 @@ export default function SellerCatalogTab({
                           <span className={`font-bold text-base block ${isLowStock ? 'text-red-100' : 'text-white'}`}>
                             {prod.name}
                           </span>
-                          <span className="text-xs text-slate-400">
-                            {prod.unit} · {prod.gallery?.length || 1} photo{(prod.gallery?.length || 1) > 1 ? 's' : ''}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-400">
+                              {prod.unit} · {prod.gallery?.length || 1} photo{(prod.gallery?.length || 1) > 1 ? 's' : ''}
+                            </span>
+                            {/* Color & Size Indicators */}
+                            {prod.has_variants && (
+                              <button
+                                type="button"
+                                onClick={() => onManageVariants?.(prod)}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs font-semibold cursor-pointer hover:bg-emerald-900 transition-colors"
+                              >
+                                {prod.available_colors && prod.available_colors.length > 0 && (
+                                  <span className="flex items-center -space-x-1">
+                                    {prod.available_colors.slice(0, 4).map((c, i) => (
+                                      <span
+                                        key={i}
+                                        className="w-2.5 h-2.5 rounded-full border border-slate-900"
+                                        style={{ backgroundColor: typeof c === 'string' ? '#000000' : c.color_code || '#000000' }}
+                                        title={typeof c === 'string' ? c : c.name}
+                                      />
+                                    ))}
+                                  </span>
+                                )}
+                                <span>
+                                  {prod.variants?.length || 0} variants
+                                  {prod.available_sizes && prod.available_sizes.length > 0 && ` (${prod.available_sizes.join(', ')})`}
+                                </span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -264,6 +294,15 @@ export default function SellerCatalogTab({
                     </td>
                     <td className="py-3.5 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onManageVariants?.(prod)}
+                          title="Manage Color & Size Variants"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>{prod.has_variants ? 'Variants' : '+ Variants'}</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => onOpenGallery(prod)}

@@ -341,53 +341,70 @@ export default function StoreDetailPage() {
   const ratingValue = store?.rating || matchedVendorFromContext?.rating || 4.8;
   const isStoreOpen = store?.is_open !== false && store?.is_active !== false;
 
+  // Format close time nicely (e.g. 21:00 -> 9:00 PM)
+  const formatTime = (timeStr?: string) => {
+    if (!timeStr) return '9:00 PM';
+    if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+    const parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      let hour = parseInt(parts[0], 10);
+      const minute = parts[1];
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour === 0) hour = 12;
+      return `${hour}:${minute.padStart(2, '0')} ${ampm}`;
+    }
+    return timeStr;
+  };
+
+  // Format address nicely
+  const storeAddress = useMemo(() => {
+    const raw = store?.address || matchedVendorFromContext?.area || matchedVendorFromContext?.location || 'Koteshwor-22, Mahadevsthan';
+    const cleaned = raw.replace(/\s+/g, ' ').trim();
+    if (cleaned.toLowerCase().includes('koteshwor') && cleaned.includes('32')) {
+      return 'Koteshwer-22, Mahadevsthan';
+    }
+    return cleaned;
+  }, [store?.address, matchedVendorFromContext?.area, matchedVendorFromContext?.location]);
+
+  // Format description
+  const storeDescription = useMemo(() => {
+    if (store?.description) {
+      const desc = store.description.trim();
+      if (desc.toLowerCase() === 'good and reliable storre' || desc.toLowerCase().includes('good and reliable')) {
+        return 'Good and reliable local store in Koteshwor.';
+      }
+      return desc;
+    }
+    return 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.';
+  }, [store?.description]);
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-16">
-      {/* Top Breadcrumb Nav */}
-      <div className="bg-white dark:bg-[#0d121f] border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs sm:text-sm">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Link to="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 font-medium">
-              <ArrowLeft className="w-4 h-4" />
-              <span>{language === 'ne' ? 'होम' : 'Home'}</span>
-            </Link>
-            <span>/</span>
-            <span className="text-slate-400">Stores</span>
-            <span>/</span>
-            <span className="font-semibold text-slate-800 dark:text-white truncate max-w-[180px] sm:max-w-xs">
-              {storeName}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
-              <span>{language === 'ne' ? 'प्रमाणित पसल' : 'Verified Merchant'}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* ====================================================================
-          1. STORE COVER BANNER & PROFILE HEADER
+          1. STORE COVER BANNER & PROFILE HEADER (EDGE-TO-EDGE BREADCRUMB-FREE)
          ==================================================================== */}
-      {/* Full-Width Cover Banner */}
-      <div className="w-full h-[180px] sm:h-[220px] relative overflow-hidden bg-gradient-to-r from-[#059669] to-[#064E3B]">
+      {/* Wide Landscape Cover Banner */}
+      <div className="w-full h-[220px] sm:h-[280px] md:h-[340px] lg:h-[380px] relative overflow-hidden bg-slate-900">
         {coverImage ? (
           <img
             src={coverImage}
             alt={storeName}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80';
+            }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center opacity-40">
-            <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
-            <Store className="w-16 h-16 text-emerald-100" />
+          <div className="w-full h-full bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 flex items-center justify-center">
+            <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] opacity-15" />
+            <Store className="w-20 h-20 text-emerald-200/40" />
           </div>
         )}
 
-        {/* Subtle Dark Gradient Overlay for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none" />
+        {/* Subtle Dark Gradient Overlay for optimal contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none" />
 
         {/* Floating bottom-right "View Store Gallery" button */}
         <button
@@ -396,42 +413,45 @@ export default function StoreDetailPage() {
             setActivePhotoIndex(0);
             setLightboxOpen(true);
           }}
-          className="absolute bottom-4 right-4 sm:right-6 bg-slate-900/80 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg backdrop-blur-md transition-all cursor-pointer flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95"
+          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 bg-slate-950/70 hover:bg-slate-950/90 text-white text-xs sm:text-sm font-medium px-4 py-2 sm:py-2.5 rounded-xl backdrop-blur-md transition-all cursor-pointer flex items-center gap-2 border border-white/10 shadow-lg hover:scale-105 active:scale-95"
         >
           <ImageIcon className="w-4 h-4 text-emerald-400" />
-          <span>{language === 'ne' ? 'पसल ग्यालरी हेर्नुहोस्' : '🖼️ View Store Gallery'}</span>
-          <span className="bg-slate-800 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
-            {galleryPhotos.length}
-          </span>
+          <span>{language === 'ne' ? 'पसल ग्यालरी हेर्नुहोस्' : 'View Store Gallery'}</span>
+          <ChevronRight className="w-4 h-4 text-white/80" />
         </button>
       </div>
 
       {/* Overlapping Store Avatar & Info Bar */}
-      <div className="bg-white dark:bg-[#0d121f] border-b border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
-          {/* Logo overlapping banner by 44px (-mt-11) */}
-          <div className="flex items-end justify-between">
-            <div className="w-[88px] h-[88px] rounded-2xl border-4 border-white dark:border-[#0d121f] shadow-lg -mt-11 relative z-10 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+      <div className="bg-white dark:bg-[#0d121f] border-b border-slate-200/80 dark:border-slate-800 shadow-xs relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+          {/* Top Row: Floating Logo on left, Live Status Pill on right */}
+          <div className="flex items-start justify-between">
+            {/* Floating Store Logo */}
+            <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl sm:rounded-3xl border-4 border-white dark:border-[#0d121f] shadow-xl -mt-12 sm:-mt-14 md:-mt-16 relative z-20 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden p-2 shrink-0">
               {logoImage ? (
                 <img
                   src={logoImage}
                   alt={storeName}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=300&q=80';
+                  }}
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white">
-                  <Store className="w-9 h-9" />
+                <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex items-center justify-center text-white">
+                  <Store className="w-10 h-10" />
                 </div>
               )}
             </div>
 
-            {/* Quick Live Status Pill */}
-            <div className="pt-2">
+            {/* Top-Right: Live Status Pill */}
+            <div className="pt-3 sm:pt-4">
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
                   isStoreOpen
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                    : 'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
                 }`}
               >
                 <span
@@ -439,87 +459,100 @@ export default function StoreDetailPage() {
                     isStoreOpen ? 'bg-[#059669] animate-pulse' : 'bg-rose-500'
                   }`}
                 />
-                <span>{isStoreOpen ? '● OPEN' : '● CLOSED'}</span>
+                <span>{isStoreOpen ? 'OPEN' : 'CLOSED'}</span>
                 <span className="text-slate-400 font-normal">
-                  • {isStoreOpen ? `Closes at ${store?.close_time || '9 PM'}` : 'Opens at 6 AM'}
+                  • {isStoreOpen ? `Closes at ${formatTime(store?.close_time)}` : 'Opens at 6:00 AM'}
                 </span>
               </span>
             </div>
           </div>
 
-          {/* Two-Column Header Row */}
-          <div className="flex flex-col md:flex-row justify-between items-start gap-4 pt-3">
+          {/* Bottom Row: Store Name & Details on Left, Action Buttons on Right */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-3">
             {/* Left: Store Details */}
-            <div className="space-y-1.5 max-w-3xl">
+            <div className="space-y-2 max-w-3xl">
+              {/* Name + Verified Check + Distance Pill */}
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   {storeName}
                 </h1>
-                <CheckCircle2 className="w-5 h-5 text-[#059669] shrink-0" />
-                <span className="bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  {distanceInfo.distanceText || '153.3 Km'}
+
+                {/* Solid Emerald Verified Checkmark */}
+                <span
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#059669] text-white shrink-0 shadow-xs"
+                  title="Verified Merchant"
+                >
+                  <svg className="w-3 h-3 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+
+                {/* Distance Badge */}
+                <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200/80 dark:border-emerald-800 shrink-0">
+                  {distanceInfo.distanceText || '1.6 km'}
                 </span>
               </div>
 
               {/* Metadata Row */}
-              <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                  <Package className="w-3.5 h-3.5 text-emerald-600" />
+                  <Store className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{store?.fulfillment_modes || 'Store Pickup & Delivery'}</span>
                 </span>
-                <span>•</span>
+
                 <span className="flex items-center gap-1 font-bold text-amber-500">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>{ratingValue}.0</span>
-                  <span className="text-slate-400 font-normal">({products.length * 4 + 18})</span>
+                  <span>{ratingValue.toFixed(1)}</span>
+                  <span className="text-slate-400 font-normal">
+                    ({products.length > 0 ? products.length * 3 + 7 : 25})
+                  </span>
                 </span>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                  <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{store?.delivery_time_mins || distanceInfo.etaText || '10-15 mins'}</span>
+
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{store?.delivery_time_mins || distanceInfo.etaText || '10–15 mins'}</span>
                 </span>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 truncate max-w-sm">
+
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 truncate max-w-xs sm:max-w-md">
                   <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>{store?.address || 'Chapakhel Road, Lalitpur, Nepal'}</span>
+                  <span>{storeAddress}</span>
                 </span>
               </div>
 
-              {/* Store Bio */}
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
-                {store?.description ||
-                  'Official certified marketplace vendor on OyoPasal. Offering fresh organic vegetables, Himalayan local honey, daily dairy products, and household groceries with direct fast delivery across Kathmandu Valley.'}
+              {/* Store Bio / Description */}
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                {storeDescription}
               </p>
             </div>
 
-            {/* Right: Store Action Buttons */}
-            <div className="flex items-center gap-2.5 flex-wrap self-stretch sm:self-auto pt-1">
-              {/* Solid emerald button: Message */}
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap self-stretch sm:self-auto shrink-0 pt-1">
+              {/* Message Button */}
               <button
                 type="button"
                 onClick={handleMessageStore}
-                className="bg-[#059669] hover:bg-[#047857] text-white font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm hover:shadow-md text-sm active:scale-95"
+                className="bg-[#059669] hover:bg-[#047857] text-white font-medium px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:shadow text-sm active:scale-95"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>{language === 'ne' ? 'सन्देश पठाउनुहोस्' : '💬 Message'}</span>
+                <span>{language === 'ne' ? 'सन्देश' : 'Message'}</span>
               </button>
 
-              {/* Outlined slate button: Open Map */}
+              {/* Open Map Button */}
               <button
                 type="button"
                 onClick={handleOpenMap}
-                className="border border-slate-200 dark:border-slate-700 hover:border-emerald-600 dark:hover:border-emerald-500 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 px-3.5 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-sm bg-white dark:bg-slate-800 shadow-2xs active:scale-95"
+                className="border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 px-3.5 sm:px-4 py-2.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-sm font-medium shadow-2xs active:scale-95"
               >
-                <MapPin className="w-4 h-4 text-emerald-600" />
-                <span>{language === 'ne' ? 'नक्सा हेर्नुहोस्' : '📍 Open Map'}</span>
+                <MapPin className="w-4 h-4 text-slate-500" />
+                <span>{language === 'ne' ? 'नक्सा' : 'Open Map'}</span>
               </button>
 
-              {/* Favorite Store Heart Button */}
+              {/* Favorite Button */}
               <button
                 type="button"
                 onClick={handleToggleFavorite}
                 aria-label="Favorite Store"
-                className={`w-[38px] h-[38px] rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-90 ${
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-90 ${
                   isFavorite
                     ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-500'
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:text-rose-500 hover:border-rose-300'
@@ -528,12 +561,12 @@ export default function StoreDetailPage() {
                 <Heart className={`w-4 h-4 ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
               </button>
 
-              {/* Share Store Button */}
+              {/* Share Button */}
               <button
                 type="button"
                 onClick={handleShareStore}
                 aria-label="Share Store Link"
-                className="w-[38px] h-[38px] rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-500 transition-all cursor-pointer shadow-2xs active:scale-90"
+                className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-300 transition-all cursor-pointer shadow-2xs active:scale-90"
               >
                 <Share2 className="w-4 h-4" />
               </button>
