@@ -41,6 +41,8 @@ export interface StoreDetail {
   banner?: string;
   contact_email?: string;
   contact_phone?: string;
+  phone?: string;
+  email?: string;
   address?: string;
   business_hours?: Record<string, string>;
   latitude?: number | null;
@@ -124,6 +126,8 @@ export interface SellerFulfillmentItem {
   payment_method: string;
   payment_status: string;
   subtotal: number;
+  total_amount?: number;
+  items_count?: number;
   commission_amount: number;
   net_payout: number;
   created_at: string;

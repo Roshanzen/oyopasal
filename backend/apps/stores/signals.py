@@ -1,35 +1,33 @@
+import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from apps.stores.models import Store
 from apps.vendors.models import VendorProfile, VendorStatus
 
+logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Store)
-def sync_store_verification_to_vendor(sender, instance, created, **kwargs):
+def sync_vendor_approval_on_store_verification(sender, instance, created, **kwargs):
     """
-    Whenever store.is_verified is saved as True in Django Admin (or anywhere in ORM),
-    automatically update its linked VendorProfile status to 'APPROVED' and ensure is_active = True.
+    Automatically updates linked VendorProfile status to 'APPROVED' whenever a Store
+    is marked verified (is_verified=True) or active (is_active=True).
+    Ensures seamless real-time synchronization across Admin, Vendor Portal, and Storefront.
     """
-    if instance.is_verified and instance.vendor:
-        vendor = instance.vendor
-        changed = False
-        if vendor.status != VendorStatus.APPROVED:
-            vendor.status = VendorStatus.APPROVED
-            changed = True
+    if not instance.vendor_id:
+        return
 
-        if hasattr(vendor, 'user') and vendor.user and not vendor.user.is_active:
-            vendor.user.is_active = True
-            vendor.user.save(update_fields=['is_active'])
-
-        if changed:
-            vendor.save(update_fields=['status'])
-
-
-@receiver(post_save, sender=VendorProfile)
-def sync_vendor_approval_to_stores(sender, instance, created, **kwargs):
-    """
-    Whenever VendorProfile status is saved as 'APPROVED',
-    automatically update all linked stores to is_verified = True and is_active = True.
-    """
-    if instance.status == VendorStatus.APPROVED:
-        instance.stores.filter(is_verified=False).update(is_verified=True, is_active=True)
+    should_approve = bool(instance.is_verified)
+    if should_approve:
+        try:
+            vendor = instance.vendor
+            if vendor and vendor.status != VendorStatus.APPROVED:
+                VendorProfile.objects.filter(id=instance.vendor_id).update(status=VendorStatus.APPROVED)
+                logger.info(
+                    "Auto-approved vendor %s (ID: %s) via store signal on store %s (ID: %s)",
+                    vendor.business_name,
+                    vendor.id,
+                    instance.name,
+                    instance.id
+                )
+        except Exception as e:
+            logger.error("Failed to auto-approve vendor for store %s: %s", instance.id, e)

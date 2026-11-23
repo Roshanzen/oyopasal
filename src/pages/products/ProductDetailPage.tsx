@@ -5,6 +5,7 @@ import { useProductDetail } from '../../hooks';
 import ProductCard from '../../components/common/ProductCard';
 import { ErrorAlert } from '../../components/feedback/ErrorAlert';
 import { translateCategoryName } from '../../i18n';
+import { ProductVariant } from '../../types';
 import {
   Star,
   Clock,
@@ -177,7 +178,7 @@ export default function ProductDetailPage() {
 
   // 3. Size availability dynamically computed based on selected color
   const sizeAvailabilityForColor = useMemo(() => {
-    const map: Record<string, { inStock: boolean; stock: number; variant: (typeof product.variants)[0] | null }> = {};
+    const map: Record<string, { inStock: boolean; stock: number; variant: ProductVariant | null }> = {};
     allSizeOptions.forEach((sz) => {
       const matching = product?.variants?.find((v) => {
         const cName = v.color || v.color_name || v.attributes?.color || v.attributes?.color_name;

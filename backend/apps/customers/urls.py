@@ -1,10 +1,10 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from .views import CustomerProfileView, CustomerAddressViewSet
 
 app_name = 'customers'
 
-router = DefaultRouter()
+router = SimpleRouter()
 router.register(r'addresses', CustomerAddressViewSet, basename='customer-address')
 
 urlpatterns = [

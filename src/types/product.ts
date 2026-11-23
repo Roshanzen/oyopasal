@@ -4,12 +4,15 @@ export interface Category {
   name: string;
   name_ne?: string;
   slug: string;
-  parent_id?: number | null;
+  parent_id?: string | number | null;
   icon: string;
+  icon_url?: string;
   image_url?: string | null;
+  ordering?: number;
   item_count: number;
   accent: string;
   description: string;
+  subcategories?: Category[];
 }
 
 export interface ProductColorOption {
@@ -26,6 +29,9 @@ export interface ProductVariant {
   unit?: string;
   price: number;
   original_price: number;
+  selling_price?: number;
+  regular_price?: number;
+  discounted_price?: number;
   stock: number;
   stock_quantity?: number;
   in_stock?: boolean;
@@ -44,10 +50,15 @@ export interface Product {
   db_id?: number;
   name: string;
   slug: string;
+  base_sku?: string;
   category: { id: string; name: string; slug: string };
-  vendor: { id: string; name: string; rating: number; delivery_time_mins: string };
+  category_slug?: string;
+  vendor: { id: string; name: string; slug?: string; phone?: string; rating: number; delivery_time_mins: string };
   original_price: number;
   discounted_price: number;
+  price?: number;
+  selling_price?: number;
+  regular_price?: number;
   discount_percentage: number;
   unit: string;
   stock: number;
@@ -66,6 +77,7 @@ export interface Product {
   available_colors?: ProductColorOption[];
   available_sizes?: string[];
   sections: string[];
+  created_at?: string;
 }
 
 export interface Promotion {

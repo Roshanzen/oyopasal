@@ -343,30 +343,32 @@ export default function CheckoutPage() {
 
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('ESEWA')}
-                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${
-                    paymentMethod === 'ESEWA' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
-                  }`}
+                  disabled
+                  className="p-4 rounded-2xl border text-left flex items-center justify-between gap-3 opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-green-600 text-white flex items-center justify-center shrink-0 font-extrabold text-sm">eS</div>
-                  <div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">{t('checkout.esewaTitle')}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('checkout.esewaSub')}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-green-600 text-white flex items-center justify-center shrink-0 font-extrabold text-sm">eS</div>
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white block">{t('checkout.esewaTitle')}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{t('checkout.esewaSub')}</span>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Coming Soon</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('KHALTI')}
-                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${
-                    paymentMethod === 'KHALTI' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
-                  }`}
+                  disabled
+                  className="p-4 rounded-2xl border text-left flex items-center justify-between gap-3 opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center shrink-0 font-extrabold text-sm">Kh</div>
-                  <div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">{t('checkout.khaltiTitle')}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('checkout.khaltiSub')}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center shrink-0 font-extrabold text-sm">Kh</div>
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white block">{t('checkout.khaltiTitle')}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{t('checkout.khaltiSub')}</span>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Coming Soon</span>
                 </button>
 
                 <button

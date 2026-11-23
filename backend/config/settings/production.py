@@ -28,6 +28,10 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# Upload Size Limits (25 MB max to protect against memory exhaustion)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
+
 # Production Database (MySQL 8.0)
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 if not DB_PASSWORD:

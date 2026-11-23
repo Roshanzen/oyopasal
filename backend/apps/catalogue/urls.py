@@ -21,6 +21,8 @@ urlpatterns = [
     # Public Category & Brand
     path('categories/', PublicCategoryListView.as_view(), name='public_category_list'),
     path('categories/<slug:slug>/', PublicCategoryDetailView.as_view(), name='public_category_detail'),
+    path('admin/categories/', PublicCategoryListView.as_view(), name='admin_category_list'),
+    path('admin/categories/<str:slug>/', PublicCategoryDetailView.as_view(), name='admin_category_detail'),
     path('brands/', PublicBrandListView.as_view(), name='public_brand_list'),
 
     # Public Products

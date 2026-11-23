@@ -140,6 +140,7 @@ class MarketplaceCatalogueTests(APITestCase):
             'short_description': 'Fast flagship phone made in Nepal',
             'description': 'Full specifications description',
             'tax_rate': '13.00',
+            'status': ProductStatus.DRAFT,
             'variants': [
                 {
                     'sku': 'HIM-PRO-01-BLK-128',

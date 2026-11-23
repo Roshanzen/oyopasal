@@ -1,0 +1,31 @@
+[Unit]
+Description=OyoPasal Celery Worker Service (Async Jobs & Notifications)
+After=network.target redis.service mysql.service
+Wants=redis.service mysql.service
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/oyopasal/backend
+EnvironmentFile=/var/www/oyopasal/backend/.env
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+ExecStart=/var/www/oyopasal/backend/venv/bin/celery multi start worker1 \
+    -A config \
+    --pidfile=/var/run/celery/%n.pid \
+    --logfile=/var/log/oyopasal/celery_%n.log \
+    --loglevel=INFO \
+    --concurrency=4
+ExecStop=/var/www/oyopasal/backend/venv/bin/celery multi stopwait worker1 \
+    --pidfile=/var/run/celery/%n.pid
+ExecReload=/var/www/oyopasal/backend/venv/bin/celery multi restart worker1 \
+    -A config \
+    --pidfile=/var/run/celery/%n.pid \
+    --logfile=/var/log/oyopasal/celery_%n.log \
+    --loglevel=INFO
+
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

@@ -290,7 +290,7 @@ export default function SellerOrderTrackingModal({
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      {language === 'ne' ? 'सामान सूची' : 'Items to Dispatch'} ({fulfillment.items_count})
+                      {language === 'ne' ? 'सामान सूची' : 'Items to Dispatch'} ({fulfillment.items_count ?? fulfillment.items?.length ?? 0})
                     </span>
                     <span className="text-xs font-bold text-emerald-400">
                       Net Payout: {formatPrice(fulfillment.net_payout)}
@@ -303,7 +303,7 @@ export default function SellerOrderTrackingModal({
                           <strong>{it.quantity}x</strong> {it.product_name}{' '}
                           <span className="text-slate-400">({it.unit})</span>
                         </span>
-                        <span className="text-slate-300 font-mono">{formatPrice(it.total)}</span>
+                        <span className="text-slate-300 font-mono">{formatPrice(it.total ?? it.total_price ?? (it.unit_price * it.quantity))}</span>
                       </div>
                     ))}
                   </div>

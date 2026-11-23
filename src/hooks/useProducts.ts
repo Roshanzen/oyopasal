@@ -100,6 +100,7 @@ export function useProductDetail(id?: string) {
 export function useCategoryCatalog(slug?: string) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  const [parentCategory, setParentCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,15 +110,35 @@ export function useCategoryCatalog(slug?: string) {
       setLoading(true);
       setError(null);
       const catRes = await categoryService.getCategories();
-      setCategories(catRes.results || []);
+      const catList = catRes.results || [];
+      setCategories(catList);
 
       if (slug) {
-        const found = catRes.results.find((c) => c.slug === slug);
+        let found = catList.find((c) => c.slug === slug);
+        let parent: Category | null = null;
+
+        if (!found) {
+          for (const p of catList) {
+            if (p.subcategories && p.subcategories.length > 0) {
+              const sub = p.subcategories.find((s) => s.slug === slug);
+              if (sub) {
+                found = sub;
+                parent = p;
+                break;
+              }
+            }
+          }
+        }
+
         setCurrentCategory(found || null);
-        const prodRes = await productService.getProducts({ category: slug, page_size: 40 });
+        setParentCategory(parent);
+
+        // Fetch products for category
+        const prodRes = await productService.getProducts({ category: slug, page_size: 60 });
         setProducts(prodRes.results || []);
       } else {
         setCurrentCategory(null);
+        setParentCategory(null);
         setProducts([]);
       }
     } catch (err) {
@@ -134,6 +155,7 @@ export function useCategoryCatalog(slug?: string) {
   return {
     categories,
     currentCategory,
+    parentCategory,
     products,
     loading,
     error,

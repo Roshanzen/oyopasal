@@ -7,21 +7,31 @@ from pathlib import Path
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework import status, permissions
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 
 from apps.common.models import MediaAsset
 
-MIME_TO_EXT = {
-    'image/jpeg': 'jpg',
-    'image/jpg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-    'image/svg+xml': 'svg',
+ALLOWED_MEDIA_ROLES = {
+    'SUPER_ADMIN', 'ADMIN', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN',
+    'VENDOR_OWNER', 'VENDOR_STAFF', 'SUPPLIER_OWNER', 'SUPPLIER_STAFF'
 }
+
+def detect_image_type(buffer: bytes) -> str | None:
+    """Validate image magic bytes. Returns detected extension or None."""
+    if len(buffer) < 8:
+        return None
+    if buffer.startswith(b'\xff\xd8\xff'):
+        return 'jpg'
+    if buffer.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    if buffer.startswith(b'GIF87a') or buffer.startswith(b'GIF89a'):
+        return 'gif'
+    if len(buffer) >= 12 and buffer[:4] == b'RIFF' and buffer[8:12] == b'WEBP':
+        return 'webp'
+    return None
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
@@ -30,8 +40,9 @@ class MediaUploadView(APIView):
     """
     Handles file/data_url image uploads from the admin/seller portals.
     Supports data_url, base64 strings, or direct multipart form uploads.
+    Restricted to authenticated sellers and administrators.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     @extend_schema(
@@ -40,6 +51,17 @@ class MediaUploadView(APIView):
         responses={201: dict, 400: dict}
     )
     def post(self, request):
+        user = request.user
+        user_role = getattr(user, 'role', '')
+        if not (user.is_staff or user.is_superuser or user_role in ALLOWED_MEDIA_ROLES):
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'FORBIDDEN',
+                    'message': 'Only sellers and platform administrators are authorized to upload media.'
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data or {}
         data_url = data.get('data_url', '')
         raw_b64 = data.get('base64', '')
@@ -102,23 +124,23 @@ class MediaUploadView(APIView):
                 'error': {'code': 'FILE_TOO_LARGE', 'message': 'Image exceeds maximum 10 MB size limit.'}
             }, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
 
-        ext = MIME_TO_EXT.get(mime_type)
-        if not ext:
-            file_ext = Path(filename).suffix.lstrip('.').lower()
-            if file_ext in ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']:
-                ext = 'jpg' if file_ext == 'jpeg' else file_ext
-            else:
-                return Response({
-                    'success': False,
-                    'error': {
-                        'code': 'UNSUPPORTED_MIME_TYPE',
-                        'message': f'Unsupported image MIME type: {mime_type}. Allowed: JPEG, PNG, WebP, GIF, SVG.'
-                    }
-                }, status=status.HTTP_400_BAD_REQUEST)
+        # Strictly validate image content using magic bytes
+        detected_ext = detect_image_type(buffer)
+        if not detected_ext:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'UNSUPPORTED_FILE_TYPE',
+                    'message': 'Only valid JPEG, PNG, WebP, and GIF images are permitted.'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Safe filename stem
+        ext = detected_ext
+        mime_type = f"image/{'jpeg' if ext == 'jpg' else ext}"
+
+        # Safe filename stem to prevent path traversal or overwrite
         safe_stem = re.sub(r'[^a-zA-Z0-9_-]+', '-', Path(filename).stem).strip('-')[:32] or 'asset'
-        stored_name = f"{int(time.time())}-{uuid.uuid4().hex[:8]}-{safe_stem}.{ext}"
+        stored_name = f"{int(time.time())}_{uuid.uuid4().hex[:12]}_{safe_stem}.{ext}"
 
         # Write to public/uploads in root workspace
         public_uploads_dir = Path(settings.BASE_DIR).parent / 'public' / 'uploads'
@@ -146,7 +168,7 @@ class MediaUploadView(APIView):
             entity_type=entity_type or 'general',
             entity_id=str(entity_id) if entity_id else None,
             filename=filename,
-            mime_type=mime_type or f"image/{ext}",
+            mime_type=mime_type,
             size_bytes=len(buffer),
             url=public_url,
             storage_path=str(disk_path)
@@ -170,16 +192,16 @@ class MediaAssetListView(APIView):
     """
     List uploaded media assets.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
-        if user and getattr(user, 'role', '') == 'ADMIN':
+        if user and (getattr(user, 'role', '') in ('ADMIN', 'SUPER_ADMIN') or user.is_staff):
             qs = MediaAsset.objects.all()[:100]
         elif user:
             qs = MediaAsset.objects.filter(owner=user)[:50]
         else:
-            qs = MediaAsset.objects.all()[:20]
+            qs = MediaAsset.objects.none()
 
         return Response({
             'count': qs.count(),
@@ -203,7 +225,7 @@ class MediaAssetDetailView(APIView):
     """
     Delete a media asset and clean up its file on disk.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
         try:
@@ -214,8 +236,9 @@ class MediaAssetDetailView(APIView):
                 'error': {'code': 'NOT_FOUND', 'message': 'Media asset not found.'}
             }, status=status.HTTP_404_NOT_FOUND)
 
-        user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
-        if user and getattr(user, 'role', '') != 'ADMIN' and asset.owner and asset.owner != user:
+        user = request.user
+        is_admin = getattr(user, 'role', '') in ('ADMIN', 'SUPER_ADMIN') or user.is_staff
+        if not is_admin and asset.owner and asset.owner != user:
             return Response({
                 'success': False,
                 'error': {'code': 'FORBIDDEN', 'message': 'You can only delete your own media assets.'}

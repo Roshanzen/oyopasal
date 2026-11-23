@@ -93,8 +93,15 @@ export default function StoreDetailPage() {
       } catch (err: unknown) {
         console.warn('Could not fetch store from backend endpoint, using vendor fallback:', err);
         if (!isCancelled) {
-          if (matchedVendorFromContext) {
-            // Construct store details from vendor object
+          const isContextVendorVerified = Boolean(
+            matchedVendorFromContext &&
+            (matchedVendorFromContext.verified ||
+             matchedVendorFromContext.is_verified ||
+             matchedVendorFromContext.status === 'APPROVED')
+          );
+
+          if (matchedVendorFromContext && isContextVendorVerified) {
+            // Construct store details from verified vendor object
             const fallbackStore: StoreDetail = {
               id: matchedVendorFromContext.id,
               name: matchedVendorFromContext.name,
@@ -103,7 +110,7 @@ export default function StoreDetailPage() {
               logo_url: matchedVendorFromContext.logo_url || '',
               banner_url: matchedVendorFromContext.cover_image_url || matchedVendorFromContext.image || '',
               is_active: matchedVendorFromContext.is_online !== false,
-              is_verified: matchedVendorFromContext.verified || matchedVendorFromContext.is_verified || true,
+              is_verified: true,
               rating: matchedVendorFromContext.rating || 4.8,
               delivery_time_mins: matchedVendorFromContext.delivery_time_mins || '10-15 mins',
               open_time: matchedVendorFromContext.open_time || '06:00',
@@ -119,7 +126,7 @@ export default function StoreDetailPage() {
             };
             setStore(fallbackStore);
           } else {
-            setStoreError('Store profile not found.');
+            setStoreError('Store profile not found or pending verification.');
           }
         }
       } finally {

@@ -17,7 +17,7 @@ class Category(BaseModel, SoftDeletableModel):
         related_name='subcategories'
     )
     name = models.CharField(max_length=150, db_index=True)
-    slug = models.SlugField(max_length=180, unique=True, db_index=True)
+    slug = models.SlugField(max_length=180, unique=True, blank=True, db_index=True)
     description = models.TextField(blank=True)
     icon_url = models.URLField(max_length=500, blank=True)
     image_url = models.URLField(max_length=500, blank=True)
@@ -56,12 +56,16 @@ class Category(BaseModel, SoftDeletableModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             base_slug = slugify(self.name) or 'cat'
-            slug = base_slug
-            counter = 1
-            while Category.objects.filter(slug=slug).exclude(id=self.id).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+        else:
+            base_slug = slugify(self.slug) or slugify(self.name) or 'cat'
+
+        slug = base_slug
+        counter = 1
+        manager = getattr(Category, 'all_objects', Category.objects)
+        while manager.filter(slug=slug).exclude(id=self.id).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        self.slug = slug
         super().save(*args, **kwargs)
 
 
@@ -192,7 +196,7 @@ class Product(BaseModel, SoftDeletableModel):
             base_slug = slugify(self.name) or str(self.id)[:8]
             slug = base_slug
             counter = 1
-            while Product.objects.filter(slug=slug).exclude(id=self.id).exists():
+            while Product.all_objects.filter(slug=slug).exclude(id=self.id).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug

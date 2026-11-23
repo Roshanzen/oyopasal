@@ -499,7 +499,7 @@ class AdminHeroBannerListCreateView(APIView):
     Admin GET & POST /api/admin/hero-banners/
     Supports listing all banners and uploading new hero banners via multipart or base64.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
@@ -540,7 +540,7 @@ class AdminHeroBannerDetailView(APIView):
     """
     Admin GET, PATCH, PUT, DELETE /api/admin/hero-banners/<int:pk>/
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self, pk):
@@ -601,7 +601,7 @@ class AdminHeroBannerReorderView(APIView):
     POST /api/admin/hero-banners/reorder/
     Supports { banner_id: int, direction: 'up' | 'down' } or { order_ids: [id1, id2, ...] }
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
 
     def post(self, request):
         banner_id = request.data.get('banner_id')

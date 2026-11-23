@@ -87,7 +87,8 @@ def build_order_items_by_vendor(instance):
             prod = getattr(item.variant, 'product', None) if getattr(item, 'variant', None) else None
             first_img = None
             if prod and hasattr(prod, 'images'):
-                first_img = prod.images.filter(is_primary=True).first() or prod.images.first()
+                prod_imgs = list(prod.images.all())
+                first_img = next((img for img in prod_imgs if img.is_primary), None) or (prod_imgs[0] if prod_imgs else None)
             img_url = first_img.image_url if first_img else ''
             unit_str = getattr(prod, 'unit', 'piece') or 'piece' if prod else 'piece'
             u_price = float(item.unit_price or 0.0)

@@ -84,7 +84,8 @@ class CartSerializer(serializers.ModelSerializer):
 
             var_img = ''
             if it.variant:
-                v_img = it.variant.images.first()
+                v_imgs = list(it.variant.images.all())
+                v_img = v_imgs[0] if v_imgs else None
                 if v_img:
                     var_img = v_img.image_url
                 elif attrs.get('image_url'):
@@ -92,7 +93,8 @@ class CartSerializer(serializers.ModelSerializer):
 
             img_url = var_img
             if not img_url and p:
-                first_img = p.images.filter(is_primary=True).first() or p.images.first()
+                p_imgs = list(p.images.all())
+                first_img = next((img for img in p_imgs if img.is_primary), None) or (p_imgs[0] if p_imgs else None)
                 if first_img:
                     img_url = first_img.image_url
 
@@ -247,8 +249,17 @@ class AddToCartSerializer(serializers.Serializer):
             except (ValueError, TypeError):
                 variant = ProductVariant.objects.select_related('product').filter(product__slug=p_id, is_active=True).first()
 
-        if not variant:
+        if not variant or not getattr(variant, 'product', None):
             raise serializers.ValidationError("Valid product or variant not found.")
+        if variant.product.status != 'APPROVED':
+            raise serializers.ValidationError(f"Product '{variant.product.name}' is currently unavailable.")
+
+        from apps.inventory.models import InventoryItem
+        avail = sum(inv.quantity_available for inv in InventoryItem.objects.filter(variant=variant))
+        req_qty = attrs.get('quantity', 1)
+        if avail < req_qty:
+            raise serializers.ValidationError(f"Insufficient stock available. Requested: {req_qty}, In stock: {avail}.")
+
         attrs['variant'] = variant
         return attrs
 

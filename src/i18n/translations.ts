@@ -521,6 +521,12 @@ export const TRANSLATIONS = {
     'seller.liveDispatchTitle': 'Live Customer Order Dispatches',
     'seller.liveDispatchSub': 'Incoming 10-minute grocery delivery orders requiring store packing.',
     'seller.liveDispatchBadge': '🟢 Live Dispatch Queue',
+    'seller.noImageYet': 'No image preview yet',
+    'seller.previewFallbackName': 'Product Name',
+    'seller.previewFallbackDesc': 'Fresh farm-to-table item directly supplied by verified local sellers.',
+    'seller.stock': 'Stock',
+    'seller.unit': 'Unit',
+    'seller.organicBadge': '100% Organic',
 
     // Visual Summary Charts
     'charts.title': 'Visual Sales Analytics & Trends',
@@ -1089,6 +1095,12 @@ export const TRANSLATIONS = {
     'seller.liveDispatchTitle': 'लाइभ ग्राहक अर्डर डिस्प्याच',
     'seller.liveDispatchSub': 'प्याकिङ गर्न बाँकी १०-मिनेट डेलिभरी अर्डरहरू।',
     'seller.liveDispatchBadge': '🟢 लाइभ डिस्प्याच क्यु',
+    'seller.noImageYet': 'कुनै तस्बिर पूर्वावलोकन छैन',
+    'seller.previewFallbackName': 'उत्पादनको नाम',
+    'seller.previewFallbackDesc': 'प्रमाणित स्थानीय विक्रेताहरूबाट सिधै उपलब्ध ताजा उत्पादन।',
+    'seller.stock': 'स्टक',
+    'seller.unit': 'एकाइ',
+    'seller.organicBadge': '१००% जैविक',
 
     // Visual Summary Charts
     'charts.title': 'भिजुअल बिक्री विश्लेषण र ट्रेन्ड',

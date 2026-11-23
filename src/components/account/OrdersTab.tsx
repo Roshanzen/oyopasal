@@ -95,7 +95,7 @@ export default function OrdersTab({
 
             <div className="space-y-3 text-sm">
               {(o.items_by_vendor || []).length > 0 ? (
-                o.items_by_vendor.map((vg, idx) => (
+                (o.items_by_vendor || []).map((vg, idx) => (
                   <div
                     key={idx}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80"

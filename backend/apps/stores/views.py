@@ -15,7 +15,11 @@ from apps.stores.serializers import (
 
 class PublicStoreListView(generics.ListAPIView):
     """List all active and verified marketplace stores."""
-    queryset = Store.objects.filter(is_active=True).select_related('vendor')
+    queryset = Store.objects.filter(
+        is_active=True,
+        is_verified=True,
+        vendor__status='APPROVED'
+    ).select_related('vendor')
     serializer_class = StoreListSerializer
     permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -29,10 +33,16 @@ class PublicStoreListView(generics.ListAPIView):
 
 class PublicStoreDetailView(generics.RetrieveAPIView):
     """Retrieve public storefront profile by unique slug, id, or linked vendor slug/id."""
-    queryset = Store.objects.filter(is_active=True).select_related('vendor')
     serializer_class = StoreDetailSerializer
     lookup_field = 'slug'
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Store.objects.filter(
+            is_active=True,
+            is_verified=True,
+            vendor__status='APPROVED'
+        ).select_related('vendor')
 
     def get_object(self):
         lookup = self.kwargs.get(self.lookup_field) or self.kwargs.get('slug')
@@ -40,52 +50,45 @@ class PublicStoreDetailView(generics.RetrieveAPIView):
         from apps.common.utils import is_valid_uuid
         from apps.vendors.models import VendorProfile
 
-        store = Store.objects.filter(slug=lookup, is_active=True).select_related('vendor').first()
-        if not store and is_valid_uuid(lookup):
-            store = Store.objects.filter(id=lookup, is_active=True).select_related('vendor').first()
-        if not store:
-            store = Store.objects.filter(vendor__slug=lookup, is_active=True).select_related('vendor').first()
-        if not store and is_valid_uuid(lookup):
-            store = Store.objects.filter(vendor__id=lookup, is_active=True).select_related('vendor').first()
-        if not store:
-            store = Store.objects.filter(
-                Q(name__iexact=lookup) | Q(vendor__business_name__iexact=lookup),
-                is_active=True
-            ).select_related('vendor').first()
+        base_qs = Store.objects.filter(
+            is_active=True,
+            is_verified=True,
+            vendor__status='APPROVED'
+        ).select_related('vendor')
 
-        # If still not found, check if a vendor exists with this slug or id
+        store = base_qs.filter(slug=lookup).first()
+        if not store and is_valid_uuid(lookup):
+            store = base_qs.filter(id=lookup).first()
+        if not store:
+            store = base_qs.filter(vendor__slug=lookup).first()
+        if not store and is_valid_uuid(lookup):
+            store = base_qs.filter(vendor__id=lookup).first()
+        if not store:
+            store = base_qs.filter(
+                Q(name__iexact=lookup) | Q(vendor__business_name__iexact=lookup)
+            ).first()
+
+        # If not found among verified stores, check if vendor is approved
         if not store:
             vp = None
             if is_valid_uuid(lookup):
-                vp = VendorProfile.objects.filter(id=lookup).first()
+                vp = VendorProfile.objects.filter(id=lookup, status='APPROVED').first()
             if not vp:
-                vp = VendorProfile.objects.filter(slug=lookup).first()
+                vp = VendorProfile.objects.filter(slug=lookup, status='APPROVED').first()
             if not vp:
-                vp = VendorProfile.objects.filter(business_name__iexact=lookup).first()
+                vp = VendorProfile.objects.filter(business_name__iexact=lookup, status='APPROVED').first()
 
             if vp:
-                store = vp.stores.filter(is_active=True).first() or vp.stores.first()
+                store = vp.stores.filter(is_active=True, is_verified=True).first()
                 if not store:
-                    from django.utils.text import slugify
-                    base_slug = slugify(vp.business_name) or f"store-{str(vp.id)[:8]}"
-                    store_slug = base_slug
-                    counter = 1
-                    while Store.objects.filter(slug=store_slug).exists():
-                        store_slug = f"{base_slug}-{counter}"
-                        counter += 1
-                    store = Store.objects.create(
-                        vendor=vp,
-                        name=vp.business_name,
-                        slug=store_slug,
-                        description=vp.store_description or f"Official storefront of {vp.business_name}",
-                        contact_email=getattr(vp.user, 'email', ''),
-                        is_active=True,
-                        is_verified=(vp.status == 'APPROVED')
-                    )
+                    store = vp.stores.filter(is_active=True).first()
+                    if store:
+                        store.is_verified = True
+                        store.save(update_fields=['is_verified', 'updated_at'])
 
         if not store:
             from rest_framework.exceptions import NotFound
-            raise NotFound("Store profile not found.")
+            raise NotFound("Store profile not found or pending verification.")
         return store
 
     @extend_schema(summary="Retrieve Public Store Profile")

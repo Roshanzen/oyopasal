@@ -1,42 +1,58 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import HomePage from '../pages/home/HomePage';
-import ProductDetailPage from '../pages/products/ProductDetailPage';
-import SearchPage from '../pages/products/SearchPage';
-import CategoryPage from '../pages/categories/CategoryPage';
-import CheckoutPage from '../pages/checkout/CheckoutPage';
-import OrderTrackingPage from '../pages/orders/OrderTrackingPage';
-import AccountPage from '../pages/profile/AccountPage';
-import SellerPortalPage from '../pages/seller/SellerPortalPage';
-import StoreDetailPage from '../pages/stores/StoreDetailPage';
-import AdminPortalPage from '../pages/admin/AdminPortalPage';
-import RiderPortalPage from '../pages/admin/RiderPortalPage';
 import { SellerRoute } from './SellerRoute';
+
+// Route-based code splitting for production bundle optimization
+const ProductDetailPage = lazy(() => import('../pages/products/ProductDetailPage'));
+const SearchPage = lazy(() => import('../pages/products/SearchPage'));
+const CategoryPage = lazy(() => import('../pages/categories/CategoryPage'));
+const CheckoutPage = lazy(() => import('../pages/checkout/CheckoutPage'));
+const OrderTrackingPage = lazy(() => import('../pages/orders/OrderTrackingPage'));
+const AccountPage = lazy(() => import('../pages/profile/AccountPage'));
+const SellerPortalPage = lazy(() => import('../pages/seller/SellerPortalPage'));
+const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage'));
+const AdminPortalPage = lazy(() => import('../pages/admin/AdminPortalPage'));
+const RiderPortalPage = lazy(() => import('../pages/admin/RiderPortalPage'));
+
+function PageFallback() {
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-500">
+      <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs font-medium text-slate-400">Loading OyoPasal...</span>
+    </div>
+  );
+}
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/product/:id" element={<ProductDetailPage />} />
-      <Route path="/stores/:slug" element={<StoreDetailPage />} />
-      <Route path="/outlets/:slug" element={<StoreDetailPage />} />
-      <Route path="/categories" element={<CategoryPage />} />
-      <Route path="/category/:slug" element={<CategoryPage />} />
-      <Route path="/search" element={<SearchPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/orders/:id" element={<OrderTrackingPage />} />
-      <Route path="/account" element={<AccountPage />} />
-      <Route
-        path="/seller"
-        element={
-          <SellerRoute>
-            <SellerPortalPage />
-          </SellerRoute>
-        }
-      />
-      <Route path="/admin" element={<AdminPortalPage />} />
-      <Route path="/rider" element={<RiderPortalPage />} />
-      <Route path="*" element={<HomePage />} />
-    </Routes>
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
+        <Route path="/stores/:slug" element={<StoreDetailPage />} />
+        <Route path="/outlets/:slug" element={<StoreDetailPage />} />
+        <Route path="/categories" element={<CategoryPage />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
+        <Route path="/categories/:slug" element={<CategoryPage />} />
+        <Route path="/departments/:slug" element={<CategoryPage />} />
+        <Route path="/department/:slug" element={<CategoryPage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/orders/:id" element={<OrderTrackingPage />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route
+          path="/seller"
+          element={
+            <SellerRoute>
+              <SellerPortalPage />
+            </SellerRoute>
+          }
+        />
+        <Route path="/admin" element={<AdminPortalPage />} />
+        <Route path="/rider" element={<RiderPortalPage />} />
+        <Route path="*" element={<HomePage />} />
+      </Routes>
+    </Suspense>
   );
 }

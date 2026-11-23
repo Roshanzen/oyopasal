@@ -42,14 +42,17 @@ class CheckoutService:
         if not cart_items:
             raise ValueError("Your cart is empty. Please add items before checking out.")
 
-        # Validate that all items and products are active and approved
+        # Validate that all items and products are active and approved, refresh pricing fresh from DB
         for item in cart_items:
             if not item.variant or not getattr(item.variant, 'product', None):
                 raise ValueError("An item in your cart is no longer available.")
-            if item.variant.product.status != 'APPROVED':
+            if item.variant.product.status != 'APPROVED' or not item.variant.is_active:
                 raise ValueError(f"Product '{item.variant.product.name}' is no longer available.")
             if item.quantity <= 0:
                 raise ValueError(f"Invalid quantity ({item.quantity}) for {item.variant.product.name}.")
+            item.variant.refresh_from_db()
+            if item.variant.selling_price is None or item.variant.selling_price <= 0:
+                raise ValueError(f"Invalid pricing configured for {item.variant.product.name}.")
 
         # Generate unique order number
         order_uuid_suffix = uuid.uuid4().hex[:8].upper()
@@ -68,11 +71,12 @@ class CheckoutService:
                 }
             vendor_groups[v_id]['items'].append(item)
 
-        # Calculate preliminary subtotal
+        # Calculate authoritative subtotal
         order_subtotal = Decimal('0.00')
         order_tax_total = Decimal('0.00')
         for item in cart_items:
-            order_subtotal += item.total_price
+            item_total = Decimal(str(item.quantity)) * Decimal(str(item.variant.selling_price))
+            order_subtotal += item_total
 
         # Standard delivery fee matching cart logic: Free over 499, else 35
         if order_subtotal >= Decimal('499.00') or order_subtotal == Decimal('0.00'):
@@ -80,26 +84,20 @@ class CheckoutService:
         else:
             order_delivery_total = Decimal('35.00')
 
-        # Reserve inventory for each item
+        # Reserve inventory for each item using deterministic row locking to prevent deadlocks and overselling
+        sorted_cart_items = sorted(cart_items, key=lambda x: str(x.variant_id))
         reservations = []
-        for item in cart_items:
-            # Locate an inventory item with available stock
-            inv_record = InventoryItem.objects.filter(
+        for item in sorted_cart_items:
+            # Locate an inventory item with available stock using row-level locking
+            inv_record = InventoryItem.objects.select_for_update().filter(
                 variant=item.variant,
                 quantity_on_hand__gte=item.quantity
             ).first()
 
             if not inv_record:
-                inv_record = InventoryItem.objects.filter(variant=item.variant).first()
-                if not inv_record:
-                    wh = Warehouse.objects.filter(is_active=True).first() or Warehouse.objects.first()
-                    if wh:
-                        inv_record = InventoryItem.objects.create(
-                            warehouse=wh,
-                            variant=item.variant,
-                            quantity_on_hand=100,
-                            quantity_reserved=0
-                        )
+                inv_record = InventoryItem.objects.select_for_update().filter(
+                    variant=item.variant
+                ).first()
 
             if not inv_record or inv_record.quantity_available < item.quantity:
                 avail = inv_record.quantity_available if inv_record else 0
@@ -133,9 +131,12 @@ class CheckoutService:
             customer_notes=customer_notes
         )
 
-        # Create VendorSubOrders and OrderItems
+        # Create VendorSubOrders and OrderItems with delivery fee consistency
         suborder_counter = 1
-        for v_id, group in vendor_groups.items():
+        num_vendors = len(vendor_groups)
+        allocated_delivery = Decimal('0.00')
+
+        for idx, (v_id, group) in enumerate(vendor_groups.items()):
             sub_order_number = f"SUB-{order_date_str}-{order_uuid_suffix}-V{suborder_counter:02d}"
             suborder_counter += 1
 
@@ -143,8 +144,16 @@ class CheckoutService:
             store = group['store']
             sub_items = group['items']
 
-            sub_subtotal = sum(i.total_price for i in sub_items)
-            sub_delivery = Decimal('0.00') if sub_subtotal >= Decimal('499.00') else Decimal('35.00')
+            sub_subtotal = sum(Decimal(str(i.quantity)) * Decimal(str(i.variant.selling_price)) for i in sub_items)
+
+            # Ensure delivery fee across vendor suborders matches parent order delivery total exactly
+            if order_delivery_total == Decimal('0.00'):
+                sub_delivery = Decimal('0.00')
+            elif idx == num_vendors - 1:
+                sub_delivery = order_delivery_total - allocated_delivery
+            else:
+                sub_delivery = round(order_delivery_total / Decimal(num_vendors), 2)
+                allocated_delivery += sub_delivery
 
             # Commission calculation (vendor override if specified, else default 10%)
             commission_rate = getattr(vendor, 'commission_rate_override', None) if vendor else None
@@ -166,13 +175,16 @@ class CheckoutService:
                 vendor_net_amount=vendor_net
             )
 
-            # Create OrderItems
+            # Create OrderItems with authoritative prices
             for item in sub_items:
                 matched_res = next((r for i, r in reservations if i.id == item.id), None)
                 res_id = matched_res.id if matched_res else None
 
+                u_price = Decimal(str(item.variant.selling_price))
+                t_price = Decimal(str(item.quantity)) * u_price
+
                 prod_tax = getattr(item.variant.product, 'tax_rate', Decimal('0.00')) or Decimal('0.00')
-                item_tax = round(item.total_price * (prod_tax / Decimal('100.00')), 2)
+                item_tax = round(t_price * (prod_tax / Decimal('100.00')), 2)
                 order_tax_total += item_tax
 
                 OrderItem.objects.create(
@@ -181,9 +193,9 @@ class CheckoutService:
                     product_name=item.variant.product.name,
                     variant_sku=item.variant.sku,
                     attributes_snapshot=item.variant.attributes,
-                    unit_price=item.unit_price,
+                    unit_price=u_price,
                     quantity=item.quantity,
-                    total_price=item.total_price,
+                    total_price=t_price,
                     tax_rate=prod_tax,
                     tax_amount=item_tax,
                     reservation_id=res_id
@@ -229,12 +241,12 @@ class CheckoutService:
 
 class OrderService:
     VALID_TRANSITIONS = {
-        OrderStatus.CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-        OrderStatus.PROCESSING: [OrderStatus.PACKED, OrderStatus.CANCELLED],
+        OrderStatus.CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
+        OrderStatus.PROCESSING: [OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
         OrderStatus.PACKED: [OrderStatus.READY_FOR_DISPATCH, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
-        OrderStatus.READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
-        OrderStatus.SHIPPED: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED],
-        OrderStatus.OUT_FOR_DELIVERY: [OrderStatus.DELIVERED],
+        OrderStatus.READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+        OrderStatus.SHIPPED: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+        OrderStatus.OUT_FOR_DELIVERY: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
         OrderStatus.DELIVERED: [OrderStatus.RETURN_REQUESTED],
         OrderStatus.RETURN_REQUESTED: [OrderStatus.RETURNED],
     }

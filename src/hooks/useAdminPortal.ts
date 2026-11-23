@@ -209,6 +209,14 @@ export function useAdminPortal() {
 
   useEffect(() => {
     loadTabData();
+
+    const handleCategoriesUpdated = () => {
+      categoryService.getCategories({ bypassCache: true }).then((res) => {
+        setCategories(res.results || []);
+      }).catch(() => {});
+    };
+    window.addEventListener('categories:updated', handleCategoriesUpdated);
+    return () => window.removeEventListener('categories:updated', handleCategoriesUpdated);
   }, [loadTabData]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {

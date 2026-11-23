@@ -256,7 +256,7 @@ export default function SellerVariantsModal({
         })),
       };
 
-      const res = await sellerService.updateSellerProduct(product.id, payload);
+      const res = await sellerService.updateSellerProduct(product.id, payload as any);
       if (res.success && res.product) {
         onProductUpdated(res.product);
         showToast('Variants saved successfully to product!', 'success');

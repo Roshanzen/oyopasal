@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
@@ -6,6 +6,7 @@ import {
   Bike,
   CreditCard,
   FileText,
+  FolderPlus,
   Image as ImageIcon,
   LifeBuoy,
   LogOut,
@@ -28,6 +29,7 @@ import AdminProductsTab from '../../components/admin/AdminProductsTab';
 import AdminHeroBannersTab from '../../components/admin/AdminHeroBannersTab';
 import AdminCmsTab from '../../components/admin/AdminCmsTab';
 import AdminAdsTab from '../../components/admin/AdminAdsTab';
+import ManageCategoriesModal from '../../components/modals/ManageCategoriesModal';
 import {
   AdminPaymentsTab,
   AdminRefundsTab,
@@ -59,6 +61,7 @@ const ADMIN_TABS: { id: AdminTab; label: string; icon: React.ComponentType<{ cla
 
 export default function AdminPortalPage() {
   const admin = useAdminPortal();
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
 
   if (!admin.isAdmin) {
     return (
@@ -92,6 +95,13 @@ export default function AdminPortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setManageCategoriesOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800 text-xs font-bold text-emerald-300 flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+            <span>Manage Categories</span>
+          </button>
           <button
             onClick={admin.loadTabData}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
@@ -342,6 +352,15 @@ export default function AdminPortalPage() {
       )}
 
       {admin.activeTab === 'audit' && <AdminAuditTab auditLogs={admin.auditLogs} />}
+
+      <ManageCategoriesModal
+        isOpen={manageCategoriesOpen}
+        onClose={() => setManageCategoriesOpen(false)}
+        showToast={admin.showToast}
+        onCategoryCreated={() => {
+          admin.loadTabData();
+        }}
+      />
     </div>
   );
 }

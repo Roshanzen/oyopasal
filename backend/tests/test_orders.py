@@ -186,10 +186,10 @@ class MultiVendorCartAndCheckoutTests(APITestCase):
         parent_order = Order.objects.first()
         self.assertEqual(parent_order.status, OrderStatus.CONFIRMED)
         self.assertEqual(parent_order.subtotal, Decimal('12400.00'))
-        self.assertEqual(parent_order.delivery_total, Decimal('200.00')) # 2 vendors * 100
+        self.assertEqual(parent_order.delivery_total, Decimal('0.00'))  # Orders >= Rs 499 receive free delivery
         # Tax: 13% on 12400 = 1612.00
         self.assertEqual(parent_order.tax_total, Decimal('1612.00'))
-        self.assertEqual(parent_order.grand_total, Decimal('14212.00'))
+        self.assertEqual(parent_order.grand_total, Decimal('14012.00'))
 
         # 2. Vendor Sub-Orders Checks
         self.assertEqual(parent_order.suborders.count(), 2)

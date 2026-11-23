@@ -59,74 +59,79 @@ ADMIN_ROLES = [
 
 def resolve_authenticated_vendor(request, vendor_id=None):
     """
-    Resolves vendor profile and prevents vendor ID spoofing.
-    - If user is authenticated as a vendor, enforces ownership (cannot spoof another vendor).
-    - If user is staff/admin, allows specifying vendor_id.
-    - If user is authenticated customer without vendor profile, returns (None, 'FORBIDDEN').
-    - If unauthenticated, allows vendor_id or fallback to default vendor.
-    """
-    user = request.user
-    if user and user.is_authenticated:
-        if hasattr(user, 'vendor_profile'):
-            vendor = user.vendor_profile
-            if vendor_id and str(vendor.id) != str(vendor_id) and vendor.slug != str(vendor_id):
-                if getattr(user, 'role', '') not in ADMIN_ROLES and not user.is_staff:
-                    return None, 'FORBIDDEN'
-            return vendor, None
-        elif getattr(user, 'role', '') in ADMIN_ROLES or user.is_staff:
-            vendor = None
-            if vendor_id:
-                vendor = VendorProfile.objects.filter(id=vendor_id).first() if is_valid_uuid(vendor_id) else VendorProfile.objects.filter(slug=vendor_id).first()
-            if not vendor:
-                vendor = VendorProfile.objects.first()
-            return vendor, None
-        else:
-            return None, 'NOT_A_VENDOR'
-
-    # Unauthenticated / Demo mode
-    vendor = None
-    if vendor_id:
-        vendor = VendorProfile.objects.filter(id=vendor_id).first() if is_valid_uuid(vendor_id) else VendorProfile.objects.filter(slug=vendor_id).first()
-    if not vendor:
-        vendor = VendorProfile.objects.first()
-    return vendor, None
-
-
-def get_target_vendor(request, vendor_id=None):
-    """
-    Resolve vendor profile from query param (admin/support) or active user session.
+    Enforces authentication and strictly resolves the vendor profile owned by the user.
+    - Unauthenticated callers -> UNAUTHENTICATED (HTTP 401).
+    - Vendor Owners & Staff -> strictly their own request.user.vendor_profile.
+      If vendor_id is supplied and does NOT match their own vendor profile -> FORBIDDEN (HTTP 403).
+    - Super Admins / Staff -> can specify vendor_id, or manage active vendor.
+    - Other users (e.g. CUSTOMER) -> FORBIDDEN (HTTP 403).
+    Returns: (vendor_profile, error_response_or_None)
     """
     user = getattr(request, 'user', None)
-    if vendor_id:
-        v = None
-        if is_valid_uuid(vendor_id):
-            v = VendorProfile.objects.filter(id=vendor_id).first()
-        if not v:
-            v = VendorProfile.objects.filter(slug=vendor_id).first()
-        if not v:
-            v = VendorProfile.objects.filter(business_name__iexact=vendor_id).first()
-        if not v:
-            v = VendorProfile.objects.filter(business_name__icontains=vendor_id).first()
-        if v:
-            return v
+    if not user or not user.is_authenticated:
+        return None, Response({
+            'success': False,
+            'error': {
+                'code': 'UNAUTHENTICATED',
+                'message': 'Authentication credentials were not provided or are invalid.'
+            }
+        }, status=status.HTTP_401_UNAUTHORIZED)
 
-    if user and getattr(user, 'is_authenticated', False) and hasattr(user, 'vendor_profile'):
-        return user.vendor_profile
+    is_admin = getattr(user, 'role', '') in ADMIN_ROLES or user.is_staff or user.is_superuser
+    user_vp = getattr(user, 'vendor_profile', None)
 
-    return VendorProfile.objects.first()
+    if user_vp:
+        if vendor_id:
+            vid_str = str(vendor_id).strip()
+            if str(user_vp.id) != vid_str and user_vp.slug != vid_str:
+                if not is_admin:
+                    return None, Response({
+                        'success': False,
+                        'error': {
+                            'code': 'FORBIDDEN',
+                            'message': 'You cannot access or modify another vendor’s data.'
+                        }
+                    }, status=status.HTTP_403_FORBIDDEN)
+        return user_vp, None
+
+    if is_admin:
+        if vendor_id:
+            target = VendorProfile.objects.filter(id=vendor_id).first() if is_valid_uuid(vendor_id) else VendorProfile.objects.filter(slug=vendor_id).first()
+            if target:
+                return target, None
+            return None, Response({
+                'success': False,
+                'error': {'code': 'NOT_FOUND', 'message': f'Vendor {vendor_id} not found.'}
+            }, status=status.HTTP_404_NOT_FOUND)
+        target = VendorProfile.objects.first()
+        if target:
+            return target, None
+        return None, Response({
+            'success': False,
+            'error': {'code': 'NOT_FOUND', 'message': 'No vendor profiles exist on the platform.'}
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    return None, Response({
+        'success': False,
+        'error': {
+            'code': 'FORBIDDEN',
+            'message': 'You do not have vendor permissions to perform seller operations.'
+        }
+    }, status=status.HTTP_403_FORBIDDEN)
 
 
 class SellerDashboardView(APIView):
     """
     Vendor store KPIs: daily orders, revenue, inventory health, store status.
+    Requires authentication and vendor ownership.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
-        if not vendor:
-            return Response({'stats': {}, 'products': [], 'vendor': {}}, status=status.HTTP_200_OK)
+        vendor, err_resp = resolve_authenticated_vendor(request, vendor_id)
+        if err_resp:
+            return err_resp
 
         store = vendor.stores.filter(is_active=True).first()
         products_qs = Product.objects.filter(vendor=vendor)
@@ -213,13 +218,13 @@ class SellerDashboardView(APIView):
 
 class SellerProductsView(APIView):
     """List or create products for the authenticated vendor."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
-        if not vendor:
-            return Response({'count': 0, 'results': []})
+        vendor, err_resp = resolve_authenticated_vendor(request, vendor_id)
+        if err_resp:
+            return err_resp
 
         qs = Product.objects.filter(vendor=vendor).select_related('category', 'brand').prefetch_related('variants', 'images').order_by('-created_at')
         serializer = ProductListSerializer(qs, many=True)
@@ -229,32 +234,10 @@ class SellerProductsView(APIView):
         })
 
     def post(self, request):
-        vendor_id = request.data.get('vendor_id')
-        vendor, err = resolve_authenticated_vendor(request, vendor_id)
-        if err == 'FORBIDDEN':
-            return Response({
-                'success': False,
-                'error': {
-                    'code': 'FORBIDDEN',
-                    'message': 'You do not have permission to manage products for this vendor.'
-                }
-            }, status=status.HTTP_403_FORBIDDEN)
-        elif err == 'NOT_A_VENDOR':
-            return Response({
-                'success': False,
-                'error': {
-                    'code': 'FORBIDDEN',
-                    'message': 'Vendor profile required to create products.'
-                }
-            }, status=status.HTTP_403_FORBIDDEN)
-        elif not vendor:
-            return Response({
-                'success': False,
-                'error': {
-                    'code': 'NOT_FOUND',
-                    'message': 'Vendor profile not found.'
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
+        vendor_id = request.data.get('vendor_id') or request.query_params.get('vendor_id')
+        vendor, err_resp = resolve_authenticated_vendor(request, vendor_id)
+        if err_resp:
+            return err_resp
 
         # 1. Product Name Validation
         name = request.data.get('name')
@@ -270,21 +253,34 @@ class SellerProductsView(APIView):
                 'error': {'code': 'INVALID_NAME', 'message': 'Product name must be between 2 and 255 characters.'}
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Category Validation
-        category_slug = request.data.get('category_slug')
+        # 2. Strict Category Validation (Must be an active, existing Admin-managed category)
+        category_identifier = request.data.get('category_id') or request.data.get('category') or request.data.get('category_slug')
+        if not category_identifier:
+            return Response({
+                'success': False,
+                'error': {'code': 'CATEGORY_REQUIRED', 'message': 'A valid category is required for product creation.'}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Disallow arbitrary objects without an id
+        if isinstance(category_identifier, dict):
+            category_identifier = category_identifier.get('id')
+            if not category_identifier:
+                return Response({
+                    'success': False,
+                    'error': {'code': 'INVALID_CATEGORY', 'message': 'Category must be specified by a valid ID or slug.'}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        category_identifier = str(category_identifier).strip()
         category = None
-        if category_slug:
-            category = Category.objects.filter(slug=category_slug).first()
-            if not category and is_valid_uuid(category_slug):
-                category = Category.objects.filter(id=category_slug).first()
-            if not category:
-                category = Category.objects.filter(name__iexact=category_slug).first()
+        if is_valid_uuid(category_identifier):
+            category = Category.objects.filter(id=category_identifier, is_active=True, is_deleted=False).first()
         if not category:
-            category = Category.objects.first()
+            category = Category.objects.filter(slug=category_identifier, is_active=True, is_deleted=False).first()
+
         if not category:
             return Response({
                 'success': False,
-                'error': {'code': 'INVALID_CATEGORY', 'message': 'No valid product category found in system.'}
+                'error': {'code': 'INVALID_CATEGORY', 'message': 'Selected category does not exist, is inactive, or is not eligible for product assignment.'}
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # 3. Prices Validation
@@ -536,32 +532,59 @@ class SellerProductsView(APIView):
 
 class SellerProductDetailView(APIView):
     """Retrieve, update, or remove a vendor product."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if product.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot view products of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
         return Response({
             'success': True,
             'product': ProductDetailSerializer(product, context={'request': request}).data
         })
 
     def put(self, request, id):
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check vendor ownership if authenticated
-        user = request.user
-        if user and user.is_authenticated and hasattr(user, 'vendor_profile'):
-            if product.vendor != user.vendor_profile and getattr(user, 'role', '') not in ADMIN_ROLES and not user.is_staff:
-                return Response({
-                    'success': False,
-                    'error': {'code': 'FORBIDDEN', 'message': 'You cannot edit products of another vendor.'}
-                }, status=status.HTTP_403_FORBIDDEN)
+        # Enforce vendor ownership
+        if product.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot edit products of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
 
         with transaction.atomic():
+            category_identifier = request.data.get('category_id') or request.data.get('category') or request.data.get('category_slug')
+            if category_identifier:
+                if isinstance(category_identifier, dict):
+                    category_identifier = category_identifier.get('id')
+                if category_identifier:
+                    category_identifier = str(category_identifier).strip()
+                    cat = None
+                    if is_valid_uuid(category_identifier):
+                        cat = Category.objects.filter(id=category_identifier, is_active=True, is_deleted=False).first()
+                    if not cat:
+                        cat = Category.objects.filter(slug=category_identifier, is_active=True, is_deleted=False).first()
+                    if not cat:
+                        return Response({
+                            'success': False,
+                            'error': {'code': 'INVALID_CATEGORY', 'message': 'Selected category does not exist, is inactive, or is not eligible for product assignment.'}
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    product.category = cat
+
             if 'name' in request.data:
                 product.name = str(request.data['name']).strip()
             if 'description' in request.data:
@@ -587,6 +610,8 @@ class SellerProductDetailView(APIView):
                     s_name = str(v_item.get('size') or '').strip()
                     v_sell = Decimal(str(v_item.get('price') or v_item.get('discounted_price') or '100'))
                     v_reg = Decimal(str(v_item.get('original_price') or v_item.get('regular_price') or v_sell))
+                    if v_reg < v_sell:
+                        v_reg = v_sell
                     v_stock = int(v_item.get('stock') or v_item.get('stock_quantity') or 20)
                     v_img = str(v_item.get('image_url') or '').strip()
                     v_sku = str(v_item.get('sku') or f"{product.base_sku}-V{idx+1}")
@@ -636,6 +661,8 @@ class SellerProductDetailView(APIView):
                         variant.selling_price = Decimal(str(request.data['discounted_price']))
                     if 'original_price' in request.data:
                         variant.regular_price = Decimal(str(request.data['original_price']))
+                    if variant.regular_price and variant.selling_price and variant.regular_price < variant.selling_price:
+                        variant.regular_price = variant.selling_price
                     if 'unit' in request.data:
                         attrs = variant.attributes or {}
                         attrs['unit'] = str(request.data['unit']).strip()
@@ -708,9 +735,17 @@ class SellerProductDetailView(APIView):
         })
 
     def delete(self, request, id):
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if product.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot delete products of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
         product.delete()
         return Response({
             'success': True,
@@ -720,12 +755,20 @@ class SellerProductDetailView(APIView):
 
 class SellerToggleStockView(APIView):
     """Quick toggle in_stock status for a product or variant."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, id):
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if product.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot update products of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
 
         variant_id = request.data.get('variant_id')
         variant = None
@@ -758,12 +801,20 @@ class SellerToggleStockView(APIView):
 
 class SellerRestockView(APIView):
     """Add stock to product inventory or specific variant."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, id):
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         product = Product.objects.filter(id=id).first() if is_valid_uuid(id) else Product.objects.filter(slug=id).first()
         if not product:
             return Response({'success': False, 'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if product.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot update products of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
 
         add_stock = int(request.data.get('add_stock', 25))
         variant_id = request.data.get('variant_id')
@@ -795,11 +846,12 @@ class SellerRestockView(APIView):
 
 class SellerOrdersView(APIView):
     """List orders and fulfillments for this vendor."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({'count': 0, 'results': []})
 
@@ -858,7 +910,7 @@ class SellerOrdersView(APIView):
             results.append({
                 'fulfillment_id': str(so.id),
                 'order_id': str(parent.id) if parent else str(so.id),
-                'order_number': so.sub_order_number or (parent.order_number if parent else f"ORD-{so.id}"),
+                'order_number': so.sub_order_number or (parent.order_number if parent else f'ORD-{so.id}'),
                 'status': st,
                 'parent_order_status': parent.status if parent else st,
                 'subtotal': subtotal_val,
@@ -885,11 +937,14 @@ class SellerOrdersView(APIView):
 
 
 class SellerOrderStatusView(APIView):
-    """Update fulfillment status (e.g. PACKED_BY_VENDOR, READY_FOR_RIDER_PICKUP)."""
-    permission_classes = [permissions.AllowAny]
+    """Update fulfillment status (e.g. PACKED_BY_VENDOR, READY_FOR_RIDER_PICKUP, SHIPPED, DELIVERED)."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, fulfillment_id):
-        new_status = request.data.get('status')
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
+        raw_status = str(request.data.get('status', '')).strip().upper()
         so = None
         if is_valid_uuid(fulfillment_id):
             so = VendorSubOrder.objects.filter(id=fulfillment_id).first()
@@ -897,30 +952,77 @@ class SellerOrderStatusView(APIView):
             so = VendorSubOrder.objects.filter(sub_order_number=fulfillment_id).first()
         if not so:
             return Response({'success': False, 'message': 'Vendor sub-order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if so.vendor != vendor and getattr(request.user, 'role', '') not in ADMIN_ROLES and not request.user.is_staff:
+            return Response({
+                'success': False,
+                'error': {'code': 'FORBIDDEN', 'message': 'You cannot update orders of another vendor.'}
+            }, status=status.HTTP_403_FORBIDDEN)
 
-        if new_status:
-            so.status = new_status
-            so.save(update_fields=['status', 'updated_at'])
-            if new_status in ['PACKED_BY_VENDOR', 'PACKED'] and so.parent_order:
-                so.parent_order.status = 'PACKED'
-                so.parent_order.save(update_fields=['status', 'updated_at'])
-            elif new_status in ['READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'] and so.parent_order:
-                so.parent_order.status = 'READY_FOR_DISPATCH'
-                so.parent_order.save(update_fields=['status', 'updated_at'])
-        return Response({
-            'success': True,
-            'status': so.status,
-            'message': f'Fulfillment status updated to {so.status}'
-        })
+        STATUS_MAP = {
+            'CONFIRMED_BY_VENDOR': OrderStatus.CONFIRMED,
+            'CONFIRMED': OrderStatus.CONFIRMED,
+            'PROCESSING': OrderStatus.PROCESSING,
+            'PACKED_BY_VENDOR': OrderStatus.PACKED,
+            'PACKED': OrderStatus.PACKED,
+            'READY_FOR_RIDER_PICKUP': OrderStatus.READY_FOR_DISPATCH,
+            'READY_FOR_DISPATCH': OrderStatus.READY_FOR_DISPATCH,
+            'SHIPPED': OrderStatus.SHIPPED,
+            'OUT_FOR_DELIVERY': OrderStatus.OUT_FOR_DELIVERY,
+            'DELIVERED': OrderStatus.DELIVERED,
+            'REJECTED': OrderStatus.CANCELLED,
+            'CANCELLED': OrderStatus.CANCELLED,
+        }
+
+        canonical_status = STATUS_MAP.get(raw_status, raw_status)
+        if not canonical_status:
+            return Response({
+                'success': False,
+                'error': {'code': 'INVALID_STATUS', 'message': 'Invalid status provided.'}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Idempotent: already at target status
+        if so.status == canonical_status:
+            return Response({
+                'success': True,
+                'status': so.status,
+                'message': f'Fulfillment status already {so.status}'
+            })
+
+        from apps.orders.services import OrderService
+        try:
+            updated_so = OrderService.transition_suborder(
+                sub_order_id=so.id,
+                new_status=canonical_status,
+                user=request.user,
+                remarks=request.data.get('remarks', f'Status updated by vendor to {canonical_status}'),
+                tracking_number=request.data.get('tracking_number', ''),
+                delivery_provider=request.data.get('delivery_provider', '')
+            )
+            return Response({
+                'success': True,
+                'status': updated_so.status,
+                'message': f'Fulfillment status updated to {updated_so.status}'
+            })
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'error': {'code': 'TRANSITION_ERROR', 'message': str(e)}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': {'code': 'UPDATE_FAILED', 'message': str(e)}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SellerStoreView(APIView):
     """Get or update vendor store profile."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({'vendor': {}, 'settlements': []})
 
@@ -971,8 +1073,9 @@ class SellerStoreView(APIView):
         })
 
     def put(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({'success': False, 'message': 'Vendor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1018,11 +1121,12 @@ class SellerAnalyticsView(APIView):
     - top_products: best performing products by revenue & units
     - category_breakdown: category distribution
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({
                 'vendor_id': '',
@@ -1128,11 +1232,12 @@ class SellerAnalyticsView(APIView):
 
 class SellerReviewsView(APIView):
     """Reviews received for products from this vendor."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({'count': 0, 'average_rating': 5.0, 'results': []})
 
@@ -1158,11 +1263,12 @@ class SellerReviewsView(APIView):
 
 class SellerInventoryMovementsView(APIView):
     """Inventory audit log for vendor products."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        vendor_id = request.query_params.get('vendor_id')
-        vendor = get_target_vendor(request, vendor_id)
+        vendor, err_resp = resolve_authenticated_vendor(request)
+        if err_resp:
+            return err_resp
         if not vendor:
             return Response({'count': 0, 'results': []})
 
@@ -1180,10 +1286,6 @@ class SellerInventoryMovementsView(APIView):
             }
             for m in movements
         ]
-        return Response({
-            'count': len(results),
-            'results': results
-        })
         return Response({
             'count': len(results),
             'results': results

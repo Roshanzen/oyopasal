@@ -50,6 +50,8 @@ export interface Order {
   handling_fee: number;
   coupon_discount: number;
   total_amount: number;
+  grand_total?: number;
+  delivery_total?: number;
   tracking_updates: TrackingStep[];
   delivery_assignment?: DeliveryTrackingTelemetry['assignment'];
   tracking_events?: DeliveryTrackingTelemetry['events'];

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils.text import slugify
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from drf_spectacular.utils import extend_schema_field
 from apps.accounts.models import UserRole
@@ -70,19 +71,26 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             self.initial_data.get('phone_or_email') or 
             self.initial_data.get('identifier') or 
             self.initial_data.get('email') or 
+            self.initial_data.get('phone_number') or
+            self.initial_data.get('phone') or
             self.initial_data.get('username') or
             attrs.get('phone_or_email') or
             attrs.get('identifier') or
-            attrs.get('email')
+            attrs.get('email') or
+            attrs.get('phone_number') or
+            attrs.get('phone')
         )
         vendor_id = self.initial_data.get('vendor_id') or attrs.get('vendor_id')
         password = self.initial_data.get('password') or attrs.get('password')
-        demo_quick_login = bool(self.initial_data.get('demo_quick_login') or attrs.get('demo_quick_login', False))
+
+        # Mandatory credentials check: password must always be provided
+        if not password:
+            raise serializers.ValidationError({"detail": "Password is required."})
 
         target_user = None
 
-        # 1. Quick demo login or direct login by vendor_id
-        if vendor_id and (demo_quick_login or not raw_id):
+        # 1. Direct login by vendor_id (requires vendor account password)
+        if vendor_id and not raw_id:
             from apps.common.utils import is_valid_uuid
             if is_valid_uuid(vendor_id):
                 vp = VendorProfile.objects.filter(id=vendor_id).select_related('user').first()
@@ -104,40 +112,35 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 Q(email__iexact=raw_id) | Q(phone_number__in=phone_queries)
             ).first()
 
-        if target_user:
-            if not target_user.is_active:
-                raise serializers.ValidationError({
-                    "code": "ACCOUNT_INACTIVE",
-                    "detail": "This account is inactive or disabled. Please contact customer support."
-                })
+        if not target_user:
+            raise AuthenticationFailed({"detail": "Invalid credentials provided."})
 
-            if not demo_quick_login:
-                if not password or not target_user.check_password(password):
-                    raise serializers.ValidationError({"detail": "Invalid credentials provided."})
-            self.user = target_user
-            refresh = self.get_token(target_user)
-            data = {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        elif demo_quick_login and raw_id:
-            # Provision customer user for demo quick login
-            email_val = raw_id if '@' in raw_id else f"{cleaned_phone or raw_id}@oyopasal.com"
-            target_user = User.objects.create_user(
-                email=email_val,
-                phone_number=cleaned_phone if '@' not in raw_id else None,
-                role=UserRole.CUSTOMER,
-                first_name=self.initial_data.get('full_name', 'Customer'),
-                is_verified=True
-            )
-            self.user = target_user
-            refresh = self.get_token(target_user)
-            data = {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        else:
-            raise serializers.ValidationError({"detail": "Invalid credentials provided."})
+        if not target_user.is_active:
+            raise AuthenticationFailed({
+                "code": "ACCOUNT_INACTIVE",
+                "detail": "This account is inactive or disabled. Please contact customer support."
+            })
+
+        # Enforce password verification unconditionally
+        if not target_user.check_password(password):
+            raise AuthenticationFailed({"detail": "Invalid credentials provided."})
+
+        # If a vendor_id was explicitly requested, ensure user owns that vendor profile
+        if vendor_id:
+            from apps.common.utils import is_valid_uuid
+            user_vp = getattr(target_user, 'vendor_profile', None)
+            if not user_vp:
+                raise serializers.ValidationError({"detail": "Account is not associated with this vendor store."})
+            matches = str(user_vp.id) == str(vendor_id) or user_vp.slug == str(vendor_id)
+            if not matches and getattr(target_user, 'role', '') not in ['SUPER_ADMIN', 'ADMIN']:
+                raise serializers.ValidationError({"detail": "Account is not authorized for this vendor store."})
+
+        self.user = target_user
+        refresh = self.get_token(target_user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
 
         user = self.user
         data['token'] = data['access']

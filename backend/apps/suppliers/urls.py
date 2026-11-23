@@ -1,5 +1,5 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from .views import (
     SupplierProfileView,
     SupplierDocumentUploadView,
@@ -11,7 +11,7 @@ from .views import (
 
 app_name = 'suppliers'
 
-router = DefaultRouter()
+router = SimpleRouter()
 router.register(r'staff', SupplierStaffViewSet, basename='supplier-staff')
 
 urlpatterns = [

@@ -3,7 +3,7 @@ from .base import *
 
 DEBUG = True
 
-# Database Configuration: Standardized on MySQL 8.0+ with SQLite / PostgreSQL fallback
+# Database Configuration: Standardized on MySQL 8.0+ (with SQLite fallback for isolated unit testing)
 DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.mysql')
 DB_NAME = os.getenv('DB_NAME', 'oyopasal_db')
 DB_USER = os.getenv('DB_USER', 'oyopasal_user')

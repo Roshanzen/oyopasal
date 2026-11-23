@@ -14,6 +14,27 @@ export default defineConfig(() => {
     optimizeDeps: {
       include: ['motion/react', 'framer-motion', 'leaflet', 'lucide-react', 'react', 'react-dom', 'react-router-dom'],
     },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('node_modules/leaflet')) {
+              return 'vendor-maps';
+            }
+            if (id.includes('node_modules/lucide-react') || id.includes('node_modules/framer-motion') || id.includes('node_modules/motion')) {
+              return 'vendor-ui';
+            }
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       proxy: {

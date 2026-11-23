@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils import timezone
 from rest_framework import generics, status, filters
 from rest_framework.views import APIView
@@ -9,7 +9,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from apps.common.permissions import IsVendor, IsSuperAdmin, IsOperationsAdmin
+from apps.common.permissions import IsVendor, IsSuperAdmin, IsOperationsAdmin, CanManageCategories
 from apps.catalogue.models import (
     Category,
     Brand,
@@ -20,6 +20,7 @@ from apps.catalogue.models import (
 )
 from apps.catalogue.serializers import (
     CategoryTreeSerializer,
+    CategoryCreateSerializer,
     BrandSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
@@ -31,20 +32,63 @@ from apps.catalogue.serializers import (
 # Public Catalogue Views
 # -------------------------------------------------------------
 
-class PublicCategoryListView(generics.ListAPIView):
-    """List root categories with their active subcategories."""
-    queryset = Category.objects.filter(is_active=True, parent__isnull=True).prefetch_related('subcategories')
-    serializer_class = CategoryTreeSerializer
-    permission_classes = [AllowAny]
+class PublicCategoryListView(generics.ListCreateAPIView):
+    """
+    GET: List root categories with their active subcategories ordered by ordering ascending.
+    POST: Create a new category or subcategory with auto-generated slug and instant persistence.
+    """
+    queryset = Category.objects.filter(
+        is_active=True,
+        parent__isnull=True
+    ).prefetch_related(
+        Prefetch(
+            'subcategories',
+            queryset=Category.objects.filter(is_active=True).order_by('ordering', 'name')
+        )
+    ).order_by('ordering', 'name')
+    permission_classes = [CanManageCategories]
     pagination_class = None
 
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CategoryCreateSerializer
+        return CategoryTreeSerializer
 
-class PublicCategoryDetailView(generics.RetrieveAPIView):
-    """Retrieve category details with active subcategories."""
-    queryset = Category.objects.filter(is_active=True).prefetch_related('subcategories')
+    @extend_schema(summary="List or Create Categories")
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        category = serializer.save()
+        out_serializer = CategoryTreeSerializer(category, context={'request': request})
+        return Response({
+            'success': True,
+            'message': f"Category '{category.name}' created successfully.",
+            'category': out_serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+
+class PublicCategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete category details with active subcategories."""
+    queryset = Category.objects.all().prefetch_related('subcategories')
     serializer_class = CategoryTreeSerializer
     lookup_field = 'slug'
-    permission_classes = [AllowAny]
+    permission_classes = [CanManageCategories]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return CategoryCreateSerializer
+        return CategoryTreeSerializer
+
+    def get_object(self):
+        lookup = self.kwargs.get(self.lookup_field) or self.kwargs.get('slug')
+        from apps.common.utils import is_valid_uuid
+        cat = Category.objects.filter(slug=lookup).first()
+        if not cat and is_valid_uuid(lookup):
+            cat = Category.objects.filter(id=lookup).first()
+        if not cat:
+            from rest_framework.exceptions import NotFound
+            raise NotFound("Category not found.")
+        return cat
 
     @extend_schema(summary="Retrieve Category Details")
     def get(self, request, *args, **kwargs):
@@ -82,7 +126,9 @@ class PublicProductListView(generics.ListAPIView):
             store__is_active=True
         ).exclude(
             vendor__status__in=['SUSPENDED', 'REJECTED']
-        ).select_related('category', 'brand', 'vendor', 'store').prefetch_related('variants', 'images')
+        ).select_related('category', 'brand', 'vendor', 'store').prefetch_related(
+            'variants', 'variants__images', 'variants__inventory_records', 'images'
+        )
 
         # Filter parameters
         category_slug = self.request.query_params.get('category')
@@ -179,7 +225,9 @@ class PublicProductDetailView(generics.RetrieveAPIView):
         return Product.objects.filter(
             status=ProductStatus.APPROVED,
             store__is_active=True
-        ).select_related('category', 'brand', 'vendor', 'store').prefetch_related('variants', 'images')
+        ).select_related('category', 'brand', 'vendor', 'store').prefetch_related(
+            'variants', 'variants__images', 'variants__inventory_records', 'images'
+        )
 
     def get_object(self):
         lookup = self.kwargs.get(self.lookup_field)
@@ -222,8 +270,10 @@ class ProductAutocompleteView(APIView):
 
         suggestions = []
         for p in products:
-            variant = p.variants.filter(is_active=True).first()
-            img = p.images.filter(is_primary=True).first() or p.images.first()
+            active_vars = [v for v in p.variants.all() if v.is_active]
+            variant = active_vars[0] if active_vars else None
+            imgs = list(p.images.all())
+            img = next((i for i in imgs if i.is_primary), None) or (imgs[0] if imgs else None)
             img_url = (img.image_url if getattr(img, 'image_url', None) else (img.image.url if getattr(img, 'image', None) else '')) if img else ''
             suggestions.append({
                 'id': str(p.id),

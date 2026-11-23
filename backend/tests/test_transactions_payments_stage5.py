@@ -210,9 +210,9 @@ class TransactionsAndPaymentsStage5Tests(APITestCase):
         self.assertEqual(order.customer, self.customer_user)
         self.assertEqual(order.status, OrderStatus.PENDING_PAYMENT)
         self.assertEqual(order.subtotal, Decimal('7400.00'))  # 5000 + (1200 * 2) = 7400
-        self.assertEqual(order.delivery_total, Decimal('200.00'))  # 100 per vendor package * 2 vendors
+        self.assertEqual(order.delivery_total, Decimal('0.00'))  # Orders >= Rs 499 receive free delivery
         self.assertEqual(order.tax_total, Decimal('962.00'))  # 13% VAT of 7400 = 962.00
-        self.assertEqual(order.grand_total, Decimal('8562.00'))  # 7400 + 200 + 962 = 8562.00
+        self.assertEqual(order.grand_total, Decimal('8362.00'))  # 7400 + 0 + 962 = 8362.00
 
         # Suborders assertions: Must be exactly 2
         suborders = list(order.suborders.all())

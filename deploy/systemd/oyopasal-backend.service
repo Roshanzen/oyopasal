@@ -1,0 +1,36 @@
+[Unit]
+Description=OyoPasal Production Gunicorn WSGI Application Server
+After=network.target mysql.service redis.service
+Wants=mysql.service redis.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/oyopasal/backend
+EnvironmentFile=/var/www/oyopasal/backend/.env
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+ExecStart=/var/www/oyopasal/backend/venv/bin/gunicorn \
+    --workers 4 \
+    --worker-class gthread \
+    --threads 4 \
+    --worker-connections 1000 \
+    --bind 127.0.0.1:8000 \
+    --timeout 60 \
+    --keep-alive 5 \
+    --max-requests 5000 \
+    --max-requests-jitter 500 \
+    --access-logfile /var/log/oyopasal/gunicorn_access.log \
+    --error-logfile /var/log/oyopasal/gunicorn_error.log \
+    --capture-output \
+    config.wsgi:application
+
+Restart=always
+RestartSec=5s
+KillSignal=SIGQUIT
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

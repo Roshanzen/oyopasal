@@ -21,6 +21,8 @@ export function useSellerPortal() {
     currentSeller,
     loginAsSeller,
     logoutSeller,
+    updateCurrentSeller,
+    refreshSellerSession,
     vendors,
     refreshVendors,
     showToast,
@@ -50,7 +52,7 @@ export function useSellerPortal() {
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'packed' | 'dispatched'>('all');
   const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | number | null>(null);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
 
@@ -111,29 +113,38 @@ export function useSellerPortal() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deletingProduct, setDeletingProduct] = useState(false);
 
+  const refreshCategories = useCallback(async (selectSlug?: string) => {
+    try {
+      setLoadingCategories(true);
+      const res = await categoryService.getCategories({ bypassCache: true });
+      const list = res.results || [];
+      setCategories(list);
+      if (selectSlug) {
+        setCategorySlug(selectSlug);
+      } else if (list.length > 0 && !list.some((c) => c.slug === categorySlug)) {
+        setCategorySlug(list[0].slug);
+      }
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, [categorySlug]);
+
   useEffect(() => {
-    let active = true;
-    setLoadingCategories(true);
-    categoryService
-      .getCategories()
-      .then((res) => {
-        if (!active) return;
-        const list = res.results || [];
-        setCategories(list);
-        if (list.length > 0 && !list.some((c) => c.slug === categorySlug)) {
-          setCategorySlug(list[0].slug);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load categories:', err);
-      })
-      .finally(() => {
-        if (active) setLoadingCategories(false);
-      });
-    return () => {
-      active = false;
+    refreshCategories();
+
+    const handleCategoriesUpdated = (e: Event) => {
+      const customEvt = e as CustomEvent<Category | undefined>;
+      const createdSlug = customEvt.detail?.slug;
+      refreshCategories(createdSlug);
     };
-  }, []);
+
+    window.addEventListener('categories:updated', handleCategoriesUpdated);
+    return () => {
+      window.removeEventListener('categories:updated', handleCategoriesUpdated);
+    };
+  }, [refreshCategories]);
 
   const inFlightDashboardRef = useRef(false);
   const inFlightOrdersRef = useRef(false);
@@ -160,6 +171,7 @@ export function useSellerPortal() {
       }
       if (dash.vendor) {
         setStoreProfile(dash.vendor);
+        updateCurrentSeller?.(dash.vendor);
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, dash.vendor);
       }
     } catch (err: unknown) {
@@ -209,6 +221,7 @@ export function useSellerPortal() {
       setMovements(movRes.results || []);
       if (storeRes.vendor) {
         setStoreProfile(storeRes.vendor);
+        updateCurrentSeller?.(storeRes.vendor);
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
         setStoreOnline(storeRes.vendor.is_online !== false);
         setOpenTime(storeRes.vendor.open_time || '06:30');
@@ -245,6 +258,7 @@ export function useSellerPortal() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    refreshSellerSession?.();
     loadSellerDashboard({ signal: controller.signal });
     loadSellerOrders(false, { signal: controller.signal });
     loadMovementsAndStore();
@@ -253,7 +267,7 @@ export function useSellerPortal() {
     return () => {
       controller.abort();
     };
-  }, [currentSeller?.id, loadSellerDashboard, loadSellerOrders, loadMovementsAndStore, loadSellerReviews]);
+  }, [currentSeller?.id, refreshSellerSession, loadSellerDashboard, loadSellerOrders, loadMovementsAndStore, loadSellerReviews]);
 
   // Tab switch to orders (only if stale, i.e. > 10s old)
   useEffect(() => {
@@ -596,7 +610,7 @@ export function useSellerPortal() {
   };
 
   const handleFulfillmentUpdate = async (
-    fulfillmentId: number,
+    fulfillmentId: string | number,
     nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED'
   ) => {
     setUpdatingOrderId(fulfillmentId);
@@ -745,6 +759,7 @@ export function useSellerPortal() {
     settlements,
     categories,
     loadingCategories,
+    refreshCategories,
     loadingProducts,
     loadingOrders,
     ordersError,

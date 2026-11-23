@@ -10,4 +10,12 @@ coverage/
 database/backups/*.sql
 database/backups/*.json
 backend_express_deprecated/
+__pycache__/
+*.py[cod]
+*$py.class
+backend/staticfiles/
+backend/media/
+staticfiles/
+media/
+
 

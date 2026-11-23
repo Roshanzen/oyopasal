@@ -72,7 +72,16 @@ export function useHomeData() {
 
   useEffect(() => {
     loadHomeData();
+
+    const handleCategoriesUpdated = () => {
+      categoryService.getCategories({ bypassCache: true }).then((res) => {
+        setCategories(res.results || []);
+      }).catch(() => {});
+    };
+
+    window.addEventListener('categories:updated', handleCategoriesUpdated);
     return () => {
+      window.removeEventListener('categories:updated', handleCategoriesUpdated);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }

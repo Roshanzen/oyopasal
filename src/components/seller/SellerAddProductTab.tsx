@@ -284,25 +284,44 @@ export default function SellerAddProductTab({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-slate-300 mb-1">
-                  {t('seller.category')} <span className="text-red-400">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="product-category-select" className="block text-sm font-bold text-slate-300">
+                    {t('seller.category')} <span className="text-red-400">*</span>
+                  </label>
+                  <span className="text-xs text-slate-400">
+                    {language === 'ne' ? 'प्रशासक द्वारा निर्धारित' : 'Admin managed'}
+                  </span>
+                </div>
                 <select
+                  id="product-category-select"
                   value={categorySlug}
                   onChange={(e) => setCategorySlug(e.target.value)}
                   disabled={loadingCategories && categories.length === 0}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   {categories.length === 0 ? (
-                    <option value={categorySlug}>
-                      {loadingCategories ? 'Loading categories...' : 'Fruits & Vegetables'}
+                    <option value="">
+                      {loadingCategories ? 'Loading categories...' : 'No categories available'}
                     </option>
                   ) : (
-                    categories.map((cat) => (
-                      <option key={cat.id} value={cat.slug}>
-                        {translateCategoryName(cat.slug, cat.name, language)}
-                      </option>
-                    ))
+                    categories.map((cat) =>
+                      cat.subcategories && cat.subcategories.length > 0 ? (
+                        <optgroup key={cat.id} label={`📁 ${translateCategoryName(cat.slug, cat.name, language)}`}>
+                          <option value={cat.slug}>
+                            {translateCategoryName(cat.slug, cat.name, language)} (General / Main)
+                          </option>
+                          {cat.subcategories.map((sub: Category) => (
+                            <option key={sub.id} value={sub.slug}>
+                              &nbsp;&nbsp;&nbsp;&nbsp;↳ {translateCategoryName(sub.slug, sub.name, language)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : (
+                        <option key={cat.id} value={cat.slug}>
+                          📁 {translateCategoryName(cat.slug, cat.name, language)}
+                        </option>
+                      )
+                    )
                   )}
                 </select>
               </div>

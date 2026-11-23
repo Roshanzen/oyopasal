@@ -15,12 +15,60 @@ from apps.catalogue.models import (
 from apps.stores.models import Store
 
 class SubCategorySerializer(serializers.ModelSerializer):
+    parent_id = serializers.UUIDField(source='parent.id', read_only=True)
+
     class Meta:
         model = Category
-        fields = ['id', 'name', 'slug', 'icon_url', 'image_url', 'ordering']
+        fields = ['id', 'parent_id', 'name', 'slug', 'icon_url', 'image_url', 'ordering']
+
+
+class CategoryCreateSerializer(serializers.ModelSerializer):
+    parent_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+    class Meta:
+        model = Category
+        fields = [
+            'id', 'parent_id', 'name', 'slug', 'description',
+            'icon_url', 'image_url', 'ordering', 'is_active'
+        ]
+        read_only_fields = ['id']
+        extra_kwargs = {
+            'slug': {'required': False, 'allow_blank': True},
+            'is_active': {'required': False, 'default': True},
+            'ordering': {'required': False, 'default': 0},
+            'description': {'required': False, 'allow_blank': True},
+            'icon_url': {'required': False, 'allow_blank': True},
+            'image_url': {'required': False, 'allow_blank': True},
+        }
+
+    def validate(self, attrs):
+        parent_id_val = attrs.get('parent_id') or self.initial_data.get('parent_id')
+        if parent_id_val and str(parent_id_val).strip() and str(parent_id_val).strip().lower() not in ('none', 'null', ''):
+            from apps.common.utils import is_valid_uuid
+            pid = str(parent_id_val).strip()
+            parent_cat = None
+            if is_valid_uuid(pid):
+                parent_cat = Category.objects.filter(id=pid).first()
+            if not parent_cat:
+                parent_cat = Category.objects.filter(slug=pid).first()
+            if not parent_cat:
+                parent_cat = Category.objects.filter(name__iexact=pid).first()
+            attrs['parent'] = parent_cat
+        else:
+            attrs['parent'] = None
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('parent_id', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('parent_id', None)
+        return super().update(instance, validated_data)
 
 
 class CategoryTreeSerializer(serializers.ModelSerializer):
+    parent_id = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
     subcategories = SubCategorySerializer(many=True, read_only=True)
     breadcrumbs = serializers.SerializerMethodField()
     icon = serializers.SerializerMethodField()
@@ -30,7 +78,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'name', 'slug', 'description', 'icon_url', 'icon',
+            'id', 'parent_id', 'name', 'slug', 'description', 'icon_url', 'icon',
             'image_url', 'ordering', 'item_count', 'accent', 'subcategories', 'breadcrumbs'
         ]
 
@@ -104,13 +152,34 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Product Variant with this sku already exists.")
         return value
 
+    def validate(self, attrs):
+        reg = attrs.get('regular_price')
+        sell = attrs.get('selling_price')
+        if reg is None and self.instance:
+            reg = self.instance.regular_price
+        if sell is None and self.instance:
+            sell = self.instance.selling_price
+
+        if reg is not None and sell is not None and reg < sell:
+            if 'regular_price' not in attrs:
+                attrs['regular_price'] = sell
+            else:
+                raise serializers.ValidationError({
+                    'selling_price': 'Selling price cannot exceed regular price (MSRP).'
+                })
+        return attrs
+
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        from apps.inventory.models import InventoryItem
-        from django.db.models import Sum, F
-        total = InventoryItem.objects.filter(
-            variant=instance
-        ).aggregate(avail=Sum(F('quantity_on_hand') - F('quantity_reserved')))['avail']
+        inv_records = getattr(instance, 'inventory_records', None)
+        if inv_records is not None and hasattr(inv_records, 'all'):
+            total = sum(inv.quantity_on_hand - inv.quantity_reserved for inv in inv_records.all())
+        else:
+            from apps.inventory.models import InventoryItem
+            from django.db.models import Sum, F
+            total = InventoryItem.objects.filter(
+                variant=instance
+            ).aggregate(avail=Sum(F('quantity_on_hand') - F('quantity_reserved')))['avail']
         stock_qty = max(0, total) if total is not None else 0
         ret['stock_quantity'] = stock_qty
         sel_price = float(instance.selling_price) if instance.selling_price else 0.0
@@ -131,7 +200,8 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
         # Variant specific image
         var_img = None
-        var_img_obj = instance.images.first()
+        var_imgs = list(instance.images.all())
+        var_img_obj = var_imgs[0] if var_imgs else None
         if var_img_obj:
             var_img = var_img_obj.image_url
         elif attrs.get('image_url'):
@@ -141,6 +211,9 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_in_stock(self, obj):
+        inv_records = getattr(obj, 'inventory_records', None)
+        if inv_records is not None and hasattr(inv_records, 'all'):
+            return any(inv.quantity_on_hand > inv.quantity_reserved for inv in inv_records.all())
         from apps.inventory.models import InventoryItem
         from django.db.models import F
         return InventoryItem.objects.filter(
@@ -310,7 +383,8 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_primary_image(self, obj):
-        first_img = obj.images.filter(is_primary=True).first() or obj.images.first()
+        imgs = list(obj.images.all())
+        first_img = next((img for img in imgs if img.is_primary), None) or (imgs[0] if imgs else None)
         return first_img.image_url if first_img else None
 
     @extend_schema_field(serializers.DictField())
@@ -511,12 +585,20 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
     variants = ProductVariantSerializer(many=True, required=False)
     images = ProductImageSerializer(many=True, required=False)
     store = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all(), required=False)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.filter(is_active=True, is_deleted=False),
+        required=False,
+        error_messages={
+            'does_not_exist': 'Selected category does not exist, is inactive, or is not eligible for product assignment.',
+            'incorrect_type': 'Incorrect category type. Expected a valid category ID.'
+        }
+    )
 
     class Meta:
         model = Product
         fields = [
             'id', 'slug', 'store', 'category', 'brand', 'name', 'base_sku',
-            'short_description', 'description', 'tax_rate',
+            'short_description', 'description', 'tax_rate', 'status',
             'is_returnable', 'warranty_info', 'is_featured', 'variants', 'images'
         ]
         read_only_fields = ['id', 'slug']
@@ -540,16 +622,25 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 elif b_val in ['', 'null', 'None', None]:
                     raw_data['brand'] = None
 
-            # 2. Normalize category: accept UUID string, dict with 'id', or preserve on partial
-            if 'category' in raw_data:
-                c_val = raw_data['category']
-                if isinstance(c_val, dict):
-                    raw_data['category'] = c_val.get('id')
-                elif hasattr(c_val, 'id'):
-                    raw_data['category'] = str(c_val.id)
-                elif c_val in ['', 'null', 'None', None]:
-                    if self.instance and self.partial:
-                        raw_data.pop('category', None)
+            # 2. Normalize category: accept UUID string, dict with 'id', or slug lookup to active category ID
+            c_val = raw_data.get('category') or raw_data.get('category_id') or raw_data.get('category_slug')
+            if isinstance(c_val, dict):
+                c_val = c_val.get('id')
+            if hasattr(c_val, 'id'):
+                c_val = str(c_val.id)
+            elif c_val in ['', 'null', 'None', None]:
+                c_val = None
+
+            if c_val:
+                c_val = str(c_val).strip()
+                from apps.common.utils import is_valid_uuid
+                if not is_valid_uuid(c_val):
+                    cat_obj = Category.objects.filter(slug=c_val, is_active=True, is_deleted=False).first()
+                    if cat_obj:
+                        c_val = str(cat_obj.id)
+                raw_data['category'] = c_val
+            elif self.instance and self.partial:
+                raw_data.pop('category', None)
 
             # 3. Normalize store: accept UUID string, dict with 'id', or preserve on partial
             if 'store' in raw_data:
@@ -689,7 +780,13 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             explicit_status = validated_data.pop('status', None)
-            init_status = explicit_status or ProductStatus.DRAFT
+            from apps.vendors.models import VendorStatus
+            if explicit_status:
+                init_status = explicit_status
+            elif getattr(vendor, 'status', '') in [VendorStatus.APPROVED, 'APPROVED']:
+                init_status = ProductStatus.APPROVED
+            else:
+                init_status = ProductStatus.DRAFT
             product = Product.objects.create(
                 vendor=vendor,
                 status=init_status,

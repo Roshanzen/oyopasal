@@ -32,14 +32,69 @@ def get_empty_cart():
     return ret
 
 def get_or_create_cart(request):
+    import re
+    import uuid
     from django.contrib.auth import get_user_model
     User = get_user_model()
-    if request.user and request.user.is_authenticated:
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-        return cart
+
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        user_cart, _ = Cart.objects.get_or_create(user=request.user)
+        # Check if guest session needs to be merged into user cart
+        session_key = getattr(request, '_guest_session_key', None)
+        if not session_key and hasattr(request, 'headers') and request.headers:
+            session_key = request.headers.get('X-Session-Key')
+        if not session_key and hasattr(request, 'META') and request.META:
+            session_key = request.META.get('HTTP_X_SESSION_KEY')
+        if session_key:
+            clean_key = re.sub(r'[^a-zA-Z0-9_-]', '', session_key)[:40]
+            if clean_key:
+                guest_email = f"guest_{clean_key}@guest.oyopasal.local"
+                guest_user = User.objects.filter(email=guest_email).first()
+                if guest_user and hasattr(guest_user, 'cart'):
+                    guest_cart = guest_user.cart
+                    for g_item in guest_cart.items.all():
+                        u_item, created = CartItem.objects.get_or_create(
+                            cart=user_cart,
+                            variant=g_item.variant,
+                            defaults={'quantity': g_item.quantity}
+                        )
+                        if not created:
+                            u_item.quantity += g_item.quantity
+                            u_item.save(update_fields=['quantity', 'updated_at'])
+                    guest_cart.items.all().delete()
+        return user_cart
+
+    # Isolate guest sessions: derive unique guest identity from X-Session-Key header or session
+    session_key = getattr(request, '_guest_session_key', None)
+    if not session_key and hasattr(request, 'headers') and request.headers:
+        session_key = request.headers.get('X-Session-Key')
+    if not session_key and hasattr(request, 'META') and request.META:
+        session_key = request.META.get('HTTP_X_SESSION_KEY')
+    if not session_key and hasattr(request, 'session') and request.session:
+        session_key = request.session.session_key
+        if not session_key:
+            try:
+                request.session.create()
+                session_key = request.session.session_key
+            except Exception:
+                pass
+
+    if not session_key:
+        session_key = f"guest-{uuid.uuid4().hex[:16]}"
+        setattr(request, '_guest_session_key', session_key)
+    else:
+        setattr(request, '_guest_session_key', session_key)
+
+    clean_key = re.sub(r'[^a-zA-Z0-9_-]', '', session_key)[:40]
+    guest_email = f"guest_{clean_key}@guest.oyopasal.local"
     guest_user, _ = User.objects.get_or_create(
-        email='guest@oyopasal.com',
-        defaults={'role': 'CUSTOMER', 'first_name': 'Guest'}
+        email=guest_email,
+        defaults={
+            'role': 'CUSTOMER',
+            'first_name': 'Guest',
+            'last_name': clean_key[:8],
+            'is_active': True
+        }
     )
     cart, _ = Cart.objects.get_or_create(user=guest_user)
     return cart
@@ -100,17 +155,36 @@ class CartItemDetailView(APIView):
         return self._update_item(request, id)
 
     def _update_item(self, request, id):
-        quantity = int(request.data.get('quantity', 1))
         cart = get_or_create_cart(request)
         item = CartItem.objects.filter(cart=cart, id=id).first()
         if not item:
-            item = CartItem.objects.filter(id=id).first()
-        if not item:
-            return Response({'success': False, 'message': 'Cart item not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'success': False,
+                'message': 'Cart item not found in your active cart.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            quantity = int(request.data.get('quantity', 1))
+        except (ValueError, TypeError):
+            return Response({
+                'success': False,
+                'message': 'Quantity must be a valid integer.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         if quantity <= 0:
             item.delete()
         else:
+            # Validate inventory availability
+            from apps.inventory.models import InventoryItem
+            total_stock = sum(
+                inv.quantity_available for inv in InventoryItem.objects.filter(variant=item.variant)
+            )
+            if total_stock < quantity:
+                return Response({
+                    'success': False,
+                    'message': f"Cannot set quantity to {quantity}. Only {total_stock} available in stock."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             item.quantity = quantity
             item.save(update_fields=['quantity', 'updated_at'])
 
@@ -120,9 +194,11 @@ class CartItemDetailView(APIView):
         cart = get_or_create_cart(request)
         item = CartItem.objects.filter(cart=cart, id=id).first()
         if not item:
-            item = CartItem.objects.filter(id=id).first()
-        if item:
-            item.delete()
+            return Response({
+                'success': False,
+                'message': 'Cart item not found in your active cart.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        item.delete()
         return Response(CartSerializer(cart).data)
 
 
@@ -152,12 +228,21 @@ class ValidateCheckoutView(APIView):
                 'authoritative_cart': get_empty_cart()
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        from apps.inventory.models import InventoryItem
         for item in cart.items.select_related('variant', 'variant__product').all():
             variant = item.variant
-            if not variant or not variant.is_active:
+            if not variant or not variant.is_active or not getattr(variant, 'product', None) or variant.product.status != 'APPROVED':
                 return Response({
                     'valid': False,
-                    'message': f"Item '{item.product_name}' is no longer available.",
+                    'message': f"Item '{getattr(item, 'product_name', 'Product')}' is no longer available.",
+                    'authoritative_cart': CartSerializer(cart).data
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            avail_stock = sum(inv.quantity_available for inv in InventoryItem.objects.filter(variant=variant))
+            if avail_stock < item.quantity:
+                return Response({
+                    'valid': False,
+                    'message': f"Insufficient stock for '{variant.product.name}'. Requested: {item.quantity}, Available: {avail_stock}.",
                     'authoritative_cart': CartSerializer(cart).data
                 }, status=status.HTTP_400_BAD_REQUEST)
 

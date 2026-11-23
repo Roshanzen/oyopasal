@@ -11,15 +11,18 @@ from apps.accounts.views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     AccountActivationView,
+    CsrfTokenView,
 )
 
 app_name = 'accounts'
 
 urlpatterns = [
+    path('csrf/', CsrfTokenView.as_view(), name='csrf_token'),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('seller/login/', SellerLoginView.as_view(), name='seller_login'),
     path('firebase-login/', FirebaseLoginView.as_view(), name='firebase_login'),
+    path('firebase/', FirebaseLoginView.as_view(), name='firebase_login_alias'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('logout/', LogoutView.as_view(), name='logout'),

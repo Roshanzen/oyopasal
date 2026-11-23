@@ -18,12 +18,12 @@ from apps.warehouse.models import Warehouse
 def run_e2e_test():
     print("=== STARTING OYOPASAL END-TO-END MARKETPLACE INTEGRATION TEST ===")
     
-    # 1. Verify Vendor & Store (using an approved vendor)
-    vendor = VendorProfile.objects.filter(status=VendorStatus.APPROVED).first()
+    # 1. Verify Vendor & Store (using an approved vendor with an active verified store)
+    store = Store.objects.filter(is_active=True, is_verified=True, vendor__status=VendorStatus.APPROVED).first()
+    assert store is not None, "Active verified store not found"
+    vendor = store.vendor
     assert vendor is not None, "Approved vendor not found"
     user = vendor.user
-    store = Store.objects.filter(vendor=vendor, is_active=True).first()
-    assert store is not None, "Active store not found"
     print(f"✓ Step 1: Verified Vendor: '{vendor.business_name}' and Active Store: '{store.name}' (ID: {store.id})")
     
     # 2. Pick Category
@@ -32,11 +32,16 @@ def run_e2e_test():
     print(f"✓ Step 2: Selected Category: '{category.name}' (Slug: {category.slug})")
 
     # 3. Simulate Vendor Product Creation (via Serializer)
+    import uuid
     from apps.catalogue.serializers import ProductCreateUpdateSerializer
-    test_sku = "E2E-TEST-NEPAL-001"
+    test_sku = f"E2E-{uuid.uuid4().hex[:8].upper()}"
     
-    # Clean up old test product if existed
-    Product.objects.filter(base_sku=test_sku).delete()
+    # Clean up old test products/variants if any
+    ProductVariant.objects.filter(sku__startswith="E2E-").delete()
+    for old_p in Product.all_objects.filter(base_sku__startswith="E2E-"):
+        old_p.hard_delete()
+    for old_p in Product.all_objects.filter(slug__startswith="himalayan-organic-yarsagumba-honey"):
+        old_p.hard_delete()
 
     serializer_data = {
         'name': 'Himalayan Organic Yarsagumba Honey',
@@ -151,7 +156,8 @@ def run_e2e_test():
     print(f"   - In Stock: {refreshed_data['is_in_stock']} (Stock: {refreshed_data['stock_quantity']})")
 
     # Clean up test product
-    new_product.delete()
+    ProductVariant.objects.filter(product=new_product).delete()
+    new_product.hard_delete()
     print("✓ Step 9: Cleaned up test record")
     print("\n🎉 ALL 9 END-TO-END INTEGRATION ASSERTIONS PASSED SUCCESSFULLY!")
 

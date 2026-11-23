@@ -45,7 +45,7 @@ export default function CategoryBar() {
     async function fetchCategories() {
       try {
         setLoading(true);
-        const res = await categoryService.getCategories();
+        const res = await categoryService.getCategories({ bypassCache: true });
         const list = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
         setCategories(list);
       } catch (err) {
@@ -56,6 +56,14 @@ export default function CategoryBar() {
       }
     }
     fetchCategories();
+
+    const handleCategoriesUpdated = () => {
+      fetchCategories();
+    };
+    window.addEventListener('categories:updated', handleCategoriesUpdated);
+    return () => {
+      window.removeEventListener('categories:updated', handleCategoriesUpdated);
+    };
   }, []);
 
   const scroll = (direction: 'left' | 'right') => {

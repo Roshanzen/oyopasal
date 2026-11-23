@@ -1,0 +1,68 @@
+name: OyoPasal CI/CD Automated Test & Build Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-checks:
+    name: Django Backend Verification & Automated Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Django System Checks
+        run: |
+          python backend/manage.py check
+
+      - name: Execute Backend Automated Test Suite (Isolated SQLite Engine)
+        env:
+          USE_SQLITE: "True"
+          DJANGO_SETTINGS_MODULE: config.settings.development
+        run: |
+          python backend/manage.py test apps.accounts.tests_security_phase1 apps.orders.tests_phase2_cart_checkout tests
+
+  frontend-checks:
+    name: Frontend Tests & Production Build Optimization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run Frontend Unit & Validation Tests
+        run: npm test
+
+      - name: Execute Optimized Production Build
+        run: npm run build
+
+      - name: Verify Chunk Sizes
+        run: |
+          echo "Verifying generated bundle sizes in dist/assets..."
+          ls -lh dist/assets/

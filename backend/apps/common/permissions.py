@@ -99,3 +99,31 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return obj.user == request.user
         return False
 
+
+class CanManageCategories(permissions.BasePermission):
+    """
+    Allows read-only access (GET, HEAD, OPTIONS) to all users (AllowAny).
+    Restricts mutating operations (POST, PUT, PATCH, DELETE) exclusively to authenticated
+    Admins (Super Admin, Operations Admin, or staff).
+    Strictly denies Sellers/Vendors, Customers, and unauthenticated users.
+    """
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return False
+
+        # Strictly check for Admin / Super Admin permissions
+        if user.is_superuser or user.is_staff:
+            return True
+
+        admin_roles = {'SUPER_ADMIN', 'OPERATIONS_ADMIN'}
+        if getattr(user, 'role', None) in admin_roles:
+            return True
+
+        # All sellers/vendors, customers, and other roles are rejected with 403 Forbidden
+        return False
+
+

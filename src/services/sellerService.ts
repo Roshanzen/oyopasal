@@ -1,4 +1,5 @@
 import {
+  DeliveryTrackingTelemetry,
   InventoryMovementItem,
   Product,
   SellerAnalyticsResponse,

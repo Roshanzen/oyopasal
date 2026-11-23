@@ -17,6 +17,8 @@ export interface SellerContextType {
   currentSeller: Vendor | null;
   loginAsSeller: (payload: SellerLoginPayload) => Promise<void>;
   logoutSeller: () => void;
+  updateCurrentSeller: (vendor: Vendor) => void;
+  refreshSellerSession: () => Promise<void>;
 }
 
 const SellerContext = createContext<SellerContextType | undefined>(undefined);
@@ -33,39 +35,36 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
     safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)
   );
 
+  const refreshSellerSession = useCallback(async () => {
+    const savedSeller = safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    if (!savedSeller) return;
+
+    try {
+      const storeRes = await sellerService.getSellerStore(savedSeller?.id, {
+        bypassCache: true,
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
+      if (storeRes?.vendor) {
+        setCurrentSeller(storeRes.vendor);
+        safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
+        httpClient.clearSellerToken();
+        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+        setCurrentSeller(null);
+      }
+    }
+  }, []);
+
+  const updateCurrentSeller = useCallback((vendor: Vendor) => {
+    setCurrentSeller(vendor);
+    safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, vendor);
+  }, []);
+
   useEffect(() => {
-    const verifySellerSession = async () => {
-      const savedSeller = safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-      if (!savedSeller) return;
-
-      const hasSellerToken = Boolean(httpClient.getSellerToken());
-      if (!hasSellerToken && user?.role !== 'admin') {
-        if (!httpClient.getToken()) {
-          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-          setCurrentSeller(null);
-        }
-        return;
-      }
-
-      try {
-        const storeRes = await sellerService.getSellerStore(savedSeller?.id, {
-          bypassCache: true,
-          headers: { 'Cache-Control': 'no-cache, no-store' },
-        });
-        if (storeRes?.vendor) {
-          setCurrentSeller(storeRes.vendor);
-          safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
-        }
-      } catch (err: unknown) {
-        if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
-          httpClient.clearSellerToken();
-          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-          setCurrentSeller(null);
-        }
-      }
-    };
-    verifySellerSession();
-  }, [user?.role]);
+    refreshSellerSession();
+  }, [user?.role, refreshSellerSession]);
 
   const loginAsSeller = useCallback(
     async (payload: SellerLoginPayload) => {
@@ -108,6 +107,8 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
         currentSeller,
         loginAsSeller,
         logoutSeller,
+        updateCurrentSeller,
+        refreshSellerSession,
       }}
     >
       {children}

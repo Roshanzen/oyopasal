@@ -1,0 +1,22 @@
+[Unit]
+Description=OyoPasal Celery Beat Scheduler (Periodic Tasks)
+After=network.target redis.service oyopasal-celery.service
+Wants=oyopasal-celery.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/oyopasal/backend
+EnvironmentFile=/var/www/oyopasal/backend/.env
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+ExecStart=/var/www/oyopasal/backend/venv/bin/celery -A config beat \
+    --pidfile=/var/run/celery/beat.pid \
+    --logfile=/var/log/oyopasal/celery_beat.log \
+    --loglevel=INFO
+
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

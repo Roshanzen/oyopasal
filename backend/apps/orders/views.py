@@ -44,10 +44,13 @@ class CustomerCheckoutView(APIView):
         if address_id:
             try:
                 addr = Address.objects.filter(id=address_id, customer__user=user).first()
-                if not addr:
-                    addr = Address.objects.filter(id=address_id).first()
             except Exception:
                 pass
+            if not addr:
+                return Response({
+                    'success': False,
+                    'error': {'code': 'INVALID_ADDRESS', 'message': 'Selected delivery address not found or does not belong to your account.'}
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         if addr:
             shipping_data = {
@@ -90,6 +93,23 @@ class CustomerCheckoutView(APIView):
                 'error': {'code': 'INVALID_ADDRESS', 'message': 'Please provide a valid delivery address or select a saved location.'}
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Idempotency check: prevent duplicate checkout submissions on retries / double-clicks
+        idempotency_key = request.headers.get('Idempotency-Key') or request.data.get('idempotency_key')
+        if idempotency_key:
+            from django.core.cache import cache
+            cache_key = f"checkout_idemp_{user.id}_{idempotency_key}"
+            cached_order_id = cache.get(cache_key)
+            if cached_order_id:
+                cached_order = Order.objects.filter(id=cached_order_id, customer=user).first()
+                if cached_order:
+                    data = OrderDetailSerializer(cached_order).data
+                    return Response({
+                        'success': True,
+                        'message': 'Order already placed (idempotent replay).',
+                        'data': data,
+                        **data
+                    }, status=status.HTTP_200_OK)
+
         try:
             order = CheckoutService.process_checkout(
                 user=user,
@@ -97,6 +117,10 @@ class CustomerCheckoutView(APIView):
                 payment_method=serializer.validated_data.get('payment_method', 'COD'),
                 customer_notes=serializer.validated_data.get('customer_notes', '')
             )
+            if idempotency_key:
+                from django.core.cache import cache
+                cache.set(f"checkout_idemp_{user.id}_{idempotency_key}", str(order.id), timeout=86400)
+
             data = OrderDetailSerializer(order).data
             response_data = dict(data)
             response_data['success'] = True
@@ -275,7 +299,7 @@ class CustomerOrderDetailView(generics.RetrieveAPIView):
         q = Q(customer=user)
         if hasattr(user, 'vendor_profile'):
             q |= Q(suborders__vendor=user.vendor_profile)
-        if getattr(user, 'is_staff', False) or getattr(user, 'role', '') in ['admin', 'super_admin', 'operations_admin']:
+        if getattr(user, 'is_staff', False) or str(getattr(user, 'role', '')).upper() in ['ADMIN', 'SUPER_ADMIN', 'OPERATIONS_ADMIN']:
             q = Q()
 
         qs = Order.objects.filter(q).prefetch_related(

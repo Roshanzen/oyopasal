@@ -28,8 +28,13 @@ from apps.promotions.views import (
     AdvertisementClickView,
     ActiveCouponsListView,
     CouponApplyView,
-    CouponRemoveView
+    CouponRemoveView,
+    HeroBannerPublicListView,
+    AdminHeroBannerListCreateView,
+    AdminHeroBannerDetailView,
+    AdminHeroBannerReorderView
 )
+from apps.catalogue.views import PublicCategoryListView, PublicCategoryDetailView
 from apps.customers.views import WishlistListView, WishlistToggleView, CustomerAddressViewSet
 from apps.cart.views import ValidateCheckoutView
 from apps.delivery.views import PublicDeliveryZoneListView
@@ -50,6 +55,7 @@ urlpatterns = [
     path('api/v1/wishlist/', WishlistListView.as_view(), name='wishlist_list'),
     path('api/v1/wishlist/toggle/', WishlistToggleView.as_view(), name='wishlist_toggle'),
     path('api/v1/media/upload/', MediaUploadView.as_view(), name='media_upload'),
+    path('api/media/upload/', MediaUploadView.as_view(), name='media_upload_alias'),
     path('api/v1/media/', MediaAssetListView.as_view(), name='media_list'),
     path('api/v1/media/<int:pk>/', MediaAssetDetailView.as_view(), name='media_detail'),
     path('api/v1/media/imagekit-auth/', ImageKitAuthView.as_view(), name='imagekit_auth'),
@@ -81,6 +87,7 @@ urlpatterns = [
 
     # API v1 Domain Routes
     path('api/v1/seller/', include('apps.vendors.seller_urls', namespace='seller')),
+    path('api/v1/vendors/seller/', include('apps.vendors.seller_urls', namespace='vendors_seller')),
     path('api/v1/auth/', include('apps.accounts.urls', namespace='auth')),
     path('api/v1/customers/', include('apps.customers.urls', namespace='customers')),
     path('api/v1/vendors/', include('apps.vendors.urls', namespace='vendors')),
@@ -102,14 +109,18 @@ urlpatterns = [
     path('api/v1/ai/', include('apps.ai.urls', namespace='ai')),
     path('api/v1/audit/', include('apps.audit.urls', namespace='audit')),
     path('api/v1/promotions/', include('apps.promotions.urls', namespace='promotions')),
-    path('api/hero-banners/', __import__('apps.promotions.views', fromlist=['HeroBannerPublicListView']).HeroBannerPublicListView.as_view(), name='public_hero_banners_root'),
-    path('api/admin/hero-banners/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerListCreateView']).AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_root'),
-    path('api/admin/hero-banners/<int:pk>/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerDetailView']).AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_root'),
-    path('api/admin/hero-banners/reorder/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerReorderView']).AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_root'),
-    path('api/v1/hero-banners/', __import__('apps.promotions.views', fromlist=['HeroBannerPublicListView']).HeroBannerPublicListView.as_view(), name='public_hero_banners_v1'),
-    path('api/v1/admin/hero-banners/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerListCreateView']).AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_v1'),
-    path('api/v1/admin/hero-banners/<int:pk>/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerDetailView']).AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_v1'),
-    path('api/v1/admin/hero-banners/reorder/', __import__('apps.promotions.views', fromlist=['AdminHeroBannerReorderView']).AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_v1'),
+    path('api/categories/', PublicCategoryListView.as_view(), name='public_categories_root'),
+    path('api/categories/<slug:slug>/', PublicCategoryDetailView.as_view(), name='public_category_detail_root'),
+    path('api/admin/categories/', PublicCategoryListView.as_view(), name='admin_categories_root'),
+    path('api/admin/categories/<str:slug>/', PublicCategoryDetailView.as_view(), name='admin_category_detail_root'),
+    path('api/hero-banners/', HeroBannerPublicListView.as_view(), name='public_hero_banners_root'),
+    path('api/admin/hero-banners/', AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_root'),
+    path('api/admin/hero-banners/<int:pk>/', AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_root'),
+    path('api/admin/hero-banners/reorder/', AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_root'),
+    path('api/v1/hero-banners/', HeroBannerPublicListView.as_view(), name='public_hero_banners_v1'),
+    path('api/v1/admin/hero-banners/', AdminHeroBannerListCreateView.as_view(), name='admin_hero_banners_v1'),
+    path('api/v1/admin/hero-banners/<int:pk>/', AdminHeroBannerDetailView.as_view(), name='admin_hero_banners_detail_v1'),
+    path('api/v1/admin/hero-banners/reorder/', AdminHeroBannerReorderView.as_view(), name='admin_hero_banners_reorder_v1'),
     path('api/v1/reviews/', include('apps.reviews.urls', namespace='reviews')),
     path('api/v1/notifications/', include('apps.notifications.urls', namespace='notifications')),
     path('api/v1/support/', include('apps.support.urls', namespace='support')),

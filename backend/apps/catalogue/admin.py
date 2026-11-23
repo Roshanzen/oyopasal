@@ -14,6 +14,8 @@ class CategoryAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'parent')
     search_fields = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
+    exclude = ('is_deleted', 'deleted_at')
+    save_on_top = True
 
 
 @admin.register(Brand)

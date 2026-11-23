@@ -22,6 +22,12 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+export function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function getOrCreateSessionKey(): string {
   const existing = safeStorage.get(APP_CONFIG.STORAGE_KEYS.SESSION_KEY);
   if (existing) return existing;
@@ -61,6 +67,10 @@ class HttpClient {
   }
 
   getToken(): string | null {
+    if (!this.token) {
+      const saved = safeStorage.get(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+      this.token = saved && !saved.startsWith('drf-token-') ? saved : null;
+    }
     return this.token;
   }
 
@@ -77,6 +87,9 @@ class HttpClient {
   }
 
   getSellerToken(): string | null {
+    if (!this.sellerToken) {
+      this.sellerToken = safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN);
+    }
     return this.sellerToken;
   }
 
@@ -106,10 +119,12 @@ class HttpClient {
     const method = (options.method || 'GET').toUpperCase();
     const isGet = method === 'GET';
 
-    const usedSellerToken = useSellerTokenIfAvailable && Boolean(this.sellerToken);
+    const token = this.getToken();
+    const sellerToken = this.getSellerToken();
     const effectiveToken = useSellerTokenIfAvailable
-      ? this.sellerToken || this.token
-      : this.token;
+      ? (sellerToken || token)
+      : (token || sellerToken);
+    const usedSellerToken = Boolean(effectiveToken && effectiveToken === sellerToken);
 
     const cacheKey = `${method}:${endpoint}::${effectiveToken || 'anon'}`;
 
@@ -151,6 +166,14 @@ class HttpClient {
         headers['Authorization'] = `Bearer ${effectiveToken}`;
       }
 
+      // Attach CSRF token on mutating requests if present in cookies (for session/cookie authentication)
+      if (!isGet && !headers['X-CSRFToken']) {
+        const csrf = getCsrfToken();
+        if (csrf) {
+          headers['X-CSRFToken'] = csrf;
+        }
+      }
+
       // Configure timeout and abort controller
       const timeoutMs = options.timeoutMs ?? 15000;
       const controller = new AbortController();
@@ -171,6 +194,7 @@ class HttpClient {
 
       try {
         const response = await fetch(url, {
+          credentials: options.credentials ?? 'same-origin',
           ...options,
           headers,
           signal: controller.signal,

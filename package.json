@@ -9,7 +9,8 @@
     "start": "vite preview",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/utils/__tests__/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.5.0",
@@ -19,7 +20,6 @@
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^17.2.3",
     "firebase": "^13.2.0",
-    "firebase-admin": "^14.5.0",
     "framer-motion": "^12.43.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.546.0",

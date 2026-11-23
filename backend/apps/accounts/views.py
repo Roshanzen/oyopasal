@@ -4,6 +4,9 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -23,6 +26,7 @@ from apps.accounts.serializers import (
     PasswordResetConfirmSerializer,
     AccountActivationSerializer,
 )
+from apps.accounts.models import UserRole
 
 User = get_user_model()
 
@@ -199,57 +203,113 @@ class LogoutView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _get_or_init_firebase_app():
+    import firebase_admin
+    from firebase_admin import credentials
+    import os
+    if firebase_admin._apps:
+        return firebase_admin.get_app()
+    
+    cred_path = getattr(settings, 'FIREBASE_CREDENTIALS_PATH', None) or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if cred_path and os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        return firebase_admin.initialize_app(cred)
+    
+    try:
+        return firebase_admin.initialize_app()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Firebase Admin default init failed: %s", e)
+        return None
+
+
 class FirebaseLoginView(APIView):
     """
-    Authenticate or register customer via verified Firebase JWT ID Token.
+    Authenticate or register customer via cryptographically verified Firebase JWT ID Token.
+    Derives user claims strictly from verified token payload.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
         id_token = request.data.get('id_token')
-        if not id_token:
-            return Response({'success': False, 'message': 'id_token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not id_token or not isinstance(id_token, str):
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'MISSING_TOKEN',
+                    'message': 'A valid Firebase id_token string is required.'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-        full_name = request.data.get('full_name') or 'Customer'
+        # Cryptographically verify the ID token via Firebase Admin SDK
+        try:
+            import firebase_admin
+            from firebase_admin import auth as fb_auth
 
-        if not email and not phone:
-            import hashlib
-            h = hashlib.md5(id_token.encode('utf-8')).hexdigest()[:10]
-            email = f"fb_{h}@oyopasal.com"
+            app = _get_or_init_firebase_app()
+            if not app:
+                return Response({
+                    'success': False,
+                    'error': {
+                        'code': 'FIREBASE_UNAVAILABLE',
+                        'message': 'Firebase authentication service is not configured or credentials are unavailable.'
+                    }
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+            decoded_token = fb_auth.verify_id_token(id_token, app=app)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Firebase token verification failed: %s", e)
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'INVALID_FIREBASE_TOKEN',
+                    'message': 'Invalid, expired, or forged Firebase ID token.'
+                }
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Strictly derive user identity from verified cryptographic claims
+        verified_email = (decoded_token.get('email') or '').strip().lower()
+        verified_phone = (decoded_token.get('phone_number') or '').strip()
+        verified_name = decoded_token.get('name') or 'Customer'
+        uid = decoded_token.get('uid')
+
+        if not verified_email and not verified_phone:
+            verified_email = f"fb_{uid}@oyopasal.com"
 
         user = None
-        if email:
-            user = User.objects.filter(email=email).first()
-        if not user and phone:
-            user = User.objects.filter(phone_number=phone).first()
+        if verified_email:
+            user = User.objects.filter(email__iexact=verified_email).first()
+        if not user and verified_phone:
+            user = User.objects.filter(phone_number=verified_phone).first()
 
         if not user:
             user = User.objects.create_user(
-                email=email,
-                phone_number=phone,
-                first_name=full_name,
+                email=verified_email,
+                phone_number=verified_phone or None,
+                first_name=verified_name,
                 role=UserRole.CUSTOMER,
                 is_verified=True
             )
+        elif not user.is_active:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'ACCOUNT_INACTIVE',
+                    'message': 'This account has been disabled. Please contact customer support.'
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
 
         serializer = CustomTokenObtainPairSerializer()
         refresh = serializer.get_token(user)
-        user_data = {
-            'id': str(user.id),
-            'email': user.email,
-            'full_name': user.full_name,
-            'role': user.role,
-            'is_verified': user.is_verified,
-            'phone': user.phone_number,
-        }
+        user_data = UserDetailSerializer(user).data
         return Response({
             'success': True,
             'token': str(refresh.access_token),
             'access': str(refresh.access_token),
             'refresh': str(refresh),
-            'user': user_data
+            'user': user_data,
+            'data': user_data
         }, status=status.HTTP_200_OK)
 
 
@@ -405,4 +465,26 @@ class AccountActivationView(APIView):
             'success': True,
             'message': 'Account activated successfully.'
         }, status=status.HTTP_200_OK)
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class CsrfTokenView(APIView):
+    """
+    Returns the CSRF token and sets the 'csrftoken' cookie.
+    Allows SPA clients and session-authenticated requests to obtain a valid CSRF token.
+    """
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Get CSRF Token",
+        description="Returns the active CSRF token and sets the csrftoken cookie.",
+        responses={200: dict}
+    )
+    def get(self, request):
+        token = get_token(request)
+        return Response({
+            'success': True,
+            'csrfToken': token
+        }, status=status.HTTP_200_OK)
+
 
