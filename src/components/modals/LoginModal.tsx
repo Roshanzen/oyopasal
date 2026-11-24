@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useLanguage } from '../../hooks';
-import { validatePassword, validateRequired } from '../../utils';
+import { getPostLoginRedirectPath, validatePassword, validateRequired } from '../../utils';
 import {
   X,
   LogIn,
@@ -71,14 +71,15 @@ export default function LoginModal() {
 
     setLoading(true);
     try {
+      let authedUser;
       if (mode === 'create') {
-        await registerCustomer({
+        authedUser = await registerCustomer({
           full_name: fullName.trim(),
           phone_or_email: identifier.trim(),
           password,
         });
       } else {
-        await loginCustomer({
+        authedUser = await loginCustomer({
           phone_or_email: identifier.trim(),
           password,
         });
@@ -86,6 +87,13 @@ export default function LoginModal() {
       setFullName('');
       setIdentifier('');
       setPassword('');
+
+      if (authedUser) {
+        const targetPath = getPostLoginRedirectPath(authedUser, window.location.pathname);
+        if (targetPath && targetPath !== window.location.pathname) {
+          navigate(targetPath);
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to authenticate. Please verify your credentials.');
     } finally {
@@ -97,11 +105,17 @@ export default function LoginModal() {
     setError('');
     setLoading(true);
     try {
-      await loginCustomer({
+      const authedUser = await loginCustomer({
         phone_or_email: '+977 9841234567',
         full_name: 'Roshan Yadav',
         demo_quick_login: true,
       });
+      if (authedUser) {
+        const targetPath = getPostLoginRedirectPath(authedUser, window.location.pathname);
+        if (targetPath && targetPath !== window.location.pathname) {
+          navigate(targetPath);
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
     } finally {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context';
-import { vendorService } from '../../services';
+import { authService, vendorService, sellerOnboardingService } from '../../services';
 import { Vendor } from '../../types';
 import {
   X,
@@ -14,6 +15,8 @@ import {
   Phone,
   Mail,
   MapPin,
+  Lock,
+  FileText,
   ArrowRight,
   ShieldCheck,
   Sparkles
@@ -31,9 +34,10 @@ export default function BecomeSellerModal() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [dailyOrders, setDailyOrders] = useState('20-50');
+  const [password, setPassword] = useState('');
+  const [panVatNumber, setPanVatNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [submittedData, setSubmittedData] = useState<{ success: boolean; message: string; vendor: Vendor } | null>(null);
-
+  const [submittedData, setSubmittedData] = useState<{ success: boolean; message: string; vendor?: Vendor } | null>(null);
 
   const handleClose = () => {
     setBecomeSellerModalOpen(false);
@@ -52,19 +56,26 @@ export default function BecomeSellerModal() {
 
     setSubmitting(true);
     try {
-      const res = await vendorService.registerVendor({
-        store_name: storeName.trim(),
-        category,
-        city,
-        area: area.trim(),
-        contact_person: contactPerson.trim(),
+      const res = await sellerOnboardingService.submitApplication({
+        full_name: contactPerson.trim(),
+        email: email.trim() || `${phone.trim()}@temp.oyopasal.np`,
         phone: phone.trim(),
-        email: email.trim(),
-        daily_orders: dailyOrders
+        business_name: storeName.trim(),
+        business_category: category,
+        province: 'Bagmati Province',
+        district: city,
+        municipality: city,
+        complete_address: `${area.trim()}, ${city}`,
+        pan_vat_number: panVatNumber.trim() || undefined,
+        declaration_confirmed: true,
       });
 
-      setSubmittedData(res);
-      showToast('Seller application submitted successfully!', 'success');
+      setSubmittedData({
+        success: true,
+        message: 'Application submitted successfully',
+        vendor: { name: storeName.trim(), id: res.application_number } as any
+      });
+      showToast(`Seller application ${res.application_number} submitted successfully!`, 'success');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to submit application';
       showToast(msg, 'error');
@@ -304,6 +315,41 @@ export default function BecomeSellerModal() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Password (for Seller Portal)
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Min. 6 characters"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    PAN / VAT Number (Optional)
+                  </label>
+                  <div className="relative">
+                    <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      value={panVatNumber}
+                      onChange={(e) => setPanVatNumber(e.target.value)}
+                      placeholder="e.g. 601234567"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -344,11 +390,11 @@ export default function BecomeSellerModal() {
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white font-display mt-1">
                 {t('become.successTitle')}
               </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
-                Your store <strong>"{submittedData.vendor?.name}"</strong> has been registered with ID{' '}
-                <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-200 font-mono font-bold">
-                  {submittedData.vendor?.id}
-                </code>.
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                <span>Status: Awaiting Admin Approval in /admin</span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-2">
+                Your store <strong>"{submittedData.vendor?.name || storeName}"</strong> has been registered with status <span className="font-bold text-amber-600 dark:text-amber-400">PENDING</span>.
               </p>
             </div>
 

@@ -110,7 +110,7 @@ export function useCategoryCatalog(slug?: string) {
       setLoading(true);
       setError(null);
       const catRes = await categoryService.getCategories();
-      const catList = catRes.results || [];
+      const catList = catRes?.results ?? (Array.isArray(catRes) ? catRes : []);
       setCategories(catList);
 
       if (slug) {
@@ -119,7 +119,7 @@ export function useCategoryCatalog(slug?: string) {
 
         if (!found) {
           for (const p of catList) {
-            if (p.subcategories && p.subcategories.length > 0) {
+            if (Array.isArray(p?.subcategories) && p.subcategories.length > 0) {
               const sub = p.subcategories.find((s) => s.slug === slug);
               if (sub) {
                 found = sub;
@@ -135,7 +135,7 @@ export function useCategoryCatalog(slug?: string) {
 
         // Fetch products for category
         const prodRes = await productService.getProducts({ category: slug, page_size: 60 });
-        setProducts(prodRes.results || []);
+        setProducts(prodRes?.results ?? (Array.isArray(prodRes) ? prodRes : []));
       } else {
         setCurrentCategory(null);
         setParentCategory(null);

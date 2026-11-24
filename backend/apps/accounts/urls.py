@@ -2,7 +2,10 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from apps.accounts.views import (
     RegisterView,
+    CustomerRegisterView,
+    VendorRegisterView,
     CustomTokenObtainPairView,
+    VendorLoginView,
     SellerLoginView,
     FirebaseLoginView,
     MeView,
@@ -19,7 +22,10 @@ app_name = 'accounts'
 urlpatterns = [
     path('csrf/', CsrfTokenView.as_view(), name='csrf_token'),
     path('register/', RegisterView.as_view(), name='register'),
+    path('register-customer/', CustomerRegisterView.as_view(), name='register_customer'),
+    path('register-vendor/', VendorRegisterView.as_view(), name='register_vendor'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
+    path('login-vendor/', VendorLoginView.as_view(), name='login_vendor'),
     path('seller/login/', SellerLoginView.as_view(), name='seller_login'),
     path('firebase-login/', FirebaseLoginView.as_view(), name='firebase_login'),
     path('firebase/', FirebaseLoginView.as_view(), name='firebase_login_alias'),

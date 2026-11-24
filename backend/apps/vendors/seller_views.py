@@ -22,6 +22,7 @@ from apps.warehouse.models import Warehouse
 
 from apps.common.utils import is_valid_uuid
 from apps.common.services.image_resolver import resolve_image_url
+from apps.common.permissions import IsAuthenticatedVendor
 
 
 def is_valid_image_url(url):
@@ -125,7 +126,7 @@ class SellerDashboardView(APIView):
     Vendor store KPIs: daily orders, revenue, inventory health, store status.
     Requires authentication and vendor ownership.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor_id = request.query_params.get('vendor_id')
@@ -218,7 +219,7 @@ class SellerDashboardView(APIView):
 
 class SellerProductsView(APIView):
     """List or create products for the authenticated vendor."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor_id = request.query_params.get('vendor_id')
@@ -532,7 +533,7 @@ class SellerProductsView(APIView):
 
 class SellerProductDetailView(APIView):
     """Retrieve, update, or remove a vendor product."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request, id):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -755,7 +756,7 @@ class SellerProductDetailView(APIView):
 
 class SellerToggleStockView(APIView):
     """Quick toggle in_stock status for a product or variant."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def patch(self, request, id):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -801,7 +802,7 @@ class SellerToggleStockView(APIView):
 
 class SellerRestockView(APIView):
     """Add stock to product inventory or specific variant."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def patch(self, request, id):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -846,7 +847,7 @@ class SellerRestockView(APIView):
 
 class SellerOrdersView(APIView):
     """List orders and fulfillments for this vendor."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -938,7 +939,7 @@ class SellerOrdersView(APIView):
 
 class SellerOrderStatusView(APIView):
     """Update fulfillment status (e.g. PACKED_BY_VENDOR, READY_FOR_RIDER_PICKUP, SHIPPED, DELIVERED)."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def patch(self, request, fulfillment_id):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -1017,7 +1018,7 @@ class SellerOrderStatusView(APIView):
 
 class SellerStoreView(APIView):
     """Get or update vendor store profile."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -1121,7 +1122,7 @@ class SellerAnalyticsView(APIView):
     - top_products: best performing products by revenue & units
     - category_breakdown: category distribution
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -1232,7 +1233,7 @@ class SellerAnalyticsView(APIView):
 
 class SellerReviewsView(APIView):
     """Reviews received for products from this vendor."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor, err_resp = resolve_authenticated_vendor(request)
@@ -1263,7 +1264,7 @@ class SellerReviewsView(APIView):
 
 class SellerInventoryMovementsView(APIView):
     """Inventory audit log for vendor products."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedVendor]
 
     def get(self, request):
         vendor, err_resp = resolve_authenticated_vendor(request)

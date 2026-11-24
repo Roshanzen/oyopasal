@@ -8,6 +8,7 @@ import {
   Clock,
   Heart,
   Image as ImageIcon,
+  Loader2,
   MapPin,
   MessageCircle,
   Package,
@@ -23,9 +24,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductCard from '../../components/common/ProductCard';
+import { ChatModal } from '../../components/chat/ChatModal';
 import { useApp } from '../../context';
 import { productService, vendorService } from '../../services';
+import { messagingService } from '../../services/messagingService';
 import { Product, StoreDetail, Vendor } from '../../types';
+import { ConversationDetail } from '../../types/messaging';
 import { safeStorage } from '../../utils';
 
 const FAVORITE_STORES_STORAGE_KEY = 'oyopasal_fav_stores';
@@ -39,11 +43,19 @@ export default function StoreDetailPage() {
     showToast,
     language,
     t,
+    user,
+    setLoginModalOpen,
   } = useApp();
 
   const [store, setStore] = useState<StoreDetail | null>(null);
   const [loadingStore, setLoadingStore] = useState(true);
   const [storeError, setStoreError] = useState<string | null>(null);
+
+  // Live in-platform customer-vendor messaging
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
+  const [startingChat, setStartingChat] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -333,13 +345,56 @@ export default function StoreDetailPage() {
   };
 
   // Action: Message Store
-  const handleMessageStore = () => {
-    showToast(
-      language === 'ne'
-        ? `${store?.name || 'पसल'}सँग प्रत्यक्ष च्याट सुरु हुँदैछ...`
-        : `Opening live concierge chat with ${store?.name || 'this store'}...`,
-      'info'
-    );
+  const handleMessageStore = async () => {
+    if (!user) {
+      showToast(
+        language === 'ne'
+          ? 'पसलसँग सन्देश पठाउन कृपया पहिले लगइन गर्नुहोस्।'
+          : 'Please sign in to message this store directly.',
+        'info'
+      );
+      setLoginModalOpen(true);
+      return;
+    }
+
+    const storeTarget = store?.id || store?.slug || slug;
+    if (!storeTarget) {
+      showToast('Store details not loaded yet.', 'error');
+      return;
+    }
+
+    setStartingChat(true);
+    try {
+      const res = await messagingService.initiateConversation({
+        store_id: storeTarget,
+      });
+
+      if (res && res.conversation) {
+        setActiveConversationId(res.conversation.id);
+        setActiveConversation(res.conversation);
+        setChatOpen(true);
+      }
+    } catch (err: any) {
+      const errMsg = err?.message || err?.detail || (typeof err === 'string' ? err : '');
+      const errCode = err?.code || err?.error?.code || '';
+      if (errCode === 'CANNOT_MESSAGE_OWN_STORE' || errMsg.includes('own store')) {
+        showToast(
+          language === 'ne'
+            ? 'तपाईं आफ्नै पसलसँग ग्राहक च्याट सुरु गर्न सक्नुहुन्न।'
+            : 'You cannot start a customer conversation with your own store.',
+          'warning'
+        );
+      } else {
+        showToast(
+          language === 'ne'
+            ? 'च्याट सुरु गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।'
+            : 'Unable to start conversation. Please try again.',
+          'error'
+        );
+      }
+    } finally {
+      setStartingChat(false);
+    }
   };
 
   const storeName = store?.name || matchedVendorFromContext?.name || 'Official OyoPasal Store';
@@ -538,10 +593,19 @@ export default function StoreDetailPage() {
               <button
                 type="button"
                 onClick={handleMessageStore}
-                className="bg-[#059669] hover:bg-[#047857] text-white font-medium px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:shadow text-sm active:scale-95"
+                disabled={startingChat}
+                className="bg-[#059669] hover:bg-[#047857] text-white font-medium px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:shadow text-sm active:scale-95 disabled:opacity-75 disabled:cursor-wait"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>{language === 'ne' ? 'सन्देश' : 'Message'}</span>
+                {startingChat ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-4 h-4" />
+                )}
+                <span>
+                  {startingChat
+                    ? (language === 'ne' ? 'च्याट जोड्दै...' : 'Connecting...')
+                    : (language === 'ne' ? 'सन्देश' : 'Message')}
+                </span>
               </button>
 
               {/* Open Map Button */}
@@ -839,6 +903,16 @@ export default function StoreDetailPage() {
           </div>
         )}
       </AnimatePresence>
+      {/* Customer-to-Vendor Direct Chat Drawer / Modal */}
+      {activeConversationId && (
+        <ChatModal
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+          conversationId={activeConversationId}
+          initialConversation={activeConversation}
+          asRole="customer"
+        />
+      )}
     </div>
   );
 }

@@ -3,10 +3,12 @@ import { safeStorage } from '../utils/storage';
 
 export class ApiRequestError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -15,6 +17,8 @@ export interface RequestOptions extends RequestInit {
   dedupe?: boolean;
   cacheTtlMs?: number;
   bypassCache?: boolean;
+  skipAuth?: boolean;
+  silent401?: boolean;
 }
 
 interface CacheEntry {
@@ -64,11 +68,12 @@ class HttpClient {
     this.token = token;
     this.clearCache();
     safeStorage.set(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN, token);
+    safeStorage.set(APP_CONFIG.STORAGE_KEYS.CUSTOMER_AUTH, token);
   }
 
   getToken(): string | null {
     if (!this.token) {
-      const saved = safeStorage.get(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+      const saved = safeStorage.get(APP_CONFIG.STORAGE_KEYS.CUSTOMER_AUTH) || safeStorage.get(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
       this.token = saved && !saved.startsWith('drf-token-') ? saved : null;
     }
     return this.token;
@@ -78,17 +83,19 @@ class HttpClient {
     this.token = null;
     this.clearCache();
     safeStorage.remove(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_AUTH);
   }
 
   setSellerToken(token: string) {
     this.sellerToken = token;
     this.clearCache();
     safeStorage.set(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN, token);
+    safeStorage.set(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH, token);
   }
 
   getSellerToken(): string | null {
     if (!this.sellerToken) {
-      this.sellerToken = safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN);
+      this.sellerToken = safeStorage.get(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH) || safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN);
     }
     return this.sellerToken;
   }
@@ -97,6 +104,22 @@ class HttpClient {
     this.sellerToken = null;
     this.clearCache();
     safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH);
+  }
+
+  clearAllAuth() {
+    this.token = null;
+    this.sellerToken = null;
+    this.clearCache();
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_AUTH);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH);
+    safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:token-expired'));
+    }
   }
 
   clearCache(endpointPrefix?: string) {
@@ -126,7 +149,17 @@ class HttpClient {
       : (token || sellerToken);
     const usedSellerToken = Boolean(effectiveToken && effectiveToken === sellerToken);
 
-    const cacheKey = `${method}:${endpoint}::${effectiveToken || 'anon'}`;
+    // Ensure public registration and unauthenticated endpoints NEVER attach stale/expired tokens
+    const isPublicEndpoint =
+      Boolean(options.skipAuth) ||
+      endpoint.includes('/auth/register') ||
+      endpoint.includes('/auth/login') ||
+      endpoint.includes('/auth/password-reset') ||
+      endpoint.includes('/seller/applications/apply') ||
+      endpoint.includes('/seller/applications/track') ||
+      endpoint.includes('/seller/activation/');
+
+    const cacheKey = `${method}:${endpoint}::${(!isPublicEndpoint && effectiveToken) || 'anon'}`;
 
     // 1. Check TTL Cache for GET requests
     if (isGet && !options.bypassCache && options.cacheTtlMs && options.cacheTtlMs > 0) {
@@ -155,18 +188,22 @@ class HttpClient {
 
     const execute = async (): Promise<T> => {
       const url = `${ENVIRONMENT.API_BASE_URL}${endpoint}`;
+      const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Session-Key': getOrCreateSessionKey(),
         ...((options.headers as Record<string, string>) || {}),
       };
 
-      if (effectiveToken) {
+      if (!isFormData && !headers['Content-Type'] && method !== 'GET') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      if (effectiveToken && !isPublicEndpoint) {
         headers['Authorization'] = `Bearer ${effectiveToken}`;
       }
 
-      // Attach CSRF token on mutating requests if present in cookies (for session/cookie authentication)
+      // Attach CSRF token on mutating requests if present in cookies
       if (!isGet && !headers['X-CSRFToken']) {
         const csrf = getCsrfToken();
         if (csrf) {
@@ -203,13 +240,29 @@ class HttpClient {
         clearTimeout(timer);
 
         if (!response.ok) {
-          if (response.status === 401 && effectiveToken && this.unauthorizedHandler) {
-            this.unauthorizedHandler(usedSellerToken);
-          }
-
           let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
+          let isTokenNotValid = false;
+          let parsedCode = '';
+
           try {
             const errJson = (await response.json()) as any;
+            const detailStr = String(
+              errJson?.detail || errJson?.code || errJson?.message || errJson?.error?.message || ''
+            );
+            parsedCode = errJson?.code || errJson?.error?.code || '';
+
+            if (
+              errJson?.code === 'token_not_valid' ||
+              errJson?.detail === 'token_not_valid' ||
+              detailStr.toLowerCase().includes('token_not_valid') ||
+              detailStr.toLowerCase().includes('token is invalid') ||
+              detailStr.toLowerCase().includes('token not valid') ||
+              (response.status === 401 && detailStr.toLowerCase().includes('given token not valid'))
+            ) {
+              isTokenNotValid = true;
+              parsedCode = 'token_not_valid';
+            }
+
             if (errJson?.error) {
               if (errJson.error.details && typeof errJson.error.details === 'object') {
                 const firstKey = Object.keys(errJson.error.details)[0];
@@ -228,17 +281,52 @@ class HttpClient {
                 const firstKey = keys[0];
                 const firstVal = errJson[firstKey];
                 const msg = Array.isArray(firstVal) ? String(firstVal[0]) : String(firstVal);
-                errorDetail = (firstKey === 'non_field_errors' || firstKey === 'detail' || firstKey === 'error')
-                  ? msg
-                  : `${firstKey.replace(/_/g, ' ')}: ${msg}`;
+                errorDetail =
+                  firstKey === 'non_field_errors' || firstKey === 'detail' || firstKey === 'error'
+                    ? msg
+                    : `${firstKey.replace(/_/g, ' ')}: ${msg}`;
               } else {
                 errorDetail = JSON.stringify(errJson);
               }
             }
           } catch {
-            // default error message kept
+            // default error kept
           }
-          throw new ApiRequestError(response.status, errorDetail);
+
+          if (response.status === 401) {
+            // Automatically clear expired auth tokens from localStorage when token_not_valid occurs
+            if (isTokenNotValid || effectiveToken) {
+              this.clearAllAuth();
+            }
+
+            if (this.unauthorizedHandler) {
+              this.unauthorizedHandler(usedSellerToken);
+            }
+
+            // Silent handling for polling endpoints, unread-count, and logout
+            const isSilentEndpoint =
+              Boolean(options.silent401) ||
+              endpoint.includes('/unread-count') ||
+              endpoint.includes('/notifications') ||
+              endpoint.includes('/auth/logout');
+
+            if (isSilentEndpoint || isTokenNotValid) {
+              if (endpoint.includes('unread-count')) {
+                return { customer_unread: 0, vendor_unread: 0, total: 0 } as T;
+              }
+              if (endpoint.includes('notifications')) {
+                return { count: 0, results: [] } as T;
+              }
+              if (endpoint.includes('/auth/logout')) {
+                return { success: true, message: 'Logged out' } as T;
+              }
+              if (options.silent401) {
+                return null as T;
+              }
+            }
+          }
+
+          throw new ApiRequestError(response.status, errorDetail, parsedCode);
         }
 
         const data = (await response.json()) as T;
@@ -274,6 +362,107 @@ class HttpClient {
     }
 
     return promise;
+  }
+
+  /**
+   * Convenience HTTP GET
+   */
+  get<T>(endpoint: string, options?: RequestOptions, useSellerTokenIfAvailable = false): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' }, useSellerTokenIfAvailable);
+  }
+
+  /**
+   * Convenience HTTP POST (automatically serializes JSON bodies)
+   */
+  post<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestOptions,
+    useSellerTokenIfAvailable = false
+  ): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const serializedBody = isFormData
+      ? (body as FormData)
+      : typeof body === 'string'
+      ? body
+      : body !== undefined
+      ? JSON.stringify(body)
+      : undefined;
+
+    return this.request<T>(
+      endpoint,
+      {
+        ...options,
+        method: 'POST',
+        body: serializedBody,
+      },
+      useSellerTokenIfAvailable
+    );
+  }
+
+  /**
+   * Convenience HTTP PUT (automatically serializes JSON bodies)
+   */
+  put<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestOptions,
+    useSellerTokenIfAvailable = false
+  ): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const serializedBody = isFormData
+      ? (body as FormData)
+      : typeof body === 'string'
+      ? body
+      : body !== undefined
+      ? JSON.stringify(body)
+      : undefined;
+
+    return this.request<T>(
+      endpoint,
+      {
+        ...options,
+        method: 'PUT',
+        body: serializedBody,
+      },
+      useSellerTokenIfAvailable
+    );
+  }
+
+  /**
+   * Convenience HTTP PATCH (automatically serializes JSON bodies)
+   */
+  patch<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestOptions,
+    useSellerTokenIfAvailable = false
+  ): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const serializedBody = isFormData
+      ? (body as FormData)
+      : typeof body === 'string'
+      ? body
+      : body !== undefined
+      ? JSON.stringify(body)
+      : undefined;
+
+    return this.request<T>(
+      endpoint,
+      {
+        ...options,
+        method: 'PATCH',
+        body: serializedBody,
+      },
+      useSellerTokenIfAvailable
+    );
+  }
+
+  /**
+   * Convenience HTTP DELETE
+   */
+  delete<T>(endpoint: string, options?: RequestOptions, useSellerTokenIfAvailable = false): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' }, useSellerTokenIfAvailable);
   }
 }
 

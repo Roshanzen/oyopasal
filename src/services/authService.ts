@@ -4,12 +4,20 @@ import {
   SellerLoginPayload,
   UserProfile,
   Vendor,
+  VendorRegisterPayload,
 } from '../types';
 import { httpClient } from './httpClient';
 
 export const authService = {
   registerCustomer(data: CustomerRegisterPayload): Promise<{ success: boolean; token: string; user: UserProfile }> {
-    return httpClient.request('/auth/register/', {
+    return httpClient.request('/auth/register-customer/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  registerVendor(data: VendorRegisterPayload): Promise<{ success: boolean; message: string; user?: UserProfile; vendor?: Vendor }> {
+    return httpClient.request('/auth/register-vendor/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -49,9 +57,16 @@ export const authService = {
   },
 
   loginAsSeller(data: SellerLoginPayload): Promise<{ success: boolean; token: string; user: UserProfile; vendor: Vendor }> {
-    return httpClient.request('/auth/seller/login/', {
+    return httpClient.request('/auth/login-vendor/', {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, true);
+  },
+
+  loginVendor(data: SellerLoginPayload): Promise<{ success: boolean; token: string; user: UserProfile; vendor: Vendor }> {
+    return httpClient.request('/auth/login-vendor/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, true);
   },
 };

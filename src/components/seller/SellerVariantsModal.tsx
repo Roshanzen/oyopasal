@@ -69,21 +69,21 @@ export default function SellerVariantsModal({
 
   // Builder state
   const [selectedColors, setSelectedColors] = useState<Array<{ name: string; code: string }>>(() => {
-      if (Array.isArray(product.available_colors) && product.available_colors.length > 0) {
-        return product.available_colors.map((c) => ({
-          name: typeof c === 'string' ? c : c.name,
-          code: typeof c === 'string' ? '#000000' : c.color_code || '#000000',
-        }));
-      }
-      return [{ name: 'Black', code: '#000000' }, { name: 'White', code: '#FFFFFF' }];
-    });
+    if (Array.isArray(product.available_colors) && product.available_colors.length > 0) {
+      return product.available_colors.map((c) => ({
+        name: typeof c === 'string' ? c : c.name,
+        code: typeof c === 'string' ? '#000000' : c.color_code || '#000000',
+      }));
+    }
+    return [{ name: 'Black', code: '#000000' }, { name: 'White', code: '#FFFFFF' }];
+  });
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-      if (Array.isArray(product.available_sizes) && product.available_sizes.length > 0) {
-        return product.available_sizes;
-      }
-      return ['S', 'M', 'L', 'XL'];
-    });
+    if (Array.isArray(product.available_sizes) && product.available_sizes.length > 0) {
+      return product.available_sizes;
+    }
+    return ['S', 'M', 'L', 'XL'];
+  });
 
   const [customColorName, setCustomColorName] = useState('');
   const [customColorCode, setCustomColorCode] = useState('#059669');
@@ -272,29 +272,29 @@ export default function SellerVariantsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100">
         {/* Modal Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/50">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50/80 dark:bg-slate-950/50">
           <div className="flex items-center gap-3.5 min-w-0">
             {product.image_url ? (
               <img
                 src={product.image_url}
                 alt={product.name}
-                className="w-12 h-12 rounded-xl object-cover bg-slate-800 shrink-0 border border-slate-700"
+                className="w-12 h-12 rounded-xl object-cover bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700"
               />
             ) : (
-              <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-emerald-400 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Layers className="w-6 h-6" />
               </div>
             )}
             <div className="truncate">
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-white truncate">{product.name}</h3>
-                <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">{product.name}</h3>
+                <span className="text-xs bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full font-semibold shrink-0">
                   {currentVariants.length > 0 ? `${currentVariants.length} Variants` : 'Single Product'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Manage color swatches, size options, and individual inventory levels.
               </p>
             </div>
@@ -303,7 +303,7 @@ export default function SellerVariantsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -315,8 +315,8 @@ export default function SellerVariantsModal({
             type="button"
             onClick={() => setActiveTab('matrix')}
             className={`pb-3 px-3 font-semibold text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'matrix'
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
           >
             <Layers className="w-4 h-4" />
@@ -326,8 +326,8 @@ export default function SellerVariantsModal({
             type="button"
             onClick={() => setActiveTab('builder')}
             className={`pb-3 px-3 font-semibold text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'builder'
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
           >
             <Palette className="w-4 h-4" />
@@ -517,8 +517,8 @@ export default function SellerVariantsModal({
                         type="button"
                         onClick={() => toggleColor(col)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${isSelected
-                            ? 'bg-emerald-950/70 border-emerald-500 text-white shadow-xs'
-                            : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
+                          ? 'bg-emerald-950/70 border-emerald-500 text-white shadow-xs'
+                          : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
                           }`}
                       >
                         <span
@@ -579,8 +579,8 @@ export default function SellerVariantsModal({
                           type="button"
                           onClick={() => toggleSize(sz)}
                           className={`w-11 h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${isSelected
-                              ? 'bg-emerald-600 border-emerald-500 text-white shadow-xs'
-                              : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
+                            ? 'bg-emerald-600 border-emerald-500 text-white shadow-xs'
+                            : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
                             }`}
                         >
                           {sz}
@@ -602,8 +602,8 @@ export default function SellerVariantsModal({
                           type="button"
                           onClick={() => toggleSize(sz)}
                           className={`w-11 h-9 rounded-xl font-mono font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${isSelected
-                              ? 'bg-emerald-600 border-emerald-500 text-white shadow-xs'
-                              : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
+                            ? 'bg-emerald-600 border-emerald-500 text-white shadow-xs'
+                            : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-500'
                             }`}
                         >
                           {sz}

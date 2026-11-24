@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../../context';
 import { orderService } from '../../services';
 import { DeliveryAgentProfile, DeliveryAssignmentItem } from '../../types';
+import { isUserAdmin, isUserRider } from '../../utils';
 import {
   Bike,
   Navigation,
@@ -34,7 +35,7 @@ export default function RiderPortalPage() {
   const [loading, setLoading] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<Record<number, { lat: string; lng: string; speed: string; eta: string }>>({});
 
-  const isRider = user?.role === 'delivery_agent' || user?.role === 'admin';
+  const isRider = isUserRider(user) || isUserAdmin(user);
 
   const loadRiderWorkspace = useCallback(async () => {
     if (!isRider) return;

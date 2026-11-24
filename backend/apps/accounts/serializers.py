@@ -165,16 +165,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             is_approved = (vp.status == 'APPROVED') or has_verified_store
             effective_status = 'APPROVED' if is_approved else vp.status
             approval_status = 'approved' if is_approved else str(effective_status).lower()
-            data['user']['vendor'] = {
-                'id': str(vp.id),
-                'business_name': vp.business_name,
-                'status': effective_status,
-                'approval_status': approval_status,
-                'is_approved': is_approved,
-                'is_verified': is_approved,
-                'slug': vp.slug
-            }
-            data['vendor'] = {
+            vendor_dict = {
                 'id': str(vp.id),
                 'name': vp.business_name,
                 'business_name': vp.business_name,
@@ -184,7 +175,36 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'is_verified': is_approved,
                 'slug': vp.slug
             }
-        elif hasattr(user, 'supplier_profile'):
+            data['user']['vendor'] = vendor_dict
+            data['user']['has_vendor_access'] = True
+            data['user']['is_vendor'] = True
+            data['vendor'] = vendor_dict
+        elif hasattr(user, 'vendor_staff_roles') and user.vendor_staff_roles.exists():
+            staff = user.vendor_staff_roles.select_related('vendor').first()
+            if staff and staff.vendor:
+                vp = staff.vendor
+                vendor_dict = {
+                    'id': str(vp.id),
+                    'name': vp.business_name,
+                    'business_name': vp.business_name,
+                    'status': vp.status,
+                    'approval_status': str(vp.status).lower(),
+                    'is_approved': vp.status == 'APPROVED',
+                    'is_verified': True,
+                    'slug': vp.slug
+                }
+                data['user']['vendor'] = vendor_dict
+                data['user']['has_vendor_access'] = True
+                data['user']['is_vendor'] = True
+                data['vendor'] = vendor_dict
+            else:
+                data['user']['has_vendor_access'] = False
+                data['user']['is_vendor'] = False
+        else:
+            data['user']['has_vendor_access'] = False
+            data['user']['is_vendor'] = False
+
+        if hasattr(user, 'supplier_profile'):
             data['user']['supplier'] = {
                 'id': str(user.supplier_profile.id),
                 'company_name': user.supplier_profile.company_name,
@@ -192,6 +212,236 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             }
 
         return data
+
+
+class CustomerRegistrationSerializer(serializers.Serializer):
+    """
+    Customer-only registration serializer (POST /api/auth/register-customer/).
+    Accepts ONLY full_name, email_or_phone, and password.
+    Creates a user with role='CUSTOMER' and is_vendor=False.
+    Does NOT auto-create a Store or VendorProfile.
+    """
+    full_name = serializers.CharField(required=True, max_length=150)
+    email_or_phone = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    phone_or_email = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    password = serializers.CharField(required=True, write_only=True, min_length=6)
+
+    def validate(self, attrs):
+        raw_contact = (attrs.get('email_or_phone') or attrs.get('phone_or_email') or '').strip()
+        if not raw_contact:
+            raise serializers.ValidationError({'email_or_phone': 'Email address or mobile number is required.'})
+
+        email = ''
+        phone_number = None
+        if '@' in raw_contact:
+            email = raw_contact.lower()
+            if User.objects.filter(email__iexact=email).exists():
+                raise serializers.ValidationError({'email_or_phone': 'An account with this email address already exists. Please log in.'})
+            attrs['email'] = email
+            attrs['phone_number'] = None
+        else:
+            phone_number = normalize_phone_number(raw_contact)
+            if not phone_number or len(phone_number) < 7:
+                raise serializers.ValidationError({'email_or_phone': 'Please enter a valid mobile number or email.'})
+            phone_variants = [phone_number, f"+977{phone_number}", f"+977 {phone_number}", f"977{phone_number}"]
+            if User.objects.filter(phone_number__in=phone_variants).exists():
+                raise serializers.ValidationError({'email_or_phone': 'An account with this phone number already exists. Please log in.'})
+            attrs['phone_number'] = phone_number
+            synthetic_email = f"{phone_number}@phone.oyopasal.com"
+            if User.objects.filter(email__iexact=synthetic_email).exists():
+                raise serializers.ValidationError({'email_or_phone': 'An account with this phone number already exists. Please log in.'})
+            attrs['email'] = synthetic_email
+
+        password = attrs.get('password')
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': list(e.messages)})
+
+        full_name = attrs.get('full_name', '').strip()
+        parts = full_name.split(' ', 1)
+        attrs['first_name'] = parts[0]
+        attrs['last_name'] = parts[1] if len(parts) > 1 else ''
+
+        return attrs
+
+    def create(self, validated_data):
+        email = validated_data['email']
+        phone_number = validated_data.get('phone_number')
+        first_name = validated_data.get('first_name', '')
+        last_name = validated_data.get('last_name', '')
+        password = validated_data['password']
+
+        with transaction.atomic():
+            user = User.objects.create_user(
+                email=email,
+                phone_number=phone_number,
+                first_name=first_name,
+                last_name=last_name,
+                password=password,
+                role=UserRole.CUSTOMER,
+                is_active=True,
+                is_verified=False
+            )
+            CustomerProfile.objects.create(user=user)
+            # Strictly do NOT create a VendorProfile or Store here!
+        return user
+
+
+class VendorRegistrationSerializer(serializers.Serializer):
+    """
+    Vendor / Partner Store Registration Serializer (POST /api/auth/register-vendor/).
+    Triggered exclusively from 'Become a Seller / Apply to Become a Partner Store'.
+    Requires merchant-specific fields: owner_name, store_name, store_category,
+    store_address, email_or_phone, password, and optional pan_vat_number.
+    Creates user with role='VENDOR' and linked Store with is_verified=False (status='PENDING').
+    """
+    owner_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    contact_person = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    full_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    store_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    business_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    store_category = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    category = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    store_address = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    address = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    area = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    city = serializers.CharField(required=False, allow_blank=True, max_length=100, default='Kathmandu')
+    email_or_phone = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    phone_or_email = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    email = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True, min_length=6)
+    pan_vat_number = serializers.CharField(required=False, allow_blank=True, max_length=50)
+
+    def validate(self, attrs):
+        owner = (attrs.get('owner_name') or attrs.get('contact_person') or attrs.get('full_name') or '').strip()
+        if not owner:
+            raise serializers.ValidationError({'owner_name': 'Owner / contact person name is required.'})
+        attrs['owner_name'] = owner
+
+        store = (attrs.get('store_name') or attrs.get('business_name') or '').strip()
+        if not store:
+            raise serializers.ValidationError({'store_name': 'Store / business name is required.'})
+        attrs['store_name'] = store
+
+        raw_contact = (attrs.get('email_or_phone') or attrs.get('phone_or_email') or attrs.get('email') or attrs.get('phone') or '').strip()
+        if not raw_contact:
+            raise serializers.ValidationError({'email_or_phone': 'Email address or mobile phone number is required.'})
+
+        email = ''
+        phone_number = None
+        if '@' in raw_contact:
+            email = raw_contact.lower()
+            attrs['email'] = email
+            if attrs.get('phone'):
+                phone_number = normalize_phone_number(attrs.get('phone'))
+                attrs['phone_number'] = phone_number
+        else:
+            phone_number = normalize_phone_number(raw_contact)
+            attrs['phone_number'] = phone_number
+            if attrs.get('email') and '@' in attrs.get('email'):
+                email = attrs.get('email').strip().lower()
+                attrs['email'] = email
+            else:
+                email = f"vendor_{phone_number}@phone.oyopasal.com"
+                attrs['email'] = email
+
+        pwd = attrs.get('password')
+        if not pwd:
+            pwd = f"StorePass{phone_number[-4:] if phone_number else '123'}!"
+            attrs['password'] = pwd
+
+        category = (attrs.get('store_category') or attrs.get('category') or 'General').strip()
+        attrs['store_category'] = category
+
+        addr = (attrs.get('store_address') or attrs.get('address') or attrs.get('area') or '').strip()
+        if not addr:
+            addr = attrs.get('city', 'Kathmandu').strip()
+        attrs['store_address'] = addr
+
+        return attrs
+
+    def create(self, validated_data):
+        from apps.stores.models import Store
+        owner_name = validated_data['owner_name']
+        store_name = validated_data['store_name']
+        category = validated_data['store_category']
+        store_address = validated_data['store_address']
+        email = validated_data['email']
+        phone_number = validated_data.get('phone_number')
+        password = validated_data['password']
+        pan_vat = validated_data.get('pan_vat_number', '').strip()
+
+        parts = owner_name.split(' ', 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else 'Owner'
+
+        with transaction.atomic():
+            user = User.objects.filter(email__iexact=email).first()
+            if not user and phone_number:
+                phone_variants = [phone_number, f"+977{phone_number}", f"+977 {phone_number}", f"977{phone_number}"]
+                user = User.objects.filter(phone_number__in=phone_variants).first()
+
+            if user:
+                # Upgrade role to VENDOR
+                user.role = UserRole.VENDOR
+                user.first_name = first_name
+                user.last_name = last_name
+                if not user.phone_number and phone_number:
+                    user.phone_number = phone_number
+                user.save()
+            else:
+                user = User.objects.create_user(
+                    email=email,
+                    phone_number=phone_number,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=password,
+                    role=UserRole.VENDOR,
+                    is_active=True,
+                    is_verified=False
+                )
+
+            base_slug = slugify(store_name) or f"store-{str(user.id)[:8]}"
+            slug = base_slug
+            counter = 1
+            while VendorProfile.objects.filter(slug=slug).exclude(user=user).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            vendor_profile, _ = VendorProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    'business_name': store_name,
+                    'slug': slug,
+                    'business_category': category,
+                    'pan_vat_number': pan_vat,
+                    'status': VendorStatus.PENDING,
+                }
+            )
+
+            store_slug = slug
+            store_counter = 1
+            while Store.objects.filter(slug=store_slug).exclude(vendor=vendor_profile).exists():
+                store_slug = f"{slug}-{store_counter}"
+                store_counter += 1
+
+            Store.objects.update_or_create(
+                vendor=vendor_profile,
+                name=store_name,
+                defaults={
+                    'slug': store_slug,
+                    'address': store_address,
+                    'contact_email': user.email,
+                    'contact_phone': user.phone_number or '',
+                    'description': f"Official storefront of {store_name}",
+                    'is_active': True,
+                    'is_verified': False,  # Pending Admin approval in /admin
+                }
+            )
+
+        return user
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -349,15 +599,21 @@ class UserDetailSerializer(serializers.ModelSerializer):
     """Complete serialized representation of current authenticated user."""
     full_name = serializers.CharField(read_only=True)
     profile = serializers.SerializerMethodField()
+    vendor = serializers.SerializerMethodField()
+    has_vendor_access = serializers.SerializerMethodField()
+    is_vendor = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'phone_number', 'first_name', 'last_name',
-            'full_name', 'role', 'is_verified', 'avatar_url',
-            'created_at', 'profile'
+            'full_name', 'role', 'is_verified', 'is_vendor', 'avatar_url',
+            'created_at', 'profile', 'vendor', 'has_vendor_access'
         ]
-        read_only_fields = ['id', 'email', 'role', 'is_verified', 'created_at']
+        read_only_fields = ['id', 'email', 'role', 'is_verified', 'is_vendor', 'created_at']
+
+    def get_is_vendor(self, obj):
+        return getattr(obj, 'is_vendor', False)
 
     @extend_schema_field(serializers.DictField)
     def get_profile(self, obj):
@@ -367,23 +623,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 'loyalty_points': cp.loyalty_points,
                 'gender': cp.gender,
                 'is_phone_verified': cp.is_phone_verified
-            }
-        elif hasattr(obj, 'vendor_profile'):
-            vp = obj.vendor_profile
-            has_verified_store = vp.stores.filter(is_verified=True).exists()
-            is_approved = (vp.status == 'APPROVED') or has_verified_store
-            effective_status = 'APPROVED' if is_approved else vp.status
-            approval_status = 'approved' if is_approved else str(effective_status).lower()
-            return {
-                'id': str(vp.id),
-                'business_name': vp.business_name,
-                'slug': vp.slug,
-                'status': effective_status,
-                'approval_status': approval_status,
-                'is_approved': is_approved,
-                'is_verified': is_approved,
-                'pan_vat_number': vp.pan_vat_number,
-                'logo_url': vp.logo_url,
             }
         elif hasattr(obj, 'supplier_profile'):
             sp = obj.supplier_profile
@@ -395,6 +634,49 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 'credit_terms_days': sp.credit_terms_days,
             }
         return None
+
+    @extend_schema_field(serializers.DictField)
+    def get_vendor(self, obj):
+        if hasattr(obj, 'vendor_profile'):
+            vp = obj.vendor_profile
+            has_verified_store = vp.stores.filter(is_verified=True).exists()
+            is_approved = (vp.status == 'APPROVED') or has_verified_store
+            effective_status = 'APPROVED' if is_approved else vp.status
+            approval_status = 'approved' if is_approved else str(effective_status).lower()
+            return {
+                'id': str(vp.id),
+                'name': vp.business_name,
+                'business_name': vp.business_name,
+                'slug': vp.slug,
+                'status': effective_status,
+                'approval_status': approval_status,
+                'is_approved': is_approved,
+                'is_verified': is_approved,
+                'pan_vat_number': vp.pan_vat_number,
+                'logo_url': vp.logo_url or '',
+            }
+        staff_roles = getattr(obj, 'vendor_staff_roles', None)
+        if staff_roles:
+            staff = staff_roles.select_related('vendor').first()
+            if staff and staff.vendor:
+                vp = staff.vendor
+                return {
+                    'id': str(vp.id),
+                    'name': vp.business_name,
+                    'business_name': vp.business_name,
+                    'slug': vp.slug,
+                    'status': vp.status,
+                    'approval_status': str(vp.status).lower(),
+                    'is_approved': vp.status == 'APPROVED',
+                    'is_verified': True,
+                    'logo_url': vp.logo_url or '',
+                }
+        return None
+
+    def get_has_vendor_access(self, obj):
+        return hasattr(obj, 'vendor_profile') or (
+            hasattr(obj, 'vendor_staff_roles') and obj.vendor_staff_roles.exists()
+        )
 
 
 class ChangePasswordSerializer(serializers.Serializer):

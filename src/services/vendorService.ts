@@ -35,9 +35,15 @@ export const vendorService = {
     daily_orders?: string;
     pan_vat_number?: string;
   }): Promise<{ success: boolean; message: string; vendor: Vendor }> {
-    return httpClient.request('/vendors/register/', {
+    return httpClient.request('/auth/register-vendor/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        owner_name: data.contact_person,
+        store_category: data.category,
+        store_address: `${data.area}${data.city ? ', ' + data.city : ''}`,
+        email_or_phone: data.email || data.phone,
+      }),
     });
   },
 

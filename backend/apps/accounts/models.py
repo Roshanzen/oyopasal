@@ -7,6 +7,8 @@ class UserRole(models.TextChoices):
     SUPPORT_ADMIN = 'SUPPORT_ADMIN', 'Support Admin'
     FINANCE_ADMIN = 'FINANCE_ADMIN', 'Finance Admin'
     OPERATIONS_ADMIN = 'OPERATIONS_ADMIN', 'Operations Admin'
+    ADMIN = 'ADMIN', 'Admin'
+    VENDOR = 'VENDOR', 'Vendor'
     VENDOR_OWNER = 'VENDOR_OWNER', 'Vendor Owner'
     VENDOR_STAFF = 'VENDOR_STAFF', 'Vendor Staff'
     SUPPLIER_OWNER = 'SUPPLIER_OWNER', 'Supplier Owner'
@@ -82,6 +84,13 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
+
+    @property
+    def is_vendor(self):
+        return bool(
+            self.role in [UserRole.VENDOR, UserRole.VENDOR_OWNER, UserRole.VENDOR_STAFF] or
+            hasattr(self, 'vendor_profile')
+        )
 
 
 class StaffProfile(BaseModel):

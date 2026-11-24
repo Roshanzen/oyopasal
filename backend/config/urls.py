@@ -86,6 +86,8 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # API v1 Domain Routes
+    path('api/auth/', include('apps.accounts.urls', namespace='auth_root')),
+    path('api/seller/', include('apps.vendors.seller_urls', namespace='seller_root')),
     path('api/v1/seller/', include('apps.vendors.seller_urls', namespace='seller')),
     path('api/v1/vendors/seller/', include('apps.vendors.seller_urls', namespace='vendors_seller')),
     path('api/v1/auth/', include('apps.accounts.urls', namespace='auth')),
@@ -105,6 +107,7 @@ urlpatterns = [
     path('api/v1/analytics/', include('apps.analytics.urls', namespace='analytics')),
     path('api/v1/reports/', include('apps.reports.urls', namespace='reports')),
     path('api/v1/subscriptions/', include('apps.subscriptions.urls', namespace='subscriptions')),
+    path('api/v1/messaging/', include('apps.messaging.urls', namespace='messaging')),
     path('api/v1/chat/', include('apps.ai.chat_urls', namespace='chat')),
     path('api/v1/ai/', include('apps.ai.urls', namespace='ai')),
     path('api/v1/audit/', include('apps.audit.urls', namespace='audit')),

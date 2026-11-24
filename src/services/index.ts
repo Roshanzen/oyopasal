@@ -14,3 +14,4 @@ export { notificationService } from './notificationService';
 export { supportService } from './supportService';
 export { chatService } from './chatService';
 export { adminService } from './adminService';
+export { sellerOnboardingService } from './sellerOnboardingService';

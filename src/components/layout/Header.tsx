@@ -6,11 +6,13 @@ import {
   Heart,
   LogIn,
   MapPin,
+  MessageSquare,
   ShoppingBag,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useApp } from '../../context';
 import { notificationService } from '../../services';
+import { messagingService } from '../../services/messagingService';
 import { NotificationItem } from '../../types';
 import AnnouncementBar from './header/AnnouncementBar';
 import HeaderSearchBar from './header/HeaderSearchBar';
@@ -45,19 +47,22 @@ export default function Header() {
   const [notifError, setNotifError] = useState('');
 
   const loadNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
     setNotifLoading(true);
     setNotifError('');
     try {
       const res = await notificationService.getNotifications();
-      if (Array.isArray(res.results)) {
-        setNotifications(res.results);
-      }
+      const list = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? (res as any) : []);
+      setNotifications(list);
     } catch (err) {
       setNotifError(err instanceof Error ? err.message : 'Unable to load notifications');
     } finally {
       setNotifLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadNotifications();
@@ -67,7 +72,7 @@ export default function Header() {
     if (!user) return;
     try {
       await notificationService.markNotificationRead(id);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, read: true } : n)));
     } catch (err) {
       setNotifError(err instanceof Error ? err.message : 'Could not update notification');
     }
@@ -77,13 +82,34 @@ export default function Header() {
     if (!user) return;
     try {
       await notificationService.markAllNotificationsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => ({ ...n, read: true })));
     } catch (err) {
       setNotifError(err instanceof Error ? err.message : 'Could not mark notifications as read');
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const [unreadMsgCount, setUnreadMsgCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadMsgCount(0);
+      return;
+    }
+    const loadUnreadMsg = () => {
+      if (!user || document.hidden) return;
+      messagingService
+        .getUnreadCount()
+        .then((res) => {
+          setUnreadMsgCount(res?.total ?? res?.customer_unread ?? 0);
+        })
+        .catch(() => {});
+    };
+    loadUnreadMsg();
+    const interval = setInterval(loadUnreadMsg, 12000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  const unreadCount = (Array.isArray(notifications) ? notifications : []).filter((n) => Boolean(n && !n.read)).length;
   const totalItems = cart ? cart.item_count : 0;
   const cartTotal = cart ? cart.total : 0;
 
@@ -160,6 +186,22 @@ export default function Header() {
                 </Link>
               </motion.div>
 
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }} className="hidden xl:block">
+                <Link
+                  to="/account?tab=messages"
+                  aria-label="Store Messages"
+                  title="Store Messages"
+                  className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  {unreadMsgCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-600 text-white text-[12px] font-bold leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums">
+                      {unreadMsgCount}
+                    </span>
+                  )}
+                </Link>
+              </motion.div>
+
               <NotificationsDropdown
                 isOpen={notifMenuOpen}
                 onToggle={() => {
@@ -196,6 +238,7 @@ export default function Header() {
                 currentSeller={currentSeller}
                 wishlistCount={wishlistIds.length}
                 unreadCount={unreadCount}
+                unreadMsgCount={unreadMsgCount}
                 theme={theme}
                 language={language}
                 isOpen={userMenuOpen}

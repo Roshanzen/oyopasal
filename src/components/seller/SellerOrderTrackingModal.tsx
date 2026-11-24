@@ -86,27 +86,27 @@ export default function SellerOrderTrackingModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-10 my-4 max-h-[92vh] flex flex-col overflow-hidden text-slate-100"
+          className="relative w-full max-w-5xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl z-10 my-4 max-h-[92vh] flex flex-col overflow-hidden text-slate-900 dark:text-slate-100"
         >
           {/* Header */}
-          <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-900/90 shrink-0">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Navigation className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base sm:text-lg font-extrabold text-white">
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
                     {language === 'ne' ? 'लाइभ अर्डर डिस्प्याच र जीपीएस' : 'Live Order Tracking & GPS'}
                   </h3>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     {fulfillment.order_number}
                   </span>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     {translateOrderStatus(currentStatus, language)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {vendorName} · {language === 'ne' ? 'वास्तविक समय राइडर टेलिमेट्री' : 'Real-time rider telemetry'}
                 </p>
               </div>
@@ -116,17 +116,17 @@ export default function SellerOrderTrackingModal({
               <button
                 type="button"
                 onClick={() => track.fetchOrderAndTracking(false)}
-                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
                 title="Refresh GPS Telemetry"
               >
-                <RefreshCw className={`w-4 h-4 ${track.refreshing ? 'animate-spin text-emerald-400' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${track.refreshing ? 'animate-spin text-emerald-600 dark:text-emerald-400' : ''}`} />
                 <span className="hidden sm:inline">{language === 'ne' ? 'रिफ्रेस' : 'Refresh GPS'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleOpenFullPage}
-                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
                 title="Open Dedicated Tracking Page"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -136,7 +136,7 @@ export default function SellerOrderTrackingModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer transition-colors"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
@@ -255,31 +255,31 @@ export default function SellerOrderTrackingModal({
               {/* Right Column: Customer Info, Items & Timeline */}
               <div className="lg:col-span-5 space-y-4">
                 {/* Customer & Destination Card */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>{language === 'ne' ? 'ग्राहक तथा डेलिभरी ठेगाना' : 'Delivery Destination'}</span>
                   </h5>
                   <div>
                     <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm text-white">{fulfillment.customer_name}</p>
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">{fulfillment.customer_name}</p>
                       {fulfillment.customer_phone && (
                         <a
                           href={`tel:${fulfillment.customer_phone}`}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 text-xs font-bold flex items-center gap-1 hover:bg-emerald-900 transition-colors"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
                         >
                           <Phone className="w-3 h-3" />
                           <span>{fulfillment.customer_phone}</span>
                         </a>
                       )}
                     </div>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       {fulfillment.delivery_address ? `${fulfillment.delivery_address}, ` : ''}
                       {fulfillment.customer_area}
                       {fulfillment.delivery_city ? `, ${fulfillment.delivery_city}` : ''}
                     </p>
                     {fulfillment.notes && (
-                      <p className="text-xs text-amber-300 mt-2 p-2 rounded-lg bg-amber-950/40 border border-amber-900/60">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
                         <strong>Note:</strong> {fulfillment.notes}
                       </p>
                     )}
@@ -287,30 +287,30 @@ export default function SellerOrderTrackingModal({
                 </div>
 
                 {/* Items & Payout Card */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {language === 'ne' ? 'सामान सूची' : 'Items to Dispatch'} ({fulfillment.items_count ?? fulfillment.items?.length ?? 0})
                     </span>
-                    <span className="text-xs font-bold text-emerald-400">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       Net Payout: {formatPrice(fulfillment.net_payout)}
                     </span>
                   </div>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                     {fulfillment.items.map((it) => (
                       <div key={it.id} className="flex items-center justify-between text-xs">
-                        <span className="text-slate-200">
+                        <span className="text-slate-800 dark:text-slate-200">
                           <strong>{it.quantity}x</strong> {it.product_name}{' '}
-                          <span className="text-slate-400">({it.unit})</span>
+                          <span className="text-slate-500 dark:text-slate-400">({it.unit})</span>
                         </span>
-                        <span className="text-slate-300 font-mono">{formatPrice(it.total ?? it.total_price ?? (it.unit_price * it.quantity))}</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-mono">{formatPrice(it.total ?? it.total_price ?? (it.unit_price * it.quantity))}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Tracking Milestones Timeline */}
-                <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4">
                   <OrderTrackingTimeline
                     steps={track.order?.tracking_updates || []}
                     assignment={track.assignment}

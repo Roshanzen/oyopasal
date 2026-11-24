@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Sparkles } from 'lucide-react';
 import { Language, UserProfile } from '../../types';
+import { isUserAdmin } from '../../utils';
 
 interface AdminAuthViewProps {
   user: UserProfile | null;
@@ -54,7 +55,7 @@ export default function AdminAuthView({
             </p>
           </div>
 
-          {user && user.role !== 'admin' && (
+          {user && !isUserAdmin(user) && (
             <div className="p-3.5 rounded-xl bg-amber-950/60 border border-amber-700/70 text-amber-200 text-xs flex items-center justify-between">
               <span>Current session does not have admin privileges.</span>
               <button onClick={onLogout} className="font-bold underline cursor-pointer">

@@ -14,6 +14,9 @@ const SellerPortalPage = lazy(() => import('../pages/seller/SellerPortalPage'));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage'));
 const AdminPortalPage = lazy(() => import('../pages/admin/AdminPortalPage'));
 const RiderPortalPage = lazy(() => import('../pages/admin/RiderPortalPage'));
+const BecomeSellerPage = lazy(() => import('../pages/seller/BecomeSellerPage'));
+const TrackApplicationPage = lazy(() => import('../pages/seller/TrackApplicationPage'));
+const VendorActivationPage = lazy(() => import('../pages/seller/VendorActivationPage'));
 
 function PageFallback() {
   return (
@@ -41,6 +44,11 @@ export function AppRoutes() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders/:id" element={<OrderTrackingPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/become-seller" element={<BecomeSellerPage />} />
+        <Route path="/seller/track" element={<TrackApplicationPage />} />
+        <Route path="/track-application" element={<TrackApplicationPage />} />
+        <Route path="/vendor/activate" element={<VendorActivationPage />} />
+        <Route path="/seller/activate" element={<VendorActivationPage />} />
         <Route
           path="/seller"
           element={

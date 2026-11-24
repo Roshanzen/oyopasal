@@ -80,8 +80,6 @@ export default function OrderTrackingPage() {
             onClick={() => {
               if (window.history.length > 1) {
                 navigate(-1);
-              } else if (track.user?.role === 'vendor') {
-                navigate('/seller');
               } else {
                 navigate('/account?tab=orders');
               }

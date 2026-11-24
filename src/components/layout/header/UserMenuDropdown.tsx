@@ -10,6 +10,7 @@ import {
   LogIn,
   LogOut,
   MapPin,
+  MessageSquare,
   Moon,
   Package,
   Shield,
@@ -20,12 +21,14 @@ import {
 import { motion } from 'motion/react';
 import { TranslatorFn } from '../../../i18n';
 import { Language, ThemeMode, UserProfile, Vendor } from '../../../types';
+import { isUserAdmin, isUserRider, isUserVendor } from '../../../utils';
 
 interface UserMenuDropdownProps {
   user: UserProfile;
   currentSeller: Vendor | null;
   wishlistCount: number;
   unreadCount: number;
+  unreadMsgCount?: number;
   theme: ThemeMode;
   language: Language;
   isOpen: boolean;
@@ -43,6 +46,7 @@ export default function UserMenuDropdown({
   currentSeller,
   wishlistCount,
   unreadCount,
+  unreadMsgCount = 0,
   theme,
   language,
   isOpen,
@@ -55,6 +59,9 @@ export default function UserMenuDropdown({
   t,
 }: UserMenuDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isSeller = isUserVendor(user, currentSeller);
+  const isAdmin = isUserAdmin(user);
+  const isRider = isUserRider(user);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -143,6 +150,21 @@ export default function UserMenuDropdown({
               <span>{t('header.myOrdersTracking')}</span>
             </Link>
             <Link
+              to="/account?tab=messages"
+              onClick={onClose}
+              className="flex items-center justify-between px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
+            >
+              <span className="flex items-center gap-2.5">
+                <MessageSquare className="w-4 h-4 text-slate-400" />
+                <span>{language === 'ne' ? 'पसल सन्देशहरू' : 'Store Messages'}</span>
+              </span>
+              {unreadMsgCount > 0 && (
+                <span className="text-xs font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full tabular-nums">
+                  {unreadMsgCount}
+                </span>
+              )}
+            </Link>
+            <Link
               to="/account?tab=addresses"
               onClick={onClose}
               className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
@@ -190,82 +212,80 @@ export default function UserMenuDropdown({
             </Link>
 
             <div className="border-t border-slate-100 dark:border-slate-800 mt-1.5 pt-2 px-2">
-              <span className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 block mb-1">
-                {t('header.sellerMerchantAccess')}
-              </span>
-
-              {currentSeller ? (
-                <Link
-                  to="/seller"
-                  onClick={onClose}
-                  className="w-full flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-left mb-1 cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <Store className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                    <div className="truncate">
-                      <span className="block truncate font-bold text-slate-900 dark:text-white">
-                        {currentSeller.name}
-                      </span>
-                      <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-                        {t('header.storeDashboardAdd')}
-                      </span>
+              {isSeller ? (
+                <>
+                  <span className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 block mb-1">
+                    {t('header.sellerMerchantAccess')}
+                  </span>
+                  <Link
+                    to="/seller"
+                    onClick={onClose}
+                    className="w-full flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-left mb-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Store className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="block truncate font-bold text-slate-900 dark:text-white">
+                          {user.vendor?.business_name || currentSeller?.name || 'My Store'}
+                        </span>
+                        <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                          {t('header.storeDashboardAdd')}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                </Link>
+                    <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  </Link>
+                </>
               ) : (
-                <Link
-                  to="/seller"
-                  onClick={onClose}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenBecomeSeller();
+                  }}
                   className="w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-900 dark:hover:text-emerald-300 transition-colors text-left group cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                      <LogIn className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                      <Store className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                     </div>
                     <div>
                       <span className="block font-bold text-slate-900 dark:text-white group-hover:text-emerald-900 dark:group-hover:text-emerald-300">
-                        {t('header.loginAsSeller')}
+                        {t('header.becomeSeller')}
                       </span>
                       <span className="text-xs text-slate-400 dark:text-slate-500 block font-normal">
-                        {t('header.manageOrdersAdd')}
+                        Open a store & sell on OyoPasal
                       </span>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
-                </Link>
+                </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenBecomeSeller();
-                }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg font-semibold transition-colors text-left mt-0.5 cursor-pointer"
-              >
-                <Store className="w-4 h-4" />
-                <span>{t('header.becomeSellerNew')}</span>
-              </button>
-
-              <div className="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/70">
-                <Link
-                  to="/admin"
-                  onClick={onClose}
-                  className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors"
-                >
-                  <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Admin</span>
-                </Link>
-                <Link
-                  to="/rider"
-                  onClick={onClose}
-                  className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors"
-                >
-                  <Bike className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Rider</span>
-                </Link>
-              </div>
+              {(isAdmin || isRider) && (
+                <div className={`grid ${isAdmin && isRider ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/70`}>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={onClose}
+                      className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Admin</span>
+                    </Link>
+                  )}
+                  {isRider && (
+                    <Link
+                      to="/rider"
+                      onClick={onClose}
+                      className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors"
+                    >
+                      <Bike className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Rider</span>
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-100 dark:border-slate-800 mt-1.5 pt-1.5 px-2">

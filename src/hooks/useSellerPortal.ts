@@ -14,7 +14,7 @@ import {
   Vendor,
 } from '../types';
 
-export type SellerTab = 'analytics' | 'add' | 'products' | 'orders' | 'reviews' | 'ledger' | 'settings';
+export type SellerTab = 'analytics' | 'add' | 'products' | 'orders' | 'messages' | 'reviews' | 'ledger' | 'settings';
 
 export function useSellerPortal() {
   const {
@@ -72,6 +72,7 @@ export function useSellerPortal() {
   const [customStoreId, setCustomStoreId] = useState('');
   const [customPassword, setCustomPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [customLoginError, setCustomLoginError] = useState<string | null>(null);
   const [vendorsRefreshing, setVendorsRefreshing] = useState(false);
 
   // New Product form state
@@ -332,19 +333,13 @@ export function useSellerPortal() {
     await refreshVendors().finally(() => setVendorsRefreshing(false));
   };
 
-  const handleQuickLogin = async (vendorId: string) => {
-    setLoginLoading(true);
-    try {
-      await loginAsSeller({ vendor_id: vendorId, demo_quick_login: true });
-    } catch {
-      // toast handled in context
-    } finally {
-      setLoginLoading(false);
-    }
+  const handleQuickLogin = async (_vendorId: string) => {
+    // Demo quick login permanently removed as part of strict authentication enforcement
   };
 
   const handleCustomLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCustomLoginError(null);
     if (!customStoreId.trim()) {
       showToast(
         language === 'ne' ? 'कृपया आफ्नो मर्चेन्ट इमेल वा फोन नम्बर राख्नुहोस्' : 'Please enter your Merchant email or phone number',
@@ -359,8 +354,9 @@ export function useSellerPortal() {
     setLoginLoading(true);
     try {
       await loginAsSeller({ identifier: customStoreId.trim(), password: customPassword });
-    } catch {
-      // toast handled in context
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      setCustomLoginError(msg);
     } finally {
       setLoginLoading(false);
     }
@@ -788,6 +784,8 @@ export function useSellerPortal() {
     setCustomStoreId,
     customPassword,
     setCustomPassword,
+    customLoginError,
+    setCustomLoginError,
     loginLoading,
     vendorsRefreshing,
     productName,

@@ -1,8 +1,10 @@
-import React from 'react';
-import { Bell, Heart, LifeBuoy, LogIn, LogOut, MapPin, Package, User } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bell, Heart, LifeBuoy, LogIn, LogOut, MapPin, MessageSquare, Package, User } from 'lucide-react';
 import { useAccountPortal } from '../../hooks/useAccountPortal';
 import ProfileTab from '../../components/account/ProfileTab';
 import OrdersTab from '../../components/account/OrdersTab';
+import { CustomerMessagesTab } from '../../components/account/CustomerMessagesTab';
+import { messagingService } from '../../services/messagingService';
 import {
   AddressesTab,
   NotificationsTab,
@@ -13,6 +15,17 @@ import {
 
 export default function AccountPage() {
   const acc = useAccountPortal();
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+
+  useEffect(() => {
+    if (!acc.user) return;
+    messagingService
+      .getUnreadCount()
+      .then((res) => {
+        setUnreadMsgCount(res?.customer_unread ?? res?.total ?? 0);
+      })
+      .catch(() => {});
+  }, [acc.user, acc.activeTab]);
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 pb-24">
@@ -55,6 +68,12 @@ export default function AccountPage() {
             {[
               { id: 'profile', icon: User, label: acc.t('account.tabProfile') },
               { id: 'orders', icon: Package, label: acc.t('account.tabOrders') },
+              {
+                id: 'messages',
+                icon: MessageSquare,
+                label: acc.language === 'ne' ? 'सन्देशहरू' : 'Messages',
+                badge: unreadMsgCount,
+              },
               { id: 'addresses', icon: MapPin, label: acc.t('account.tabAddresses') },
               { id: 'wishlist', icon: Heart, label: acc.t('account.tabWishlist') },
               { id: 'notifications', icon: Bell, label: acc.t('account.tabNotifications') },
@@ -65,14 +84,27 @@ export default function AccountPage() {
                 <button
                   key={tab.id}
                   onClick={() => acc.setTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-colors text-left cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-colors text-left cursor-pointer ${
                     acc.activeTab === tab.id
                       ? 'bg-emerald-600 text-white'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{tab.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{tab.label}</span>
+                  </div>
+                  {Boolean(tab.badge && tab.badge > 0) && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-extrabold ${
+                        acc.activeTab === tab.id
+                          ? 'bg-white text-emerald-800'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -115,6 +147,10 @@ export default function AccountPage() {
               onReorder={acc.handleReorder}
               onRequestRefund={acc.setRefundOrder}
             />
+          )}
+
+          {acc.activeTab === 'messages' && (
+            <CustomerMessagesTab />
           )}
 
           {acc.activeTab === 'addresses' && (

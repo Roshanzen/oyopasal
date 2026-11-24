@@ -4,3 +4,4 @@ export * from './dateFormatter';
 export * from './validation';
 export * from './storage';
 export * from './constants';
+export * from './roleUtils';

@@ -14,8 +14,8 @@ export interface AuthContextType {
   setUserDirect: (user: UserProfile | null) => void;
   loginModalOpen: boolean;
   setLoginModalOpen: (open: boolean) => void;
-  loginCustomer: (payload: CustomerLoginPayload) => Promise<void>;
-  registerCustomer: (payload: CustomerRegisterPayload) => Promise<void>;
+  loginCustomer: (payload: CustomerLoginPayload) => Promise<UserProfile>;
+  registerCustomer: (payload: CustomerRegisterPayload) => Promise<UserProfile>;
   logoutCustomer: () => void;
 }
 
@@ -37,7 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!hasToken) return;
       try {
         const me = await authService.getUser();
-        setUser(me);
+        const profileUser: UserProfile = {
+          ...me,
+          vendor: (me as any)?.vendor || null,
+          has_vendor_access: Boolean(
+            (me as any)?.vendor ||
+            (me as any)?.has_vendor_access
+          ),
+        };
+        setUser(profileUser);
         safeStorage.set(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN, 'true');
       } catch {
         httpClient.clearToken();
@@ -66,17 +74,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginCustomer = useCallback(
-    async (payload: CustomerLoginPayload) => {
+    async (payload: CustomerLoginPayload): Promise<UserProfile> => {
       try {
         const res = await authService.loginCustomer(payload);
         if (res.token) {
           httpClient.setToken(res.token);
         }
-        setUser(res.user);
+        const profileUser: UserProfile = {
+          ...res.user,
+          vendor: (res.user as any)?.vendor || (res as any)?.vendor || null,
+          has_vendor_access: Boolean(
+            (res.user as any)?.vendor ||
+            (res as any)?.vendor ||
+            (res.user as any)?.has_vendor_access
+          ),
+        };
+        setUser(profileUser);
         safeStorage.set(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN, 'true');
         setLoginModalOpen(false);
         await Promise.all([refreshAddresses(), refreshWishlist(), refreshCart()]);
         showToast(t('toast.welcomeCustomer', { name: res.user.full_name.split(' ')[0] }), 'success');
+        return profileUser;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Login failed';
         showToast(msg, 'error');
@@ -87,17 +105,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const registerCustomer = useCallback(
-    async (payload: CustomerRegisterPayload) => {
+    async (payload: CustomerRegisterPayload): Promise<UserProfile> => {
       try {
         const res = await authService.registerCustomer(payload);
         if (res.token) {
           httpClient.setToken(res.token);
         }
-        setUser(res.user);
+        const profileUser: UserProfile = {
+          ...res.user,
+          vendor: (res.user as any)?.vendor || (res as any)?.vendor || null,
+          has_vendor_access: Boolean(
+            (res.user as any)?.vendor ||
+            (res as any)?.vendor ||
+            (res.user as any)?.has_vendor_access
+          ),
+        };
+        setUser(profileUser);
         safeStorage.set(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN, 'true');
         setLoginModalOpen(false);
         await Promise.all([refreshAddresses(), refreshWishlist(), refreshCart()]);
         showToast(t('toast.welcomeCustomer', { name: res.user.full_name.split(' ')[0] }), 'success');
+        return profileUser;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Registration failed';
         showToast(msg, 'error');

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../context';
 import { adminService, categoryService, supportService } from '../services';
+import { isUserAdmin } from '../utils';
 import {
   AdminAuditLogItem,
   AdminCouponItem,
@@ -23,6 +24,7 @@ import {
 
 export type AdminTab =
   | 'overview'
+  | 'applications'
   | 'hero-banners'
   | 'sellers'
   | 'orders'
@@ -129,7 +131,7 @@ export function useAdminPortal() {
   });
   const [savingSettingKey, setSavingSettingKey] = useState<string | null>(null);
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isUserAdmin(user);
 
   const loadTabData = useCallback(async () => {
     if (!isAdmin) return;

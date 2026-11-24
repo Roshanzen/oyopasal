@@ -1,6 +1,7 @@
 import React from 'react';
 import { Store } from 'lucide-react';
 import { useAuth, useSeller } from '../hooks';
+import { isUserVendor } from '../utils';
 
 interface SellerRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,9 @@ export function SellerRoute({ children, strict = false }: SellerRouteProps) {
   const { currentSeller, setSellerLoginModalOpen } = useSeller();
   const { user } = useAuth();
 
-  if (strict && !currentSeller && user?.role !== 'admin' && user?.role !== 'seller') {
+  const hasVendorAuth = isUserVendor(user, currentSeller);
+
+  if (strict && !hasVendorAuth) {
     return (
       <div className="min-h-[60vh] w-full flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white dark:bg-[#111726] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 text-center shadow-lg space-y-4">

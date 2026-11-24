@@ -18,11 +18,13 @@ import {
   ShoppingBag,
   Store,
   Tag,
+  UserCheck,
   Wallet,
 } from 'lucide-react';
 import { AdminTab, useAdminPortal } from '../../hooks/useAdminPortal';
 import AdminAuthView from '../../components/admin/AdminAuthView';
 import AdminOverviewTab from '../../components/admin/AdminOverviewTab';
+import AdminSellerApplicationsTab from '../../components/admin/AdminSellerApplicationsTab';
 import AdminSellersTab from '../../components/admin/AdminSellersTab';
 import AdminOrdersDispatchTab from '../../components/admin/AdminOrdersDispatchTab';
 import AdminProductsTab from '../../components/admin/AdminProductsTab';
@@ -44,6 +46,7 @@ import {
 
 const ADMIN_TABS: { id: AdminTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'applications', label: 'Seller Applications', icon: UserCheck },
   { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
   { id: 'sellers', label: 'Sellers & KYC', icon: Store },
   { id: 'orders', label: 'Orders & Dispatch', icon: ShoppingBag },
@@ -174,6 +177,10 @@ export default function AdminPortalPage() {
           }}
           formatPrice={admin.formatPrice}
         />
+      )}
+
+      {admin.activeTab === 'applications' && (
+        <AdminSellerApplicationsTab />
       )}
 
       {admin.activeTab === 'sellers' && (

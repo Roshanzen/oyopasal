@@ -41,12 +41,17 @@ class IsSupportAdmin(permissions.BasePermission):
 
 
 class IsVendorOwner(permissions.BasePermission):
-    """Allows access only to Vendor Owners."""
+    """Allows access to Vendor Owners (by role or attached vendor profile)."""
     def has_permission(self, request, view):
         return bool(
             request.user and
             request.user.is_authenticated and
-            request.user.role == 'VENDOR_OWNER'
+            (
+                request.user.role == 'VENDOR_OWNER' or
+                hasattr(request.user, 'vendor_profile') or
+                request.user.is_superuser or
+                request.user.role == 'SUPER_ADMIN'
+            )
         )
 
 
@@ -56,8 +61,40 @@ class IsVendor(permissions.BasePermission):
         return bool(
             request.user and
             request.user.is_authenticated and
-            request.user.role in ['VENDOR_OWNER', 'VENDOR_STAFF']
+            (
+                request.user.role in ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SUPER_ADMIN'] or
+                hasattr(request.user, 'vendor_profile') or
+                (hasattr(request.user, 'vendor_staff_roles') and request.user.vendor_staff_roles.exists()) or
+                request.user.is_superuser
+            )
         )
+
+
+class IsAuthenticatedVendor(permissions.BasePermission):
+    """
+    Strictly verifies that the user is authenticated, has a vendor role or store/vendor_profile,
+    and is NOT a customer-only account.
+    Enforces that only APPROVED & ACTIVE vendor profiles are permitted access.
+    """
+    message = "You do not have vendor permissions or your vendor account is not active."
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.user.is_superuser or getattr(request.user, 'role', '') in ['SUPER_ADMIN', 'ADMIN']:
+            return True
+        if getattr(request.user, 'role', '') == 'CUSTOMER' and not hasattr(request.user, 'vendor_profile'):
+            return False
+        if hasattr(request.user, 'vendor_profile'):
+            vp = request.user.vendor_profile
+            if getattr(vp, 'status', '') != 'APPROVED':
+                return False
+            return True
+        if hasattr(request.user, 'vendor_staff_roles') and request.user.vendor_staff_roles.exists():
+            return True
+        if getattr(request.user, 'role', '') in ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF']:
+            return True
+        return False
 
 
 class IsSupplierOwner(permissions.BasePermission):
@@ -81,12 +118,11 @@ class IsSupplier(permissions.BasePermission):
 
 
 class IsCustomer(permissions.BasePermission):
-    """Allows access to Customers."""
+    """Allows access to Customers (including vendor owners and staff shopping as customers)."""
     def has_permission(self, request, view):
         return bool(
             request.user and
-            request.user.is_authenticated and
-            request.user.role == 'CUSTOMER'
+            request.user.is_authenticated
         )
 
 

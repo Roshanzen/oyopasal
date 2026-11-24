@@ -13,10 +13,39 @@ from apps.vendors.seller_views import (
     SellerReviewsView,
     SellerInventoryMovementsView,
 )
+from apps.vendors.application_views import (
+    SellerApplicationApplyView,
+    SellerApplicationTrackView,
+    AdminSellerApplicationListView,
+    AdminSellerApplicationDetailView,
+    AdminSellerApplicationStatusView,
+    AdminSellerApplicationApproveView,
+    AdminSellerApplicationRejectView,
+    AdminSellerApplicationResendInviteView,
+    VendorActivationVerifyView,
+    VendorActivationSubmitView,
+)
 
 app_name = 'seller'
 
 urlpatterns = [
+    # Seller Onboarding & Application Public Endpoints
+    path('applications/apply/', SellerApplicationApplyView.as_view(), name='application_apply'),
+    path('applications/track/', SellerApplicationTrackView.as_view(), name='application_track'),
+
+    # Admin Management of Seller Applications
+    path('admin/applications/', AdminSellerApplicationListView.as_view(), name='admin_applications_list'),
+    path('admin/applications/<str:pk>/', AdminSellerApplicationDetailView.as_view(), name='admin_application_detail'),
+    path('admin/applications/<str:pk>/status/', AdminSellerApplicationStatusView.as_view(), name='admin_application_status'),
+    path('admin/applications/<str:pk>/approve/', AdminSellerApplicationApproveView.as_view(), name='admin_application_approve'),
+    path('admin/applications/<str:pk>/reject/', AdminSellerApplicationRejectView.as_view(), name='admin_application_reject'),
+    path('admin/applications/<str:pk>/resend-invitation/', AdminSellerApplicationResendInviteView.as_view(), name='admin_application_resend_invite'),
+
+    # Vendor Invitation & Account Activation
+    path('activation/verify/', VendorActivationVerifyView.as_view(), name='activation_verify'),
+    path('activation/activate/', VendorActivationSubmitView.as_view(), name='activation_submit'),
+
+    # Vendor Portal Internal Operations
     path('dashboard/', SellerDashboardView.as_view(), name='dashboard'),
     path('analytics/', SellerAnalyticsView.as_view(), name='analytics'),
     path('products/', SellerProductsView.as_view(), name='products'),

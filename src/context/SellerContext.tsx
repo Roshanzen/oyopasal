@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { APP_CONFIG } from '../config';
 import { ApiRequestError, authService, httpClient, sellerService } from '../services';
 import { SellerLoginPayload, Vendor } from '../types';
-import { safeStorage } from '../utils';
+import { isUserVendor, safeStorage } from '../utils';
 import { useAuthContext } from './AuthContext';
 import { useLanguageContext } from './LanguageContext';
 import { useToastContext } from './ToastContext';
@@ -31,16 +31,30 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   const [becomeSellerModalOpen, setBecomeSellerModalOpen] = useState<boolean>(false);
   const [sellerLoginModalOpen, setSellerLoginModalOpen] = useState<boolean>(false);
   const [sellerDashboardModalOpen, setSellerDashboardModalOpen] = useState<boolean>(false);
-  const [currentSeller, setCurrentSeller] = useState<Vendor | null>(() =>
-    safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)
-  );
+  const [currentSeller, setCurrentSeller] = useState<Vendor | null>(() => {
+    // Only restore seller session on load if an explicit seller token exists
+    if (httpClient.getSellerToken()) {
+      return safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    }
+    return null;
+  });
 
   const refreshSellerSession = useCallback(async () => {
-    const savedSeller = safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-    if (!savedSeller) return;
+    // If user is logged in but has no vendor access, never load or retain seller session
+    if (user && !isUserVendor(user)) {
+      if (currentSeller || safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)) {
+        httpClient.clearSellerToken();
+        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+        setCurrentSeller(null);
+      }
+      return;
+    }
+
+    const savedSeller = (user?.vendor as Vendor) || safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    if (!savedSeller || !savedSeller.id) return;
 
     try {
-      const storeRes = await sellerService.getSellerStore(savedSeller?.id, {
+      const storeRes = await sellerService.getSellerStore(savedSeller.id, {
         bypassCache: true,
         headers: { 'Cache-Control': 'no-cache, no-store' },
       });
@@ -55,7 +69,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
         setCurrentSeller(null);
       }
     }
-  }, []);
+  }, [user, currentSeller]);
 
   const updateCurrentSeller = useCallback((vendor: Vendor) => {
     setCurrentSeller(vendor);
@@ -63,7 +77,34 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshSellerSession();
+    if (user) {
+      if (isUserVendor(user)) {
+        if (user.vendor) {
+          const userVendor = user.vendor as Vendor;
+          if (!currentSeller || currentSeller.id !== userVendor.id) {
+            setCurrentSeller(userVendor);
+            safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, userVendor);
+          }
+        }
+      } else {
+        // Pure customer or non-vendor account logged in: strictly purge stale seller sessions
+        setCurrentSeller(null);
+        httpClient.clearSellerToken();
+        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+      }
+    } else {
+      // No user logged in: ensure no unauthenticated seller session lingers without seller token
+      if (!httpClient.getSellerToken() && currentSeller) {
+        setCurrentSeller(null);
+        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user ? isUserVendor(user) : Boolean(httpClient.getSellerToken())) {
+      refreshSellerSession();
+    }
   }, [user?.role, refreshSellerSession]);
 
   const loginAsSeller = useCallback(
@@ -76,7 +117,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
         setCurrentSeller(res.vendor);
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, res.vendor);
         setSellerLoginModalOpen(false);
-        setSellerDashboardModalOpen(true);
+        setSellerDashboardModalOpen(false);
         showToast(t('toast.welcomeSeller', { name: res.vendor.name }), 'success');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Seller login failed';

@@ -197,8 +197,8 @@ export default function ProductImageUploadGrid({
       {/* Header Row: Title & Dynamic Counter Badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-bold text-slate-200 dark:text-slate-200">
-            Product Images <span className="text-xs font-normal text-slate-400">(Up to {maxImages})</span>
+          <label className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            Product Images <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Up to {maxImages})</span>
           </label>
           <span className="text-rose-500 font-bold">*</span>
         </div>
@@ -272,8 +272,8 @@ export default function ProductImageUploadGrid({
         onDrop={handleDrop}
         className={`grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-3.5 p-3 rounded-2xl border transition-colors ${
           isDragging
-            ? 'border-emerald-500 bg-emerald-950/30 ring-2 ring-emerald-500/30'
-            : 'border-slate-800 bg-slate-950/60'
+            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/30'
+            : 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60'
         }`}
       >
         {/* Render 6 Slots total */}

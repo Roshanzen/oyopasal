@@ -70,26 +70,26 @@ export default function ProductGalleryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs select-none">
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs select-none">
+      <div className="w-full max-w-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3.5">
           <div>
-            <h3 className="text-lg font-bold text-white">Manage Product Images</h3>
-            <p className="text-xs text-slate-400 mt-0.5 truncate max-w-sm">{product.name}</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Product Images</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-sm">{product.name}</p>
           </div>
           <button
             type="button"
             disabled={saving}
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* 6-Slot Multi-Image Gallery Grid */}
-        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
           <ProductImageUploadGrid
             images={images}
             onChange={setImages}
@@ -99,12 +99,12 @@ export default function ProductGalleryModal({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
           <button
             type="button"
             disabled={saving}
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
+            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer transition-colors"
           >
             Cancel
           </button>
@@ -113,7 +113,7 @@ export default function ProductGalleryModal({
             type="button"
             disabled={saving || images.length === 0}
             onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-md shadow-emerald-950/30"
+            className="px-5 py-2.5 rounded-xl bg-[#059669] hover:bg-[#047857] disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
           >
             {saving ? (
               <>

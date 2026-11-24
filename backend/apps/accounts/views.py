@@ -7,7 +7,8 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,6 +20,8 @@ from drf_spectacular.utils import extend_schema
 from apps.accounts.serializers import (
     CustomTokenObtainPairSerializer,
     UserRegistrationSerializer,
+    CustomerRegistrationSerializer,
+    VendorRegistrationSerializer,
     UserDetailSerializer,
     ChangePasswordSerializer,
     LogoutSerializer,
@@ -79,6 +82,108 @@ class RegisterView(generics.CreateAPIView):
                 'refresh': str(refresh)
             },
             'user': user_data,
+            'data': user_data
+        }, status=status.HTTP_201_CREATED)
+
+
+class CustomerRegisterView(generics.CreateAPIView):
+    """
+    Dedicated Customer Registration Endpoint (POST /api/auth/register-customer/).
+    Accepts ONLY full_name, email_or_phone, and password.
+    Creates a user with role='CUSTOMER' and is_vendor=False.
+    Does NOT auto-create a Store or VendorProfile.
+    """
+    queryset = User.objects.all()
+    serializer_class = CustomerRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Customer Registration",
+        description="Self-registration for Customers only. Never grants vendor/store access.",
+        responses={201: UserDetailSerializer}
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        user_data = UserDetailSerializer(user).data
+        user_data['is_vendor'] = False
+        user_data['has_vendor_access'] = False
+
+        token_serializer = CustomTokenObtainPairSerializer()
+        refresh = token_serializer.get_token(user)
+        access_token = str(refresh.access_token)
+
+        return Response({
+            'success': True,
+            'message': 'Customer account created successfully.',
+            'token': access_token,
+            'access': access_token,
+            'refresh': str(refresh),
+            'tokens': {
+                'access': access_token,
+                'refresh': str(refresh)
+            },
+            'user': user_data,
+            'data': user_data
+        }, status=status.HTTP_201_CREATED)
+
+
+class VendorRegisterView(generics.CreateAPIView):
+    """
+    Vendor / Partner Store Registration Endpoint (POST /api/auth/register-vendor/).
+    Triggered exclusively from 'Become a Seller / Apply to Become a Partner Store'.
+    Requires merchant-specific fields: owner_name, store_name, store_category,
+    store_address, email_or_phone, password, and optional pan_vat_number.
+    Creates user with role='VENDOR' and linked Store with is_verified=False (status='PENDING').
+    """
+    queryset = User.objects.all()
+    serializer_class = VendorRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Vendor / Merchant Store Registration",
+        description="Merchant partner application to register store and vendor profile awaiting admin verification.",
+        responses={201: UserDetailSerializer}
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        user_data = UserDetailSerializer(user).data
+        user_data['is_vendor'] = True
+        user_data['has_vendor_access'] = True
+
+        token_serializer = CustomTokenObtainPairSerializer()
+        refresh = token_serializer.get_token(user)
+        access_token = str(refresh.access_token)
+
+        vp = getattr(user, 'vendor_profile', None)
+        v_dict = None
+        if vp:
+            v_dict = {
+                'id': str(vp.id),
+                'name': vp.business_name,
+                'business_name': vp.business_name,
+                'status': vp.status,
+                'approval_status': str(vp.status).lower(),
+                'is_approved': False,
+                'is_verified': False,
+                'slug': vp.slug,
+            }
+
+        return Response({
+            'success': True,
+            'message': 'Seller application submitted successfully! Your store is pending admin approval.',
+            'token': access_token,
+            'access': access_token,
+            'refresh': str(refresh),
+            'tokens': {
+                'access': access_token,
+                'refresh': str(refresh)
+            },
+            'user': user_data,
+            'vendor': v_dict,
             'data': user_data
         }, status=status.HTTP_201_CREATED)
 
@@ -313,39 +418,109 @@ class FirebaseLoginView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class SellerLoginView(CustomTokenObtainPairView):
+class VendorLoginView(APIView):
     """
-    Vendor / Merchant Portal login.
+    Merchant Login Endpoint (POST /api/auth/login-vendor/ on /seller).
+    Strictly verifies that the authenticated user has role='VENDOR' (or VENDOR_OWNER/STAFF/ADMIN)
+    AND an associated Store / VendorProfile.
+    If a CUSTOMER-only account attempts to log into /seller, returns HTTP 403 Forbidden with:
+    "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store."
     """
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Vendor / Merchant Portal Login",
+        description="Authenticate merchant credentials to access the Vendor Portal. Requires a valid vendor profile.",
+        responses={200: dict}
+    )
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        res_data = dict(serializer.validated_data)
+        serializer = CustomTokenObtainPairSerializer(data=request.data, context={'request': request})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed as e:
+            detail_msg = e.detail if hasattr(e, 'detail') else 'Invalid credentials provided.'
+            if isinstance(detail_msg, dict) and 'detail' in detail_msg:
+                detail_msg = detail_msg['detail']
+            return Response({'detail': detail_msg}, status=status.HTTP_401_UNAUTHORIZED)
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
         user = serializer.user
-
+        is_admin = getattr(user, 'role', '') in [UserRole.SUPER_ADMIN, UserRole.ADMIN, 'SUPER_ADMIN', 'ADMIN'] or user.is_superuser or user.is_staff
         vp = getattr(user, 'vendor_profile', None)
-        if not vp:
-            from apps.vendors.models import VendorProfile, VendorStatus
-            from django.utils.text import slugify
-            b_name = f"{user.first_name or 'My'} Local Store"
-            b_slug = slugify(b_name) or f"store-{str(user.id)[:8]}"
-            vp, _ = VendorProfile.objects.get_or_create(
-                user=user,
-                defaults={'business_name': b_name, 'slug': b_slug, 'status': VendorStatus.APPROVED}
-            )
+        has_staff_role = hasattr(user, 'vendor_staff_roles') and user.vendor_staff_roles.exists()
 
-        v_dict = {
-            'id': str(vp.id),
-            'name': vp.business_name,
-            'business_name': vp.business_name,
-            'status': vp.status,
-            'slug': vp.slug,
-        }
-        res_data['vendor'] = v_dict
-        if 'user' in res_data and isinstance(res_data['user'], dict):
-            res_data['user']['vendor'] = v_dict
+        # Reject pure Customer accounts without vendor profile or staff roles
+        if (getattr(user, 'role', '') == UserRole.CUSTOMER and not vp) or (not vp and not has_staff_role and not is_admin):
+            return Response({
+                'success': False,
+                'detail': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store.",
+                'error': {
+                    'code': 'CUSTOMER_ACCOUNT_ONLY',
+                    'message': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store."
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Check vendor profile status for non-admin accounts
+        if not is_admin and vp:
+            has_verified_store = vp.stores.filter(is_verified=True).exists()
+            is_approved = (vp.status == 'APPROVED') or has_verified_store
+            if not is_approved:
+                if vp.status in ['PENDING', 'UNDER_REVIEW']:
+                    msg = "Your seller application is currently pending administrative review. You will receive an invitation once approved."
+                    err_code = "APPLICATION_PENDING_REVIEW"
+                elif vp.status == 'REJECTED':
+                    msg = "Your seller application has been rejected. Please contact OyoPasal Merchant Support."
+                    err_code = "APPLICATION_REJECTED"
+                elif vp.status == 'SUSPENDED':
+                    msg = "Your vendor account has been suspended by administration. Please contact OyoPasal Support."
+                    err_code = "ACCOUNT_SUSPENDED"
+                else:
+                    msg = "Your seller account is awaiting activation. Please click the invitation link sent to your email to set your password."
+                    err_code = "ACCOUNT_AWAITING_ACTIVATION"
+                return Response({
+                    'success': False,
+                    'detail': msg,
+                    'error': {
+                        'code': err_code,
+                        'message': msg
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # If admin without personal vendor_profile, allow specifying target or default to first
+        if is_admin and not vp:
+            vendor_id = request.data.get('vendor_id')
+            if vendor_id:
+                from apps.common.utils import is_valid_uuid
+                vp = VendorProfile.objects.filter(id=vendor_id).first() if is_valid_uuid(vendor_id) else VendorProfile.objects.filter(slug=vendor_id).first()
+            if not vp:
+                vp = VendorProfile.objects.first()
+
+        res_data = dict(serializer.validated_data)
+        if vp:
+            has_verified_store = vp.stores.filter(is_verified=True).exists()
+            is_approved = (vp.status == 'APPROVED') or has_verified_store
+            effective_status = 'APPROVED' if is_approved else vp.status
+            v_dict = {
+                'id': str(vp.id),
+                'name': vp.business_name,
+                'business_name': vp.business_name,
+                'status': effective_status,
+                'approval_status': 'approved' if is_approved else str(effective_status).lower(),
+                'is_approved': is_approved,
+                'is_verified': is_approved,
+                'slug': vp.slug,
+            }
+            res_data['vendor'] = v_dict
+            if 'user' in res_data and isinstance(res_data['user'], dict):
+                res_data['user']['vendor'] = v_dict
+                res_data['user']['has_vendor_access'] = True
+                res_data['user']['is_vendor'] = True
 
         return Response(res_data, status=status.HTTP_200_OK)
+
+
+SellerLoginView = VendorLoginView
 
 
 class PasswordResetRequestView(APIView):

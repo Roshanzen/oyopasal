@@ -67,6 +67,7 @@ LOCAL_APPS = [
     'apps.reviews.apps.ReviewsConfig',
     'apps.notifications.apps.NotificationsConfig',
     'apps.support.apps.SupportConfig',
+    'apps.messaging.apps.MessagingConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
