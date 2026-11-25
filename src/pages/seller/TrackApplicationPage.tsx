@@ -159,7 +159,7 @@ export default function TrackApplicationPage() {
                 <input
                   type="text"
                   required
-                  value={applicationNumber}
+                  value={applicationNumber ?? ''}
                   onChange={(e) => setApplicationNumber(e.target.value)}
                   placeholder="e.g. APP-2026-AB12CD"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500 font-mono"
@@ -173,7 +173,7 @@ export default function TrackApplicationPage() {
                 <input
                   type="email"
                   required
-                  value={email}
+                  value={email ?? ''}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. ramesh@gmail.com"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"

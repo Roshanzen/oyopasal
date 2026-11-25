@@ -31,7 +31,7 @@ interface SellerSettingsTabProps {
 export default function SellerSettingsTab({
   effectiveVendor,
   dashboardStats,
-  settlements,
+  settlements = [],
   storeOnline,
   setStoreOnline,
   openTime,
@@ -53,6 +53,7 @@ export default function SellerSettingsTab({
   onCoverUpload,
   onSaveStore,
 }: SellerSettingsTabProps) {
+  const safeSettlements = Array.isArray(settlements) ? settlements : [];
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white dark:bg-[#0F172A] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -82,7 +83,7 @@ export default function SellerSettingsTab({
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">Open Time</label>
               <input
                 type="text"
-                value={openTime}
+                value={openTime ?? ''}
                 onChange={(e) => setOpenTime(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm"
               />
@@ -91,7 +92,7 @@ export default function SellerSettingsTab({
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">Close Time</label>
               <input
                 type="text"
-                value={closeTime}
+                value={closeTime ?? ''}
                 onChange={(e) => setCloseTime(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm"
               />
@@ -100,7 +101,7 @@ export default function SellerSettingsTab({
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">Dispatch ETA</label>
               <input
                 type="text"
-                value={storeEta}
+                value={storeEta ?? ''}
                 onChange={(e) => setStoreEta(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm"
               />
@@ -140,7 +141,7 @@ export default function SellerSettingsTab({
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">Store Description</label>
             <textarea
               rows={3}
-              value={storeDesc}
+              value={storeDesc ?? ''}
               onChange={(e) => setStoreDesc(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm"
             />
@@ -168,7 +169,7 @@ export default function SellerSettingsTab({
           </span>
         </div>
 
-        {settlements.length === 0 ? (
+        {safeSettlements.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">
             {language === 'ne'
               ? 'अझै कुनै सेटलमेन्ट भुक्तानी जारी भएको छैन।'
@@ -176,7 +177,7 @@ export default function SellerSettingsTab({
           </p>
         ) : (
           <div className="space-y-2.5">
-            {settlements.map((s) => (
+            {safeSettlements.map((s) => (
               <div
                 key={s.id}
                 className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm"

@@ -58,9 +58,9 @@ class CustomerCheckoutView(APIView):
                 'title': addr.title or 'Delivery Address',
                 'recipient_name': addr.recipient_name or getattr(user, 'first_name', '') or 'Customer',
                 'recipient_phone': addr.recipient_phone or getattr(user, 'phone_number', '') or '+977 9800000000',
-                'province': addr.province,
-                'district': addr.district or 'Kathmandu',
-                'municipality': addr.municipality or 'Kathmandu',
+                'province': addr.province or '',
+                'district': addr.district or '',
+                'municipality': addr.municipality or '',
                 'ward_number': addr.ward_number or 1,
                 'tole_street': addr.tole_street or '',
                 'landmark': addr.landmark or '',
@@ -115,7 +115,8 @@ class CustomerCheckoutView(APIView):
                 user=user,
                 shipping_address_data=shipping_data,
                 payment_method=serializer.validated_data.get('payment_method', 'COD'),
-                customer_notes=serializer.validated_data.get('customer_notes', '')
+                customer_notes=serializer.validated_data.get('customer_notes', ''),
+                delivery_option=serializer.validated_data.get('delivery_option', 'EXPRESS_12_MINS')
             )
             if idempotency_key:
                 from django.core.cache import cache

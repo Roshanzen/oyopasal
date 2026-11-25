@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { useCartContext } from '../context/CartContext';
@@ -7,12 +7,13 @@ import { useLocationContext } from '../context/LocationContext';
 import { useToastContext } from '../context/ToastContext';
 import { cartService, orderService, paymentService } from '../services';
 import { ActiveCouponItem, PaymentMethod, PendingPaymentChallenge } from '../types';
+import { calculateDistanceInKm } from '../utils';
 
 export function useCheckout() {
   const navigate = useNavigate();
   const { cart, applyCoupon, removeCoupon, refreshCart, setCartDrawerOpen } = useCartContext();
   const { user, setLoginModalOpen } = useAuthContext();
-  const { currentAddress, setLocationModalOpen } = useLocationContext();
+  const { currentAddress, setLocationModalOpen, vendors } = useLocationContext();
   const { showToast } = useToastContext();
   const { language } = useLanguageContext();
 
@@ -26,6 +27,52 @@ export function useCheckout() {
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [paymentChallenge, setPaymentChallenge] = useState<PendingPaymentChallenge | null>(null);
+
+  // Hyperlocal delivery radius verification
+  const { maxDistanceKm, maxAllowedExpressKm, isOutsideExpressZone } = useMemo(() => {
+    if (!currentAddress || typeof currentAddress.lat !== 'number' || typeof currentAddress.lng !== 'number') {
+      return { maxDistanceKm: 0, maxAllowedExpressKm: 15.0, isOutsideExpressZone: false };
+    }
+
+    const cartVendorIds = new Set<string>();
+    if (cart?.vendor_groups) {
+      cart.vendor_groups.forEach((g) => {
+        if (g.vendor?.id) cartVendorIds.add(String(g.vendor.id));
+      });
+    }
+    if (cart?.items) {
+      cart.items.forEach((it) => {
+        if (it.product?.vendor?.id) cartVendorIds.add(String(it.product.vendor.id));
+      });
+    }
+
+    let maxDist = 0;
+    let minAllowedExpress = 15.0;
+
+    cartVendorIds.forEach((vId) => {
+      const v = (vendors || []).find((vend) => String(vend.id) === vId || vend.slug === vId);
+      if (v && typeof v.lat === 'number' && typeof v.lng === 'number') {
+        const dist = calculateDistanceInKm(v.lat, v.lng, currentAddress.lat!, currentAddress.lng!);
+        if (dist > maxDist) maxDist = dist;
+        const vMax = typeof v.max_local_delivery_km === 'number' ? v.max_local_delivery_km : 15.0;
+        if (vMax < minAllowedExpress) minAllowedExpress = vMax;
+      }
+    });
+
+    const isOutside = maxDist > minAllowedExpress;
+    return {
+      maxDistanceKm: Math.round(maxDist * 10) / 10,
+      maxAllowedExpressKm: minAllowedExpress,
+      isOutsideExpressZone: isOutside,
+    };
+  }, [currentAddress, cart, vendors]);
+
+  // If outside express zone, ensure standard delivery is selected
+  useEffect(() => {
+    if (isOutsideExpressZone && deliveryOption === 'EXPRESS_12_MINS') {
+      setDeliveryOption('SCHEDULED_TODAY');
+    }
+  }, [isOutsideExpressZone, deliveryOption]);
 
   useEffect(() => {
     async function checkCart() {
@@ -185,6 +232,9 @@ export function useCheckout() {
     currentAddress,
     deliveryOption,
     setDeliveryOption,
+    maxDistanceKm,
+    maxAllowedExpressKm,
+    isOutsideExpressZone,
     paymentMethod,
     setPaymentMethod,
     orderNotes,

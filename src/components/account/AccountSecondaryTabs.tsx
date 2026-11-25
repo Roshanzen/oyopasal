@@ -154,7 +154,7 @@ export function SupportTab({
         <form onSubmit={onCreateTicket} className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select
-              value={ticketCategory}
+              value={ticketCategory ?? 'order_issue'}
               onChange={(e) => setTicketCategory(e.target.value)}
               className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white"
             >
@@ -166,7 +166,7 @@ export function SupportTab({
             <input
               type="text"
               required
-              value={ticketSubject}
+              value={ticketSubject ?? ''}
               onChange={(e) => setTicketSubject(e.target.value)}
               placeholder="Subject (e.g. Missing item in delivery)"
               className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white"
@@ -175,7 +175,7 @@ export function SupportTab({
           <textarea
             rows={3}
             required
-            value={ticketMessage}
+            value={ticketMessage ?? ''}
             onChange={(e) => setTicketMessage(e.target.value)}
             placeholder="Describe how our Kathmandu support team can help..."
             className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white"
@@ -269,7 +269,7 @@ export function RefundRequestModal({
         <textarea
           rows={3}
           required
-          value={reason}
+          value={reason ?? ''}
           onChange={(e) => onChangeReason(e.target.value)}
           placeholder="Explain why you are requesting a refund..."
           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white"

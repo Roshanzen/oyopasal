@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context';
 import { authService, vendorService, sellerOnboardingService } from '../../services';
@@ -24,7 +24,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function BecomeSellerModal() {
-  const { becomeSellerModalOpen, setBecomeSellerModalOpen, showToast, t } = useApp();
+  const navigate = useNavigate();
+  const { becomeSellerModalOpen, setBecomeSellerModalOpen, showToast, t, user } = useApp();
 
   const [storeName, setStoreName] = useState('');
   const [category, setCategory] = useState('Grocery & Staples');
@@ -33,6 +34,21 @@ export default function BecomeSellerModal() {
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+
+  // Prefill customer credentials if logged in
+  useEffect(() => {
+    if (user && becomeSellerModalOpen) {
+      if (!contactPerson) {
+        setContactPerson(user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '');
+      }
+      if (!email && user.email) {
+        setEmail(user.email ?? '');
+      }
+      if (!phone && (user.phone || (user as any).phone_number)) {
+        setPhone(user.phone || (user as any).phone_number || '');
+      }
+    }
+  }, [user, becomeSellerModalOpen]);
   const [dailyOrders, setDailyOrders] = useState('20-50');
   const [password, setPassword] = useState('');
   const [panVatNumber, setPanVatNumber] = useState('');
@@ -182,7 +198,7 @@ export default function BecomeSellerModal() {
                     <input
                       type="text"
                       required
-                      value={storeName}
+                      value={storeName ?? ''}
                       onChange={(e) => setStoreName(e.target.value)}
                       placeholder="e.g. Kathmandu Fresh Bakes"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -195,7 +211,7 @@ export default function BecomeSellerModal() {
                     {t('become.storeCategory')}
                   </label>
                   <select
-                    value={category}
+                    value={category ?? 'Grocery & Staples'}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
@@ -216,7 +232,7 @@ export default function BecomeSellerModal() {
                     {t('become.city')}
                   </label>
                   <select
-                    value={city}
+                    value={city ?? 'Kathmandu'}
                     onChange={(e) => setCity(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
@@ -236,7 +252,7 @@ export default function BecomeSellerModal() {
                     <input
                       type="text"
                       required
-                      value={area}
+                      value={area ?? ''}
                       onChange={(e) => setArea(e.target.value)}
                       placeholder="e.g. New Baneshwor, Ward 10"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -255,7 +271,7 @@ export default function BecomeSellerModal() {
                     <input
                       type="text"
                       required
-                      value={contactPerson}
+                      value={contactPerson ?? ''}
                       onChange={(e) => setContactPerson(e.target.value)}
                       placeholder="e.g. Ramesh Shrestha"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -272,7 +288,7 @@ export default function BecomeSellerModal() {
                     <input
                       type="tel"
                       required
-                      value={phone}
+                      value={phone ?? ''}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="e.g. +977 9841234567"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -290,7 +306,7 @@ export default function BecomeSellerModal() {
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="email"
-                      value={email}
+                      value={email ?? ''}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="contact@store.com"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -303,7 +319,7 @@ export default function BecomeSellerModal() {
                     {t('become.dailyOrders')}
                   </label>
                   <select
-                    value={dailyOrders}
+                    value={dailyOrders ?? '10-20'}
                     onChange={(e) => setDailyOrders(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none cursor-pointer"
                   >
@@ -325,7 +341,7 @@ export default function BecomeSellerModal() {
                     <input
                       type="password"
                       required
-                      value={password}
+                      value={password ?? ''}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Min. 6 characters"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -341,7 +357,7 @@ export default function BecomeSellerModal() {
                     <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="text"
-                      value={panVatNumber}
+                      value={panVatNumber ?? ''}
                       onChange={(e) => setPanVatNumber(e.target.value)}
                       placeholder="e.g. 601234567"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -410,12 +426,26 @@ export default function BecomeSellerModal() {
               </ul>
             </div>
 
-            <button
-              onClick={handleClose}
-              className="px-6 py-3 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-colors cursor-pointer"
-            >
-              {t('become.backMarketplace')}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClose();
+                  navigate(`/seller/track?app=${encodeURIComponent(submittedData.vendor?.id || '')}&email=${encodeURIComponent(email)}`);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Track Application Status</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm transition-colors cursor-pointer"
+              >
+                {t('become.backMarketplace')}
+              </button>
+            </div>
           </div>
         )}
           </motion.div>

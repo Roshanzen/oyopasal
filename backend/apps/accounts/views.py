@@ -450,42 +450,109 @@ class VendorLoginView(APIView):
         vp = getattr(user, 'vendor_profile', None)
         has_staff_role = hasattr(user, 'vendor_staff_roles') and user.vendor_staff_roles.exists()
 
-        # Reject pure Customer accounts without vendor profile or staff roles
-        if (getattr(user, 'role', '') == UserRole.CUSTOMER and not vp) or (not vp and not has_staff_role and not is_admin):
-            return Response({
-                'success': False,
-                'detail': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store.",
-                'error': {
-                    'code': 'CUSTOMER_ACCOUNT_ONLY',
-                    'message': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store."
-                }
-            }, status=status.HTTP_403_FORBIDDEN)
+        if not is_admin:
+            from apps.vendors.models import SellerApplication, SellerApplicationStatus, VendorInvitation, VendorStatus
+            from django.db.models import Q
 
-        # Check vendor profile status for non-admin accounts
-        if not is_admin and vp:
-            has_verified_store = vp.stores.filter(is_verified=True).exists()
-            is_approved = (vp.status == 'APPROVED') or has_verified_store
-            if not is_approved:
-                if vp.status in ['PENDING', 'UNDER_REVIEW']:
-                    msg = "Your seller application is currently pending administrative review. You will receive an invitation once approved."
-                    err_code = "APPLICATION_PENDING_REVIEW"
-                elif vp.status == 'REJECTED':
-                    msg = "Your seller application has been rejected. Please contact OyoPasal Merchant Support."
-                    err_code = "APPLICATION_REJECTED"
-                elif vp.status == 'SUSPENDED':
-                    msg = "Your vendor account has been suspended by administration. Please contact OyoPasal Support."
-                    err_code = "ACCOUNT_SUSPENDED"
-                else:
-                    msg = "Your seller account is awaiting activation. Please click the invitation link sent to your email to set your password."
-                    err_code = "ACCOUNT_AWAITING_ACTIVATION"
+            # Check if user has an application or active invitation
+            seller_app = SellerApplication.objects.filter(
+                Q(email__iexact=user.email) | Q(applicant_user=user)
+            ).order_by('-created_at').first()
+
+            active_invitation = VendorInvitation.objects.filter(
+                email__iexact=user.email,
+                is_used=False
+            ).order_by('-created_at').first()
+            is_invitation_active = bool(active_invitation and active_invitation.is_valid())
+
+            # Case 1: Account has an invitation awaiting activation
+            if is_invitation_active or (seller_app and seller_app.status == SellerApplicationStatus.INVITATION_SENT):
+                b_name = seller_app.business_name if seller_app else (vp.business_name if vp else 'your store')
+                app_no = seller_app.application_number if seller_app else ''
+                msg = f"Your seller application for '{b_name}' has been approved! Please activate your merchant account via the secure invitation link sent to {user.email}."
                 return Response({
                     'success': False,
                     'detail': msg,
                     'error': {
-                        'code': err_code,
-                        'message': msg
+                        'code': 'ACCOUNT_AWAITING_ACTIVATION',
+                        'message': msg,
+                        'application_number': app_no,
+                        'business_name': b_name,
+                        'email': user.email,
+                        'action': 'ACTIVATE_ACCOUNT',
                     }
                 }, status=status.HTTP_403_FORBIDDEN)
+
+            # Case 2: User has a pending or under-review seller application
+            if seller_app and seller_app.status in [SellerApplicationStatus.PENDING, SellerApplicationStatus.UNDER_REVIEW]:
+                msg = f"Your seller application ({seller_app.application_number}) for '{seller_app.business_name}' is currently pending administrative review. You will receive an invitation once approved."
+                return Response({
+                    'success': False,
+                    'detail': msg,
+                    'error': {
+                        'code': 'APPLICATION_PENDING_REVIEW',
+                        'message': msg,
+                        'application_number': seller_app.application_number,
+                        'business_name': seller_app.business_name,
+                        'email': user.email,
+                        'action': 'TRACK_APPLICATION',
+                        'track_url': f"/seller/track?app={seller_app.application_number}&email={user.email}",
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Case 3: Application was rejected
+            if seller_app and seller_app.status == SellerApplicationStatus.REJECTED and not vp:
+                msg = f"Your seller application ({seller_app.application_number}) was not approved. Reason: {seller_app.rejection_reason or 'Details provided did not meet verification criteria.'}"
+                return Response({
+                    'success': False,
+                    'detail': msg,
+                    'error': {
+                        'code': 'APPLICATION_REJECTED',
+                        'message': msg,
+                        'application_number': seller_app.application_number,
+                        'action': 'CONTACT_SUPPORT',
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Case 4: Pure Customer account without vendor profile or staff roles and no seller application
+            if (getattr(user, 'role', '') == UserRole.CUSTOMER and not vp) or (not vp and not has_staff_role):
+                return Response({
+                    'success': False,
+                    'detail': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store.",
+                    'error': {
+                        'code': 'CUSTOMER_ACCOUNT_ONLY',
+                        'message': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store.",
+                        'action': 'APPLY_SELLER',
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Case 5: Has vendor profile, check verification & status
+            if vp:
+                has_verified_store = vp.stores.filter(is_verified=True).exists()
+                is_approved = (vp.status in [VendorStatus.APPROVED, 'APPROVED']) or has_verified_store
+                if not is_approved:
+                    if vp.status in [VendorStatus.PENDING, 'PENDING', 'UNDER_REVIEW']:
+                        msg = f"Your seller application for '{vp.business_name}' is currently pending administrative review. You will receive an invitation once approved."
+                        err_code = "APPLICATION_PENDING_REVIEW"
+                    elif vp.status in [VendorStatus.REJECTED, 'REJECTED']:
+                        msg = "Your seller application has been rejected. Please contact OyoPasal Merchant Support."
+                        err_code = "APPLICATION_REJECTED"
+                    elif vp.status in [VendorStatus.SUSPENDED, 'SUSPENDED']:
+                        msg = "Your vendor account has been suspended by administration. Please contact OyoPasal Support."
+                        err_code = "ACCOUNT_SUSPENDED"
+                    else:
+                        msg = "Your seller account is awaiting activation. Please click the invitation link sent to your email to set your password."
+                        err_code = "ACCOUNT_AWAITING_ACTIVATION"
+                    return Response({
+                        'success': False,
+                        'detail': msg,
+                        'error': {
+                            'code': err_code,
+                            'message': msg,
+                            'business_name': vp.business_name,
+                            'action': 'ACTIVATE_ACCOUNT' if err_code == 'ACCOUNT_AWAITING_ACTIVATION' else 'TRACK_APPLICATION',
+                        }
+                    }, status=status.HTTP_403_FORBIDDEN)
 
         # If admin without personal vendor_profile, allow specifying target or default to first
         if is_admin and not vp:

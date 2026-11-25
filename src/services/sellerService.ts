@@ -7,6 +7,7 @@ import {
   SellerFulfillmentItem,
   SellerReviewItem,
   SellerSettlementItem,
+  StoreProfileData,
   Vendor,
 } from '../types';
 import { httpClient, RequestOptions } from './httpClient';
@@ -128,13 +129,13 @@ export const sellerService = {
 
   updateSellerFulfillmentStatus(
     fulfillmentId: string | number,
-    status: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED',
+    status: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED' | string,
     vendorId?: string
   ): Promise<{ success: boolean; status: string }> {
     const qs = vendorId ? `?vendor_id=${encodeURIComponent(vendorId)}` : '';
     return httpClient.request(
       `/seller/orders/${fulfillmentId}/status/${qs}`,
-      { method: 'PATCH', body: JSON.stringify({ status }) },
+      { method: 'PATCH', body: JSON.stringify({ status, new_status: status }) },
       true
     );
   },
@@ -144,7 +145,7 @@ export const sellerService = {
     options?: RequestOptions
   ): Promise<DeliveryTrackingTelemetry> {
     return httpClient.request<DeliveryTrackingTelemetry>(
-      `/delivery/orders/${orderIdOrFulfillmentId}/tracking/`,
+      `/orders/${orderIdOrFulfillmentId}/tracking/`,
       options,
       true
     );
@@ -173,6 +174,25 @@ export const sellerService = {
     return httpClient.request(
       `/seller/store/${qs}`,
       { method: 'PUT', body: JSON.stringify(payload) },
+      true
+    );
+  },
+
+  getSellerStoreProfile(options?: RequestOptions): Promise<{ success: boolean; store: StoreProfileData }> {
+    return httpClient.request('/seller/store-profile/', options, true);
+  },
+
+  updateSellerStoreProfile(
+    formData: FormData,
+    options?: RequestOptions
+  ): Promise<{ success: boolean; message?: string; store: StoreProfileData }> {
+    return httpClient.request(
+      '/seller/store-profile/',
+      {
+        method: 'PATCH',
+        body: formData,
+        ...options,
+      },
       true
     );
   },

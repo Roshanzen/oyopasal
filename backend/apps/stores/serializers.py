@@ -14,7 +14,7 @@ class StoreDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'description', 'logo_url', 'banner_url', 'logo', 'banner',
             'contact_email', 'contact_phone', 'address', 'business_hours',
-            'latitude', 'longitude',
+            'latitude', 'longitude', 'max_local_delivery_km',
             'shipping_policy', 'return_policy', 'is_active', 'is_verified',
             'vendor_id', 'vendor_name', 'vendor_slug', 'kyc_status', 'created_at'
         ]
@@ -45,40 +45,87 @@ class StoreDetailSerializer(serializers.ModelSerializer):
             except Exception:
                 pass
 
+        request = self.context.get('request')
+
+        # Resolved media URLs
+        if instance.logo:
+            data['logo'] = request.build_absolute_uri(instance.logo.url) if request else instance.logo.url
+            data['logo_url'] = data['logo']
+        elif instance.logo_url:
+            data['logo'] = instance.logo_url
+            data['logo_url'] = instance.logo_url
+
+        if instance.cover_banner:
+            data['banner'] = request.build_absolute_uri(instance.cover_banner.url) if request else instance.cover_banner.url
+            data['banner_url'] = data['banner']
+            data['cover_banner'] = data['banner']
+        elif instance.banner_url:
+            data['banner'] = instance.banner_url
+            data['banner_url'] = instance.banner_url
+            data['cover_banner'] = instance.banner_url
+
         data['rating'] = avg_rating
         data['delivery_time_mins'] = '10-15 mins'
-        data['open_time'] = '06:00'
-        data['close_time'] = '21:00'
+        data['open_time'] = instance.opening_time.strftime('%I:%M %p') if instance.opening_time else '09:00 AM'
+        data['close_time'] = instance.closing_time.strftime('%I:%M %p') if instance.closing_time else '09:00 PM'
+        data['opening_time'] = data['open_time']
+        data['closing_time'] = data['close_time']
         data['is_open'] = instance.is_active
         data['fulfillment_modes'] = 'Store Pickup & Delivery'
 
-        # Gallery photos
-        gallery = []
-        if instance.banner_url:
-            gallery.append(instance.banner_url)
-        if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
-            gallery.append(vendor.banner_url)
-        if instance.logo_url and instance.logo_url not in gallery:
-            gallery.append(instance.logo_url)
-        if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
-            gallery.append(vendor.logo_url)
+        data['store_name'] = instance.store_name or instance.name
+        data['short_description'] = instance.short_description or (instance.description[:220] if instance.description else '')
+        data['area_ward'] = instance.area_ward or instance.address or ''
 
-        # Include sample product images for the gallery if fewer than 3
-        if vendor and len(gallery) < 4:
-            try:
-                from apps.catalogue.models import ProductImage
-                prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
-                for p_url in prod_imgs:
-                    if p_url and p_url not in gallery:
-                        gallery.append(p_url)
-            except Exception:
-                pass
+        # Gallery photos: First pull from StoreGalleryImage
+        gallery = []
+        gallery_objects = []
+        store_gallery_images = instance.gallery_images.all().order_by('sort_order', 'created_at')
+        for gi in store_gallery_images:
+            url = None
+            if gi.image:
+                url = request.build_absolute_uri(gi.image.url) if request else gi.image.url
+            elif gi.image_url:
+                url = gi.image_url
+            if url:
+                gallery_objects.append({
+                    'id': str(gi.id),
+                    'url': url,
+                    'caption': gi.caption or '',
+                    'sort_order': gi.sort_order,
+                })
+                if url not in gallery:
+                    gallery.append(url)
+
+        data['gallery_images'] = gallery_objects
+
+        # Fallback to general photos if no gallery images uploaded yet
+        if not gallery:
+            if data.get('banner'):
+                gallery.append(data['banner'])
+            if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
+                gallery.append(vendor.banner_url)
+            if data.get('logo') and data['logo'] not in gallery:
+                gallery.append(data['logo'])
+            if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
+                gallery.append(vendor.logo_url)
+
+            # Include sample product images for the gallery if fewer than 4
+            if vendor and len(gallery) < 4:
+                try:
+                    from apps.catalogue.models import ProductImage
+                    prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
+                    for p_url in prod_imgs:
+                        if p_url and p_url not in gallery:
+                            gallery.append(p_url)
+                except Exception:
+                    pass
 
         data['gallery'] = gallery
-        data['address'] = instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
+        data['address'] = instance.area_ward or instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
         data['phone'] = instance.contact_phone or (vendor.user.phone_number if vendor and hasattr(vendor, 'user') else '') or '+977-1-5544332'
         data['email'] = instance.contact_email or (vendor.user.email if vendor and hasattr(vendor, 'user') else '') or 'store@oyopasal.com'
-        data['description'] = instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
+        data['description'] = instance.short_description or instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
         return data
 
 
@@ -120,40 +167,87 @@ class StoreListSerializer(serializers.ModelSerializer):
             except Exception:
                 pass
 
+        request = self.context.get('request')
+
+        # Resolved media URLs
+        if instance.logo:
+            data['logo'] = request.build_absolute_uri(instance.logo.url) if request else instance.logo.url
+            data['logo_url'] = data['logo']
+        elif instance.logo_url:
+            data['logo'] = instance.logo_url
+            data['logo_url'] = instance.logo_url
+
+        if instance.cover_banner:
+            data['banner'] = request.build_absolute_uri(instance.cover_banner.url) if request else instance.cover_banner.url
+            data['banner_url'] = data['banner']
+            data['cover_banner'] = data['banner']
+        elif instance.banner_url:
+            data['banner'] = instance.banner_url
+            data['banner_url'] = instance.banner_url
+            data['cover_banner'] = instance.banner_url
+
         data['rating'] = avg_rating
         data['delivery_time_mins'] = '10-15 mins'
-        data['open_time'] = '06:00'
-        data['close_time'] = '21:00'
+        data['open_time'] = instance.opening_time.strftime('%I:%M %p') if instance.opening_time else '09:00 AM'
+        data['close_time'] = instance.closing_time.strftime('%I:%M %p') if instance.closing_time else '09:00 PM'
+        data['opening_time'] = data['open_time']
+        data['closing_time'] = data['close_time']
         data['is_open'] = instance.is_active
         data['fulfillment_modes'] = 'Store Pickup & Delivery'
 
-        # Gallery photos
-        gallery = []
-        if instance.banner_url:
-            gallery.append(instance.banner_url)
-        if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
-            gallery.append(vendor.banner_url)
-        if instance.logo_url and instance.logo_url not in gallery:
-            gallery.append(instance.logo_url)
-        if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
-            gallery.append(vendor.logo_url)
+        data['store_name'] = instance.store_name or instance.name
+        data['short_description'] = instance.short_description or (instance.description[:220] if instance.description else '')
+        data['area_ward'] = instance.area_ward or instance.address or ''
 
-        # Include sample product images for the gallery if fewer than 3
-        if vendor and len(gallery) < 4:
-            try:
-                from apps.catalogue.models import ProductImage
-                prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
-                for p_url in prod_imgs:
-                    if p_url and p_url not in gallery:
-                        gallery.append(p_url)
-            except Exception:
-                pass
+        # Gallery photos: First pull from StoreGalleryImage
+        gallery = []
+        gallery_objects = []
+        store_gallery_images = instance.gallery_images.all().order_by('sort_order', 'created_at')
+        for gi in store_gallery_images:
+            url = None
+            if gi.image:
+                url = request.build_absolute_uri(gi.image.url) if request else gi.image.url
+            elif gi.image_url:
+                url = gi.image_url
+            if url:
+                gallery_objects.append({
+                    'id': str(gi.id),
+                    'url': url,
+                    'caption': gi.caption or '',
+                    'sort_order': gi.sort_order,
+                })
+                if url not in gallery:
+                    gallery.append(url)
+
+        data['gallery_images'] = gallery_objects
+
+        # Fallback to general photos if no gallery images uploaded yet
+        if not gallery:
+            if data.get('banner'):
+                gallery.append(data['banner'])
+            if vendor and getattr(vendor, 'banner_url', None) and vendor.banner_url not in gallery:
+                gallery.append(vendor.banner_url)
+            if data.get('logo') and data['logo'] not in gallery:
+                gallery.append(data['logo'])
+            if vendor and getattr(vendor, 'logo_url', None) and vendor.logo_url not in gallery:
+                gallery.append(vendor.logo_url)
+
+            # Include sample product images for the gallery if fewer than 4
+            if vendor and len(gallery) < 4:
+                try:
+                    from apps.catalogue.models import ProductImage
+                    prod_imgs = ProductImage.objects.filter(product__vendor=vendor).values_list('image_url', flat=True)[:6]
+                    for p_url in prod_imgs:
+                        if p_url and p_url not in gallery:
+                            gallery.append(p_url)
+                except Exception:
+                    pass
 
         data['gallery'] = gallery
-        data['address'] = instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
+        data['address'] = instance.area_ward or instance.address or (vendor.stores.filter(address__gt='').values_list('address', flat=True).first() if vendor else '') or 'Chapakhel Road, Lalitpur, Nepal'
         data['phone'] = instance.contact_phone or (vendor.user.phone_number if vendor and hasattr(vendor, 'user') else '') or '+977-1-5544332'
         data['email'] = instance.contact_email or (vendor.user.email if vendor and hasattr(vendor, 'user') else '') or 'store@oyopasal.com'
-        data['description'] = instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
+        data['description'] = instance.short_description or instance.description or (vendor.store_description if vendor else '') or 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.'
         return data
 
 

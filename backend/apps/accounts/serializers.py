@@ -11,7 +11,6 @@ from drf_spectacular.utils import extend_schema_field
 from apps.accounts.models import UserRole
 from apps.customers.models import CustomerProfile
 from apps.vendors.models import VendorProfile, VendorStatus
-from apps.suppliers.models import SupplierProfile, SupplierStatus
 
 User = get_user_model()
 
@@ -60,9 +59,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if hasattr(user, 'vendor_profile'):
             token['vendor_id'] = str(user.vendor_profile.id)
             token['vendor_status'] = user.vendor_profile.status
-        elif hasattr(user, 'supplier_profile'):
-            token['supplier_id'] = str(user.supplier_profile.id)
-            token['supplier_status'] = user.supplier_profile.status
 
         return token
 
@@ -203,13 +199,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         else:
             data['user']['has_vendor_access'] = False
             data['user']['is_vendor'] = False
-
-        if hasattr(user, 'supplier_profile'):
-            data['user']['supplier'] = {
-                'id': str(user.supplier_profile.id),
-                'company_name': user.supplier_profile.company_name,
-                'status': user.supplier_profile.status,
-            }
 
         return data
 
@@ -521,14 +510,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             attrs['last_name'] = parts[1] if len(parts) > 1 else ''
 
         role = attrs.get('role', UserRole.CUSTOMER)
-        if role in [UserRole.SUPER_ADMIN, UserRole.SUPPORT_ADMIN, UserRole.FINANCE_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.VENDOR_STAFF, UserRole.SUPPLIER_STAFF]:
+        if role in [UserRole.SUPER_ADMIN, UserRole.SUPPORT_ADMIN, UserRole.FINANCE_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.VENDOR_STAFF]:
             raise serializers.ValidationError({'role': f'Registration as {role} is not permitted via public signup.'})
 
         if role == UserRole.VENDOR_OWNER and not attrs.get('business_name'):
             raise serializers.ValidationError({'business_name': 'Business name is required for vendor registration.'})
-
-        if role == UserRole.SUPPLIER_OWNER and not attrs.get('company_name'):
-            raise serializers.ValidationError({'company_name': 'Company name is required for supplier registration.'})
 
         return attrs
 
@@ -537,7 +523,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validated_data.pop('phone_or_email', None)
         validated_data.pop('full_name', None)
         business_name = validated_data.pop('business_name', None)
-        company_name = validated_data.pop('company_name', None)
+        validated_data.pop('company_name', None)
         pan_vat_number = validated_data.pop('pan_vat_number', '')
         password = validated_data.pop('password')
 
@@ -576,21 +562,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                     is_active=True,
                     is_verified=False
                 )
-            elif role == UserRole.SUPPLIER_OWNER:
-                base_slug = slugify(company_name) or str(user.id)[:8]
-                slug = base_slug
-                counter = 1
-                while SupplierProfile.objects.filter(slug=slug).exists():
-                    slug = f"{base_slug}-{counter}"
-                    counter += 1
-
-                SupplierProfile.objects.create(
-                    user=user,
-                    company_name=company_name,
-                    slug=slug,
-                    pan_vat_number=pan_vat_number,
-                    status=SupplierStatus.PENDING
-                )
 
         return user
 
@@ -623,15 +594,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 'loyalty_points': cp.loyalty_points,
                 'gender': cp.gender,
                 'is_phone_verified': cp.is_phone_verified
-            }
-        elif hasattr(obj, 'supplier_profile'):
-            sp = obj.supplier_profile
-            return {
-                'id': str(sp.id),
-                'company_name': sp.company_name,
-                'slug': sp.slug,
-                'status': sp.status,
-                'credit_terms_days': sp.credit_terms_days,
             }
         return None
 

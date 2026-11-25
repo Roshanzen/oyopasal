@@ -2,9 +2,10 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Coordinates, DeliveryZoneItem, Vendor } from '../../types';
+import { extractCoordinates } from '../../utils';
 
 interface LeafletLocationPickerProps {
-  coords: Coordinates;
+  coords: Coordinates | null | undefined;
   onChangeCoords: (coords: Coordinates) => void;
   vendors?: Vendor[];
   zones?: DeliveryZoneItem[];
@@ -129,8 +130,10 @@ export const LeafletLocationPicker: React.FC<LeafletLocationPickerProps> = ({
     if (!containerRef.current) return;
     if (mapRef.current) return;
 
+    const initial = extractCoordinates(coords) ?? { lat: 27.7172, lng: 85.3240 };
+
     const map = L.map(containerRef.current, {
-      center: [coords.lat, coords.lng],
+      center: [initial.lat, initial.lng],
       zoom,
       zoomControl: false,
       attributionControl: true,
@@ -150,7 +153,7 @@ export const LeafletLocationPicker: React.FC<LeafletLocationPickerProps> = ({
     }).addTo(map);
 
     // Delivery Destination Movable Marker
-    const marker = L.marker([coords.lat, coords.lng], {
+    const marker = L.marker([initial.lat, initial.lng], {
       icon: createDeliveryIcon(),
       draggable: interactive,
       autoPan: true,
@@ -198,34 +201,39 @@ export const LeafletLocationPicker: React.FC<LeafletLocationPickerProps> = ({
   // Sync coords updates (e.g. from GPS or search)
   useEffect(() => {
     if (!mapRef.current || !markerRef.current) return;
+    const valid = extractCoordinates(coords);
+    if (!valid) return;
+
     const currentPos = markerRef.current.getLatLng();
     const isSame =
-      Math.abs(currentPos.lat - coords.lat) < 0.00001 &&
-      Math.abs(currentPos.lng - coords.lng) < 0.00001;
+      Math.abs(currentPos.lat - valid.lat) < 0.00001 &&
+      Math.abs(currentPos.lng - valid.lng) < 0.00001;
 
     if (!isSame) {
-      markerRef.current.setLatLng([coords.lat, coords.lng]);
-      mapRef.current.panTo([coords.lat, coords.lng], {
+      markerRef.current.setLatLng([valid.lat, valid.lng]);
+      mapRef.current.panTo([valid.lat, valid.lng], {
         animate: true,
         duration: 0.6,
       });
     }
-  }, [coords.lat, coords.lng]);
+  }, [coords?.lat, coords?.lng]);
 
   // Update nearby vendor markers
   useEffect(() => {
     if (!vendorLayerRef.current) return;
     vendorLayerRef.current.clearLayers();
 
-    vendors
-      .filter((v) => typeof v.lat === 'number' && typeof v.lng === 'number')
+    const safeVendors = Array.isArray(vendors) ? vendors : [];
+    safeVendors
       .forEach((vendor) => {
-        const vMarker = L.marker([vendor.lat!, vendor.lng!], {
-          icon: createVendorIcon(vendor.name),
+        const vCoords = extractCoordinates(vendor);
+        if (!vCoords) return;
+        const vMarker = L.marker([vCoords.lat, vCoords.lng], {
+          icon: createVendorIcon(vendor.name || 'Store'),
           title: vendor.name,
         });
         vMarker.bindTooltip(
-          `<strong>${vendor.name}</strong><br/><span style="color:#059669">${vendor.delivery_time_mins || '12-15'} mins delivery</span>`,
+          `<strong>${vendor.name || 'Store'}</strong><br/><span style="color:#059669">${vendor.delivery_time_mins || '12-15'} mins delivery</span>`,
           { direction: 'top', offset: [0, -28] }
         );
         vendorLayerRef.current?.addLayer(vMarker);
@@ -237,9 +245,11 @@ export const LeafletLocationPicker: React.FC<LeafletLocationPickerProps> = ({
     if (!zoneLayerRef.current) return;
     zoneLayerRef.current.clearLayers();
 
-    zones.forEach((zone) => {
-      if (typeof zone.center_lat === 'number' && typeof zone.center_lng === 'number') {
-        const circle = L.circle([zone.center_lat, zone.center_lng], {
+    const safeZones = Array.isArray(zones) ? zones : [];
+    safeZones.forEach((zone) => {
+      const zCoords = extractCoordinates({ lat: zone.center_lat, lng: zone.center_lng });
+      if (zCoords) {
+        const circle = L.circle([zCoords.lat, zCoords.lng], {
           radius: (zone.radius_km || 3) * 1000,
           color: '#059669',
           weight: 1.5,

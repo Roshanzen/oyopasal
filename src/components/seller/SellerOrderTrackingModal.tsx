@@ -28,7 +28,7 @@ interface SellerOrderTrackingModalProps {
   onClose: () => void;
   onUpdateStatus?: (
     fulfillmentId: string | number,
-    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED'
+    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED'
   ) => Promise<void> | void;
   updatingOrderId?: string | number | null;
 }
@@ -66,6 +66,13 @@ export default function SellerOrderTrackingModal({
   const handleOpenFullPage = () => {
     onClose();
     navigate(`/orders/${targetId}`);
+  };
+
+  const handleTransition = async (nextStatus: any) => {
+    if (onUpdateStatus) {
+      await onUpdateStatus(fulfillment.fulfillment_id, nextStatus);
+      await track.fetchOrderAndTracking(false);
+    }
   };
 
   return (
@@ -168,7 +175,7 @@ export default function SellerOrderTrackingModal({
                         {fulfillment.customer_name} ({fulfillment.customer_area})
                       </>
                     ) : (
-                      <>Destination: <strong>{fulfillment.customer_area}</strong> ({fulfillment.delivery_address || 'Kathmandu'})</>
+                      <>Destination: <strong>{fulfillment.customer_area || 'Delivery Point'}</strong>{fulfillment.delivery_address && fulfillment.delivery_address !== fulfillment.customer_area ? ` (${fulfillment.delivery_address})` : ''}</>
                     )}
                   </p>
                 </div>
@@ -177,7 +184,7 @@ export default function SellerOrderTrackingModal({
                   {onUpdateStatus && ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'CONFIRMED'].includes(currentStatus) && (
                     <button
                       disabled={updatingOrderId === fulfillment.fulfillment_id}
-                      onClick={() => onUpdateStatus(fulfillment.fulfillment_id, 'PACKED_BY_VENDOR')}
+                      onClick={() => handleTransition('PACKED_BY_VENDOR')}
                       className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
                     >
                       <Package className="w-4 h-4" />
@@ -187,11 +194,31 @@ export default function SellerOrderTrackingModal({
                   {onUpdateStatus && ['PACKED_BY_VENDOR', 'PACKED'].includes(currentStatus) && (
                     <button
                       disabled={updatingOrderId === fulfillment.fulfillment_id}
-                      onClick={() => onUpdateStatus(fulfillment.fulfillment_id, 'READY_FOR_RIDER_PICKUP')}
+                      onClick={() => handleTransition('READY_FOR_RIDER_PICKUP')}
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
                     >
                       <Truck className="w-4 h-4" />
                       <span>{language === 'ne' ? 'राइडरलाई दिन तयार' : 'Ready for Rider Pickup'}</span>
+                    </button>
+                  )}
+                  {onUpdateStatus && ['READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'].includes(currentStatus) && (
+                    <button
+                      disabled={updatingOrderId === fulfillment.fulfillment_id}
+                      onClick={() => handleTransition('OUT_FOR_DELIVERY')}
+                      className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                    >
+                      <Truck className="w-4 h-4" />
+                      <span>{language === 'ne' ? 'डेलिभरीमा हिँड्यो' : 'Out for Delivery'}</span>
+                    </button>
+                  )}
+                  {onUpdateStatus && ['OUT_FOR_DELIVERY', 'SHIPPED'].includes(currentStatus) && (
+                    <button
+                      disabled={updatingOrderId === fulfillment.fulfillment_id}
+                      onClick={() => handleTransition('DELIVERED')}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{language === 'ne' ? 'डेलिभर भयो' : 'Mark Delivered'}</span>
                     </button>
                   )}
                   <div className="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-300">
@@ -290,15 +317,15 @@ export default function SellerOrderTrackingModal({
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      {language === 'ne' ? 'सामान सूची' : 'Items to Dispatch'} ({fulfillment.items_count ?? fulfillment.items?.length ?? 0})
+                      {language === 'ne' ? 'सामान सूची' : 'Items to Dispatch'} ({fulfillment.items_count ?? (fulfillment.items || []).length ?? 0})
                     </span>
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       Net Payout: {formatPrice(fulfillment.net_payout)}
                     </span>
                   </div>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {fulfillment.items.map((it) => (
-                      <div key={it.id} className="flex items-center justify-between text-xs">
+                    {(fulfillment.items || []).map((it, idx) => (
+                      <div key={it.id || idx} className="flex items-center justify-between text-xs">
                         <span className="text-slate-800 dark:text-slate-200">
                           <strong>{it.quantity}x</strong> {it.product_name}{' '}
                           <span className="text-slate-500 dark:text-slate-400">({it.unit})</span>

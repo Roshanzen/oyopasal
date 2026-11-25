@@ -78,7 +78,7 @@ export default function OrderReceiptSidebar({
             </span>
           </button>
 
-          {addresses.map((addr) => {
+          {(addresses || []).map((addr) => {
             const addrCoords = resolveAddressCoords(addr, currentCoordinates);
             const distFromRef = calculateDistanceInKm(refPos.lat, refPos.lng, addrCoords.lat, addrCoords.lng);
             return (
@@ -93,15 +93,15 @@ export default function OrderReceiptSidebar({
                 }`}
               >
                 <div className="flex items-start gap-2.5 min-w-0">
-                  {addr.title.toLowerCase().includes('office') ? (
+                  {addr.title?.toLowerCase().includes('office') ? (
                     <Briefcase className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
                   ) : (
                     <Home className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   )}
                   <div className="min-w-0">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">{addr.title}</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{addr.title || 'Saved Location'}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
-                      {addr.street}, {addr.area}
+                      {addr.street || ''}{addr.area ? `, ${addr.area}` : ''}
                     </span>
                   </div>
                 </div>
@@ -184,8 +184,8 @@ export default function OrderReceiptSidebar({
         </div>
         <div className="pt-1 text-xs text-slate-500 dark:text-slate-400">
           {t('track.paymentLabel')}{' '}
-          <strong className="text-slate-800 dark:text-slate-200">{order.payment_method.replace(/_/g, ' ')}</strong> (
-          {order.payment_status})
+          <strong className="text-slate-800 dark:text-slate-200">{(order?.payment_method || 'COD').replace(/_/g, ' ')}</strong> (
+          {order?.payment_status || 'PENDING'})
         </div>
       </div>
     </div>

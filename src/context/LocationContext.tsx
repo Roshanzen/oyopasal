@@ -3,7 +3,7 @@ import { APP_CONFIG } from '../config';
 import { addressService, vendorService } from '../services';
 import { httpClient } from '../services/httpClient';
 import { Address, Coordinates, PublicSettings, Vendor } from '../types';
-import { calculateDeliveryEstimate, calculateDistanceInKm, estimateDeliveryMinutes } from '../utils';
+import { calculateDeliveryEstimate, calculateDistanceInKm, estimateDeliveryMinutes, extractCoordinates } from '../utils';
 import { useLanguageContext } from './LanguageContext';
 import { useToastContext } from './ToastContext';
 
@@ -52,8 +52,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   const setCurrentAddress = useCallback((addr: Address) => {
     setCurrentAddressState(addr);
-    if (typeof addr.lat === 'number' && typeof addr.lng === 'number') {
-      setCurrentCoordinates({ lat: addr.lat, lng: addr.lng });
+    const coords = extractCoordinates(addr);
+    if (coords) {
+      setCurrentCoordinates(coords);
     }
   }, []);
 
@@ -69,8 +70,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       if (list.length > 0) {
         const defaultAddr = list.find((a) => a.is_default) || list[0];
         setCurrentAddressState(defaultAddr);
-        if (typeof defaultAddr.lat === 'number' && typeof defaultAddr.lng === 'number') {
-          setCurrentCoordinates({ lat: defaultAddr.lat, lng: defaultAddr.lng });
+        const coords = extractCoordinates(defaultAddr);
+        if (coords) {
+          setCurrentCoordinates(coords);
         }
       }
     } catch {

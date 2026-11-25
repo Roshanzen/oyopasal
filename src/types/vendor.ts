@@ -28,25 +28,31 @@ export interface Vendor {
   tags?: string[];
   lat?: number;
   lng?: number;
+  max_local_delivery_km?: number;
 }
 
 export interface StoreDetail {
   id: string;
   name: string;
+  store_name?: string;
   slug: string;
   description?: string;
+  short_description?: string;
   logo_url?: string;
   banner_url?: string;
   logo?: string;
   banner?: string;
+  cover_banner?: string;
   contact_email?: string;
   contact_phone?: string;
   phone?: string;
   email?: string;
   address?: string;
+  area_ward?: string;
   business_hours?: Record<string, string>;
   latitude?: number | null;
   longitude?: number | null;
+  max_local_delivery_km?: number;
   shipping_policy?: string;
   return_policy?: string;
   is_active: boolean;
@@ -61,9 +67,12 @@ export interface StoreDetail {
   delivery_time_mins?: string;
   open_time?: string;
   close_time?: string;
+  opening_time?: string;
+  closing_time?: string;
   is_open?: boolean;
   fulfillment_modes?: string;
   gallery?: string[];
+  gallery_images?: StoreGalleryImageItem[];
   distance_km?: number;
   created_at?: string;
 }
@@ -208,4 +217,35 @@ export interface SellerDashboardResponse {
   recent_ledger: SellerLedgerEntry[];
   products: import('./product').Product[];
 }
+
+export interface StoreGalleryImageItem {
+  id: string | number;
+  url: string;
+  caption?: string;
+  sort_order: number;
+}
+
+export interface StoreProfileData {
+  store_id: string;
+  slug: string;
+  store_name: string;
+  short_description: string;
+  address: string;
+  area_ward: string;
+  opening_time: string;
+  closing_time: string;
+  logo_url: string;
+  cover_banner_url: string;
+  gallery_images: StoreGalleryImageItem[];
+  gallery_count: number;
+  is_verified: boolean;
+  verified: boolean;
+  is_approved: boolean;
+  status: string;
+  contact_email?: string;
+  contact_phone?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 

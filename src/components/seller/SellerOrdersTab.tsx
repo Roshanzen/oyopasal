@@ -19,13 +19,13 @@ interface SellerOrdersTabProps {
   onSwitchStore: () => void;
   onUpdateStatus: (
     fulfillmentId: string | number,
-    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED'
+    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED'
   ) => void;
 }
 
 export default function SellerOrdersTab({
   vendorName,
-  sellerOrders,
+  sellerOrders = [],
   loadingOrders,
   ordersError,
   orderStatusFilter,
@@ -173,7 +173,7 @@ export default function SellerOrdersTab({
                       {translateOrderStatus(ord.status, language)}
                     </span>
                     <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded">
-                      {ord.payment_method.replace(/_/g, ' ')} · {ord.payment_status}
+                      {(ord.payment_method || 'COD').replace(/_/g, ' ')} · {ord.payment_status || 'UNPAID'}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 text-sm text-slate-800 dark:text-slate-100 font-semibold">
@@ -244,6 +244,24 @@ export default function SellerOrdersTab({
                       className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer"
                     >
                       {language === 'ne' ? 'राइडर पिकअपको लागि तयार' : 'Ready for Rider Pickup'}
+                    </button>
+                  )}
+                  {['READY_FOR_RIDER_PICKUP', 'READY_FOR_DISPATCH'].includes(ord.status) && (
+                    <button
+                      disabled={updatingOrderId === ord.fulfillment_id}
+                      onClick={() => onUpdateStatus(ord.fulfillment_id, 'OUT_FOR_DELIVERY')}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {language === 'ne' ? 'डेलिभरीमा हिँड्यो' : 'Hand over to Rider / Out for Delivery'}
+                    </button>
+                  )}
+                  {['OUT_FOR_DELIVERY', 'SHIPPED'].includes(ord.status) && (
+                    <button
+                      disabled={updatingOrderId === ord.fulfillment_id}
+                      onClick={() => onUpdateStatus(ord.fulfillment_id, 'DELIVERED')}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {language === 'ne' ? 'डेलिभर भयो' : 'Mark Delivered'}
                     </button>
                   )}
                   <button

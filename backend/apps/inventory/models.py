@@ -6,7 +6,7 @@ from apps.warehouse.models import Warehouse
 from apps.catalogue.models import ProductVariant
 
 class StockMovementType(models.TextChoices):
-    INCOMING = 'INCOMING', 'Incoming Supplier Receipt / Restock'
+    INCOMING = 'INCOMING', 'Incoming Direct Restock / Receipt'
     RESERVATION = 'RESERVATION', 'Checkout Stock Reservation'
     RESERVATION_RELEASE = 'RESERVATION_RELEASE', 'Checkout Reservation Released'
     DISPATCH = 'DISPATCH', 'Order Fulfillment Dispatch'

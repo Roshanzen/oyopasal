@@ -54,13 +54,8 @@ class SubscriptionService:
         now = timezone.now()
         trial_end = now + timedelta(days=plan.trial_days)
 
-        is_vendor = hasattr(tenant, 'business_name')
-        vendor_arg = tenant if is_vendor else None
-        supplier_arg = tenant if not is_vendor else None
-
         subscription, created = TenantSubscription.objects.update_or_create(
-            vendor=vendor_arg,
-            supplier=supplier_arg,
+            vendor=tenant,
             defaults={
                 'plan': plan,
                 'billing_interval': BillingInterval.MONTHLY,

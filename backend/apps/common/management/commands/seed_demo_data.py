@@ -7,7 +7,6 @@ from django.utils import timezone
 
 from apps.accounts.models import UserRole
 from apps.vendors.models import VendorProfile, VendorStatus
-from apps.suppliers.models import SupplierProfile, SupplierStatus
 from apps.stores.models import Store
 from apps.warehouse.models import Warehouse
 from apps.catalogue.models import Category, Brand, Product, ProductVariant, ProductStatus
@@ -16,7 +15,6 @@ from apps.orders.models import Order, VendorSubOrder, OrderItem, OrderStatus
 from apps.payments.models import Payment, PaymentStatus, FinancialLedgerEntry
 from apps.commissions.models import CommissionRecord, CommissionRule
 from apps.settlements.models import VendorSettlement, SettlementStatus
-from apps.procurement.models import SupplierProduct, PurchaseOrder, PurchaseOrderStatus, SupplierInvoice
 from apps.subscriptions.models import SubscriptionPlan, TenantSubscription, SubscriptionTier, SubscriptionStatus
 
 User = get_user_model()
@@ -118,40 +116,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"[OK] Vendors ready: {vendor1.business_name}, {vendor2.business_name}")
 
-        # 4. Supplier
-        supplier_user, _ = User.objects.get_or_create(
-            email='supplier@himalayantextiles.com',
-            defaults={
-                'first_name': 'Sunil',
-                'last_name': 'Maharjan',
-                'role': UserRole.SUPPLIER_OWNER,
-                'phone_number': '9841998877',
-                'is_verified': True,
-            }
-        )
-        supplier_user.set_password('SupplierPass123!')
-        supplier_user.save()
-
-        supplier, _ = SupplierProfile.objects.get_or_create(
-            user=supplier_user,
-            defaults={
-                'company_name': 'Himalayan Bulk Textiles & Distributors',
-                'slug': 'himalayan-bulk-textiles',
-                'status': SupplierStatus.APPROVED,
-                'pan_vat_number': '304958271',
-                'wholesale_categories': 'Raw Wool, Cashmere Bolts, Cotton Fabrics',
-                'company_description': 'Wholesale supplier of raw Himalayan textiles and brass metals for manufacturing.',
-                'credit_terms_days': 45,
-                'minimum_po_amount': Decimal('50000.00'),
-                'bank_name': 'Nepal Investment Mega Bank',
-                'bank_account_name': 'Himalayan Bulk Textiles',
-                'bank_account_number': '50192837465',
-                'bank_branch': 'Thamel Branch',
-            }
-        )
-        self.stdout.write(f"[OK] Supplier ready: {supplier.company_name}")
-
-        # 5. Stores
+        # 4. Stores
         store1, _ = Store.objects.get_or_create(
             vendor=vendor1,
             slug='himalayan-crafts-patan',
@@ -473,44 +438,5 @@ class Command(BaseCommand):
             }
         )
 
-        # 11. Supplier Wholesale Purchase Order
-        sp1, _ = SupplierProduct.objects.get_or_create(
-            sku='BULK-CASHMERE-YARN-KG',
-            defaults={
-                'supplier': supplier,
-                'name': 'Grade-A Raw Cashmere Yarn (1kg Cone)',
-                'slug': 'grade-a-raw-cashmere-yarn-1kg',
-                'wholesale_price': Decimal('12000.00'),
-                'moq': 5,
-                'lead_time_days': 5,
-                'available_stock': 200,
-                'is_active': True,
-            }
-        )
-        po1, _ = PurchaseOrder.objects.get_or_create(
-            po_number='PO-WHOLESALE-20261101-001',
-            defaults={
-                'supplier': supplier,
-                'vendor': vendor1,
-                'destination_warehouse': wh2,
-                'status': PurchaseOrderStatus.DELIVERED,
-                'total_amount': Decimal('60000.00'),
-                'tax_amount': Decimal('7800.00'),
-                'grand_total': Decimal('67800.00'),
-                'payment_terms': '45_DAYS_CREDIT',
-            }
-        )
-        SupplierInvoice.objects.get_or_create(
-            invoice_number='INV-SUPP-20261101-001',
-            defaults={
-                'supplier': supplier,
-                'vendor': vendor1,
-                'purchase_order': po1,
-                'billed_amount': Decimal('67800.00'),
-                'paid_amount': Decimal('67800.00'),
-                'payment_status': 'PAID',
-                'due_date': timezone.now().date() + timedelta(days=35),
-            }
-        )
-        self.stdout.write("[OK] Orders, financial transactions, and B2B wholesale records ready.")
+        self.stdout.write("[OK] Orders and financial transactions ready.")
         self.stdout.write(self.style.SUCCESS("All demo data seeded successfully!"))

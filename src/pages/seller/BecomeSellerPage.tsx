@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -46,7 +46,7 @@ const STORE_CATEGORIES = [
 
 export default function BecomeSellerPage() {
   const navigate = useNavigate();
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
 
   // Form State
   // A. Applicant Information
@@ -54,6 +54,21 @@ export default function BecomeSellerPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [altPhone, setAltPhone] = useState('');
+
+  // Prefill verified customer account data if logged in
+  useEffect(() => {
+    if (user) {
+      if (!fullName) {
+        setFullName(user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '');
+      }
+      if (!email && user.email) {
+        setEmail(user.email ?? '');
+      }
+      if (!phone && (user.phone || (user as any).phone_number)) {
+        setPhone(user.phone || (user as any).phone_number || '');
+      }
+    }
+  }, [user]);
 
   // B. Business Information
   const [businessName, setBusinessName] = useState('');
@@ -255,9 +270,22 @@ export default function BecomeSellerPage() {
         </div>
 
         {formError && (
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <p className="font-semibold leading-relaxed">{formError}</p>
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs space-y-2">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <p className="font-semibold leading-relaxed">{formError}</p>
+            </div>
+            {formError.toLowerCase().includes('already') && (
+              <div className="pt-1">
+                <Link
+                  to={`/seller/track?email=${encodeURIComponent(email.trim())}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors"
+                >
+                  <span>Track Application Status</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -283,7 +311,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="text"
                   required
-                  value={fullName}
+                  value={fullName ?? ''}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Ramesh Shrestha"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -297,7 +325,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="email"
                   required
-                  value={email}
+                  value={email ?? ''}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. ramesh@gmail.com"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -311,7 +339,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="tel"
                   required
-                  value={phone}
+                  value={phone ?? ''}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+977 9801234567"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -324,7 +352,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="tel"
-                  value={altPhone}
+                  value={altPhone ?? ''}
                   onChange={(e) => setAltPhone(e.target.value)}
                   placeholder="+977 01-4412345"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -353,7 +381,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="text"
                   required
-                  value={businessName}
+                  value={businessName ?? ''}
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="e.g. Baneshwor Fresh Grocers"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -365,7 +393,7 @@ export default function BecomeSellerPage() {
                   Business Category <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  value={businessCategory}
+                  value={businessCategory ?? 'Fresh Produce'}
                   onChange={(e) => setBusinessCategory(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
@@ -383,7 +411,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="text"
-                  value={panVatNumber}
+                  value={panVatNumber ?? ''}
                   onChange={(e) => setPanVatNumber(e.target.value)}
                   placeholder="e.g. 601234567"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -396,7 +424,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <textarea
                   rows={3}
-                  value={businessDescription}
+                  value={businessDescription ?? ''}
                   onChange={(e) => setBusinessDescription(e.target.value)}
                   placeholder="Tell us about the products you sell, your specialties, and your store history..."
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -409,7 +437,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="tel"
-                  value={businessContactPhone}
+                  value={businessContactPhone ?? ''}
                   onChange={(e) => setBusinessContactPhone(e.target.value)}
                   placeholder="e.g. 01-4412345 or +977 9800000000"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -422,7 +450,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="text"
-                  value={registrationNumber}
+                  value={registrationNumber ?? ''}
                   onChange={(e) => setRegistrationNumber(e.target.value)}
                   placeholder="e.g. REG-KTM-2080-1234"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -468,7 +496,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="text"
                   required
-                  value={district}
+                  value={district ?? ''}
                   onChange={(e) => setDistrict(e.target.value)}
                   placeholder="e.g. Kathmandu, Lalitpur, Bhaktapur"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -482,7 +510,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="text"
                   required
-                  value={municipality}
+                  value={municipality ?? ''}
                   onChange={(e) => setMunicipality(e.target.value)}
                   placeholder="e.g. Kathmandu Metropolitan"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -495,7 +523,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="text"
-                  value={wardNumber}
+                  value={wardNumber ?? ''}
                   onChange={(e) => setWardNumber(e.target.value)}
                   placeholder="e.g. 10"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -509,7 +537,7 @@ export default function BecomeSellerPage() {
                 <input
                   type="text"
                   required
-                  value={completeAddress}
+                  value={completeAddress ?? ''}
                   onChange={(e) => setCompleteAddress(e.target.value)}
                   placeholder="e.g. New Baneshwor, Near Eyeplex Mall, Shop #12"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -537,7 +565,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="url"
-                  value={logoUrl}
+                  value={logoUrl ?? ''}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder="https://.../store-logo.jpg"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -550,7 +578,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="url"
-                  value={panVatDocUrl}
+                  value={panVatDocUrl ?? ''}
                   onChange={(e) => setPanVatDocUrl(e.target.value)}
                   placeholder="https://.../pan-vat.pdf"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -563,7 +591,7 @@ export default function BecomeSellerPage() {
                 </label>
                 <input
                   type="url"
-                  value={registrationDocUrl}
+                  value={registrationDocUrl ?? ''}
                   onChange={(e) => setRegistrationDocUrl(e.target.value)}
                   placeholder="https://.../company-registration.pdf"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-emerald-500"
@@ -579,7 +607,7 @@ export default function BecomeSellerPage() {
                 id="declaration"
                 type="checkbox"
                 required
-                checked={declarationConfirmed}
+                checked={Boolean(declarationConfirmed)}
                 onChange={(e) => setDeclarationConfirmed(e.target.checked)}
                 className="w-5 h-5 mt-0.5 rounded-md text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700 cursor-pointer"
               />

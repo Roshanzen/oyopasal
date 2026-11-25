@@ -28,12 +28,14 @@ export const adminService = {
     entityId?: string,
     useSellerToken = true
   ): Promise<{ id: number; url: string; filename: string; mime_type: string; size_bytes: number }> {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Failed to read selected file'));
-      reader.readAsDataURL(file);
-    });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('filename', file.name);
+    formData.append('mime_type', file.type);
+    formData.append('entity_type', entityType);
+    if (entityId !== undefined && entityId !== null) {
+      formData.append('entity_id', String(entityId));
+    }
 
     const resp = await httpClient.request<{
       success: boolean;
@@ -42,13 +44,8 @@ export const adminService = {
       '/media/upload/',
       {
         method: 'POST',
-        body: JSON.stringify({
-          data_url: dataUrl,
-          filename: file.name,
-          mime_type: file.type,
-          entity_type: entityType,
-          entity_id: entityId,
-        }),
+        body: formData,
+        timeoutMs: 60000,
       },
       useSellerToken
     );

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   BarChart3,
   CheckCircle2,
@@ -33,6 +34,7 @@ import { SellerMessagesTab } from '../../components/seller/SellerMessagesTab';
 import SellerOrdersTab from '../../components/seller/SellerOrdersTab';
 import SellerReviewsTab from '../../components/seller/SellerReviewsTab';
 import SellerSettingsTab from '../../components/seller/SellerSettingsTab';
+import StoreProfileSetupTab from '../../components/seller/StoreProfileSetupTab';
 import SellerVariantsModal from '../../components/seller/SellerVariantsModal';
 import SellerVisualSummary from '../../components/seller/SellerVisualSummary';
 import { messagingService } from '../../services/messagingService';
@@ -54,7 +56,7 @@ export default function SellerPortalPage() {
         setVendorUnreadCount(res?.vendor_unread ?? 0);
       })
       .catch(() => {});
-  }, [s.currentSeller?.id, s.activeTab]);
+  }, [s.currentSeller?.id, s.activeTab === 'messages']);
 
   if (!s.currentSeller) {
     return (
@@ -63,12 +65,13 @@ export default function SellerPortalPage() {
         customStoreId={s.customStoreId}
         customPassword={s.customPassword}
         customLoginError={s.customLoginError}
+        customLoginErrorCode={s.customLoginErrorCode}
         language={s.language}
         t={s.t}
         onCustomLogin={s.handleCustomLogin}
         onChangeStoreId={s.setCustomStoreId}
         onChangePassword={s.setCustomPassword}
-        onOpenBecomeSeller={() => s.setBecomeSellerModalOpen(true)}
+        onOpenBecomeSeller={() => navigate('/become-seller')}
       />
     );
   }
@@ -82,10 +85,14 @@ export default function SellerPortalPage() {
     String(effectiveVendor.approval_status).toLowerCase() === 'approved'
   );
   const approvalStatus = isApproved ? 'approved' : String(effectiveVendor.approval_status || effectiveVendor.status || 'pending').toLowerCase();
-  const lowStockItems = s.sellerProducts.filter((p) => p.stock <= (p.low_stock_threshold ?? 5) || !p.in_stock);
-  const healthyItems = s.sellerProducts.filter((p) => p.stock > (p.low_stock_threshold ?? 5) && p.in_stock);
-  const activeOrdersList = s.sellerOrders.filter((o) =>
-    ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'PACKED_BY_VENDOR'].includes(o.status)
+  const safeProducts = Array.isArray(s.sellerProducts) ? s.sellerProducts : [];
+  const safeOrders = Array.isArray(s.sellerOrders) ? s.sellerOrders : [];
+  const safeReviews = Array.isArray(s.sellerReviews) ? s.sellerReviews : [];
+
+  const lowStockItems = safeProducts.filter((p) => p && (p.stock <= (p.low_stock_threshold ?? 5) || !p.in_stock));
+  const healthyItems = safeProducts.filter((p) => p && (p.stock > (p.low_stock_threshold ?? 5) && p.in_stock));
+  const activeOrdersList = safeOrders.filter((o) =>
+    o && ['ORDER_PLACED', 'CONFIRMED_BY_VENDOR', 'PACKED_BY_VENDOR'].includes(o.status)
   );
   const newestActiveOrder = activeOrdersList[0];
 
@@ -133,7 +140,7 @@ export default function SellerPortalPage() {
           </span>
         ) : (
           <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-            {s.sellerProducts.length}
+            {safeProducts.length}
           </span>
         ),
       },
@@ -147,7 +154,7 @@ export default function SellerPortalPage() {
           </span>
         ) : (
           <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-            {s.sellerOrders.length}
+            {safeOrders.length}
           </span>
         ),
       },
@@ -166,11 +173,16 @@ export default function SellerPortalPage() {
         id: 'reviews',
         label: s.language === 'ne' ? 'ग्राहक समीक्षा' : 'Reviews',
         icon: Star,
-        badge: s.sellerReviews.length > 0 ? (
+        badge: safeReviews.length > 0 ? (
           <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-            {s.sellerReviews.length}
+            {safeReviews.length}
           </span>
         ) : null,
+      },
+      {
+        id: 'profile',
+        label: s.language === 'ne' ? 'पसल प्रोफाइल सेटअप' : 'Store Profile Setup',
+        icon: Store,
       },
       {
         id: 'ledger',
@@ -179,8 +191,8 @@ export default function SellerPortalPage() {
       },
       {
         id: 'settings',
-        label: s.language === 'ne' ? 'पसल र भुक्तानी' : 'Store & Payouts',
-        icon: Store,
+        label: s.language === 'ne' ? 'भुक्तानी र सेटिङ' : 'Payouts & Settings',
+        icon: Settings,
       },
     ];
 
@@ -418,7 +430,7 @@ export default function SellerPortalPage() {
                   </h3>
                   <p className="text-xs sm:text-sm text-emerald-800 dark:text-emerald-200/90 mt-0.5">
                     {newestActiveOrder
-                      ? `Latest: ${newestActiveOrder.order_number} · ${newestActiveOrder.customer_name} (${newestActiveOrder.customer_area}) · ${newestActiveOrder.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}`
+                      ? `Latest: ${newestActiveOrder.order_number} · ${newestActiveOrder.customer_name} (${newestActiveOrder.customer_area}) · ${Array.isArray(newestActiveOrder.items) ? newestActiveOrder.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ') : ''}`
                       : ''}
                   </p>
                 </div>
@@ -580,6 +592,10 @@ export default function SellerPortalPage() {
               language={s.language}
               onRefresh={s.loadMovementsAndStore}
             />
+          )}
+
+          {s.activeTab === 'profile' && (
+            <StoreProfileSetupTab />
           )}
 
           {s.activeTab === 'settings' && (

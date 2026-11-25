@@ -872,9 +872,9 @@ class SellerOrdersView(APIView):
             snap = parent.shipping_address_snapshot if (parent and parent.shipping_address_snapshot) else {}
             customer_name = snap.get('recipient_name') or customer_name
             customer_phone = snap.get('recipient_phone') or customer_phone
-            customer_area = snap.get('municipality') or snap.get('area', 'Kathmandu')
+            customer_area = snap.get('municipality') or snap.get('area') or snap.get('district') or ''
             delivery_street = snap.get('tole_street') or snap.get('street', '')
-            delivery_city = snap.get('district') or snap.get('city', 'Kathmandu')
+            delivery_city = snap.get('district') or snap.get('city') or ''
             notes = (parent.customer_notes if parent else '') or snap.get('landmark', '')
 
             # Normalize status for vendor frontend
@@ -942,10 +942,18 @@ class SellerOrderStatusView(APIView):
     permission_classes = [IsAuthenticatedVendor]
 
     def patch(self, request, fulfillment_id):
-        vendor, err_resp = resolve_authenticated_vendor(request)
+        vendor_id = request.query_params.get('vendor_id') or request.data.get('vendor_id')
+        vendor, err_resp = resolve_authenticated_vendor(request, vendor_id=vendor_id)
         if err_resp:
             return err_resp
-        raw_status = str(request.data.get('status', '')).strip().upper()
+
+        raw_status = str(request.data.get('status') or request.data.get('new_status') or '').strip().upper()
+        if not raw_status:
+            return Response({
+                'success': False,
+                'error': {'code': 'INVALID_STATUS', 'message': 'Status field is required.'}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         so = None
         if is_valid_uuid(fulfillment_id):
             so = VendorSubOrder.objects.filter(id=fulfillment_id).first()
@@ -960,25 +968,33 @@ class SellerOrderStatusView(APIView):
             }, status=status.HTTP_403_FORBIDDEN)
 
         STATUS_MAP = {
+            'ORDER_PLACED': OrderStatus.CONFIRMED,
             'CONFIRMED_BY_VENDOR': OrderStatus.CONFIRMED,
             'CONFIRMED': OrderStatus.CONFIRMED,
+            'PENDING': OrderStatus.CONFIRMED,
             'PROCESSING': OrderStatus.PROCESSING,
             'PACKED_BY_VENDOR': OrderStatus.PACKED,
             'PACKED': OrderStatus.PACKED,
             'READY_FOR_RIDER_PICKUP': OrderStatus.READY_FOR_DISPATCH,
+            'READY_FOR_PICKUP': OrderStatus.READY_FOR_DISPATCH,
             'READY_FOR_DISPATCH': OrderStatus.READY_FOR_DISPATCH,
             'SHIPPED': OrderStatus.SHIPPED,
+            'DISPATCHED': OrderStatus.OUT_FOR_DELIVERY,
             'OUT_FOR_DELIVERY': OrderStatus.OUT_FOR_DELIVERY,
             'DELIVERED': OrderStatus.DELIVERED,
+            'COMPLETED': OrderStatus.DELIVERED,
             'REJECTED': OrderStatus.CANCELLED,
             'CANCELLED': OrderStatus.CANCELLED,
         }
 
         canonical_status = STATUS_MAP.get(raw_status, raw_status)
-        if not canonical_status:
+        if canonical_status not in OrderStatus.values:
             return Response({
                 'success': False,
-                'error': {'code': 'INVALID_STATUS', 'message': 'Invalid status provided.'}
+                'error': {
+                    'code': 'INVALID_STATUS',
+                    'message': f"Invalid status '{raw_status}' provided. Allowed statuses: {', '.join(STATUS_MAP.keys())}"
+                }
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Idempotent: already at target status

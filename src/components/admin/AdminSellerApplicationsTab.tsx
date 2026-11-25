@@ -10,6 +10,7 @@ import {
   Eye,
   FileText,
   Filter,
+  HelpCircle,
   History,
   Mail,
   MapPin,
@@ -253,6 +254,8 @@ export default function AdminSellerApplicationsTab() {
     }
   };
 
+  const safeApplications = Array.isArray(applications) ? applications : [];
+
   return (
     <div className="space-y-6">
       {/* 1. Dashboard Overview Summary Cards */}
@@ -344,12 +347,12 @@ export default function AdminSellerApplicationsTab() {
 
       {/* 3. Applications Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-        {loading && applications.length === 0 ? (
+        {loading && safeApplications.length === 0 ? (
           <div className="py-16 text-center text-slate-400 space-y-3">
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs font-medium">Loading seller applications from database...</p>
           </div>
-        ) : applications.length === 0 ? (
+        ) : safeApplications.length === 0 ? (
           <div className="py-16 text-center text-slate-400 space-y-2">
             <Store className="w-10 h-10 text-slate-600 mx-auto" />
             <p className="text-sm font-bold text-slate-300">No seller applications found</p>
@@ -372,7 +375,7 @@ export default function AdminSellerApplicationsTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
-                {applications.map((app) => (
+                {safeApplications.map((app) => (
                   <tr key={app.id} className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">
                       {app.application_number}

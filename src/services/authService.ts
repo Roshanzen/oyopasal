@@ -56,6 +56,17 @@ export const authService = {
     });
   },
 
+  changePassword(data: {
+    old_password: string;
+    new_password: string;
+    confirm_new_password: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return httpClient.request('/auth/password-change/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   loginAsSeller(data: SellerLoginPayload): Promise<{ success: boolean; token: string; user: UserProfile; vendor: Vendor }> {
     return httpClient.request('/auth/login-vendor/', {
       method: 'POST',

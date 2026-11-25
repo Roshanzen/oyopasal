@@ -47,6 +47,20 @@ class SellerApplicationAdmin(admin.ModelAdmin):
     search_fields = ('application_number', 'business_name', 'full_name', 'email', 'phone', 'pan_vat_number')
     readonly_fields = ('application_number', 'created_at', 'updated_at', 'reviewed_at', 'reviewed_by')
     inlines = [SellerApplicationAuditInline]
+    actions = ['approve_and_send_invitations']
+
+    @admin.action(description="Approve selected applications & send activation invitations")
+    def approve_and_send_invitations(self, request, queryset):
+        from apps.vendors.application_services import admin_approve_and_invite
+        count = 0
+        for app in queryset:
+            try:
+                admin_approve_and_invite(application=app, admin_user=request.user)
+                count += 1
+            except Exception as e:
+                self.message_user(request, f"Error approving {app.application_number}: {e}", level='ERROR')
+        if count > 0:
+            self.message_user(request, f"Successfully approved {count} application(s) and dispatched activation invitations.")
 
 @admin.register(VendorInvitation)
 class VendorInvitationAdmin(admin.ModelAdmin):

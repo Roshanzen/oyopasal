@@ -1,5 +1,6 @@
 from django.urls import path
 from apps.delivery.views import OrderDeliveryTrackingView
+from apps.vendors.store_profile_views import SellerStoreProfileView
 from apps.vendors.seller_views import (
     SellerDashboardView,
     SellerAnalyticsView,
@@ -56,6 +57,7 @@ urlpatterns = [
     path('orders/<str:fulfillment_id>/status/', SellerOrderStatusView.as_view(), name='order_status'),
     path('orders/<str:order_id>/tracking/', OrderDeliveryTrackingView.as_view(), name='order_tracking'),
     path('store/', SellerStoreView.as_view(), name='store'),
+    path('store-profile/', SellerStoreProfileView.as_view(), name='store_profile'),
     path('reviews/', SellerReviewsView.as_view(), name='reviews'),
     path('inventory/movements/', SellerInventoryMovementsView.as_view(), name='inventory_movements'),
     path('inventory-movements/', SellerInventoryMovementsView.as_view(), name='inventory_movements_alias'),

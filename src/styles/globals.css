@@ -63,3 +63,44 @@
   border-top-color: #0f172a !important;
 }
 
+/* OyoPasal AI Floating Chatbot Launcher Animations */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 3.5s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4), 0 8px 24px rgba(6, 78, 59, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.75), 0 12px 28px rgba(6, 78, 59, 0.6);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes drop-glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 4px 14px rgba(16, 185, 129, 0.55));
+  }
+  50% {
+    filter: drop-shadow(0 6px 22px rgba(16, 185, 129, 0.85)) drop-shadow(0 0 10px rgba(52, 211, 153, 0.5));
+  }
+}
+
+.animate-drop-glow {
+  animation: drop-glow-pulse 3s ease-in-out infinite;
+}
+
+

@@ -283,11 +283,22 @@ export default function StoreDetailPage() {
   // Photo Gallery list for lightbox
   const galleryPhotos = useMemo(() => {
     const list: string[] = [];
-    if (store?.banner_url) list.push(store.banner_url);
     if (store?.gallery && Array.isArray(store.gallery)) {
       store.gallery.forEach((g) => {
         if (g && !list.includes(g)) list.push(g);
       });
+    }
+    if ((store as any)?.gallery_images && Array.isArray((store as any).gallery_images)) {
+      (store as any).gallery_images.forEach((gi: any) => {
+        const u = typeof gi === 'string' ? gi : gi?.url;
+        if (u && !list.includes(u)) list.push(u);
+      });
+    }
+    if ((store as any)?.cover_banner && !list.includes((store as any).cover_banner)) {
+      list.push((store as any).cover_banner);
+    }
+    if (store?.banner_url && !list.includes(store.banner_url)) {
+      list.push(store.banner_url);
     }
     if (matchedVendorFromContext?.cover_image_url && !list.includes(matchedVendorFromContext.cover_image_url)) {
       list.push(matchedVendorFromContext.cover_image_url);
@@ -397,9 +408,9 @@ export default function StoreDetailPage() {
     }
   };
 
-  const storeName = store?.name || matchedVendorFromContext?.name || 'Official OyoPasal Store';
-  const coverImage = store?.banner_url || store?.banner || matchedVendorFromContext?.cover_image_url || matchedVendorFromContext?.image;
-  const logoImage = store?.logo_url || store?.logo || matchedVendorFromContext?.logo_url;
+  const storeName = (store as any)?.store_name || store?.name || matchedVendorFromContext?.name || 'Official OyoPasal Store';
+  const coverImage = (store as any)?.cover_banner || store?.banner_url || store?.banner || matchedVendorFromContext?.cover_image_url || matchedVendorFromContext?.image;
+  const logoImage = (store as any)?.logo || store?.logo_url || matchedVendorFromContext?.logo_url;
   const ratingValue = store?.rating || matchedVendorFromContext?.rating || 4.8;
   const isStoreOpen = store?.is_open !== false && store?.is_active !== false;
 
@@ -421,25 +432,26 @@ export default function StoreDetailPage() {
 
   // Format address nicely
   const storeAddress = useMemo(() => {
-    const raw = store?.address || matchedVendorFromContext?.area || matchedVendorFromContext?.location || 'Koteshwor-22, Mahadevsthan';
+    const raw = (store as any)?.area_ward || store?.address || matchedVendorFromContext?.area || matchedVendorFromContext?.location || 'Koteshwor-22, Mahadevsthan';
     const cleaned = raw.replace(/\s+/g, ' ').trim();
     if (cleaned.toLowerCase().includes('koteshwor') && cleaned.includes('32')) {
       return 'Koteshwer-22, Mahadevsthan';
     }
     return cleaned;
-  }, [store?.address, matchedVendorFromContext?.area, matchedVendorFromContext?.location]);
+  }, [store, matchedVendorFromContext?.area, matchedVendorFromContext?.location]);
 
   // Format description
   const storeDescription = useMemo(() => {
-    if (store?.description) {
-      const desc = store.description.trim();
+    const rawDesc = (store as any)?.short_description || store?.description;
+    if (rawDesc) {
+      const desc = rawDesc.trim();
       if (desc.toLowerCase() === 'good and reliable storre' || desc.toLowerCase().includes('good and reliable')) {
         return 'Good and reliable local store in Koteshwor.';
       }
       return desc;
     }
     return 'Official certified marketplace vendor on OyoPasal providing fast, fresh, high-quality groceries and goods.';
-  }, [store?.description]);
+  }, [store]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-16">
@@ -478,7 +490,9 @@ export default function StoreDetailPage() {
           className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 bg-slate-950/70 hover:bg-slate-950/90 text-white text-xs sm:text-sm font-medium px-4 py-2 sm:py-2.5 rounded-xl backdrop-blur-md transition-all cursor-pointer flex items-center gap-2 border border-white/10 shadow-lg hover:scale-105 active:scale-95"
         >
           <ImageIcon className="w-4 h-4 text-emerald-400" />
-          <span>{language === 'ne' ? 'पसल ग्यालरी हेर्नुहोस्' : 'View Store Gallery'}</span>
+          <span>
+            {language === 'ne' ? `पसल ग्यालरी (${galleryPhotos.length})` : `View Store Gallery (${galleryPhotos.length})`}
+          </span>
           <ChevronRight className="w-4 h-4 text-white/80" />
         </button>
       </div>

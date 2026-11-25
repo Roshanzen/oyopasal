@@ -43,7 +43,7 @@ export function isUserVendor(user?: UserProfile | null, currentSeller?: Vendor |
   if (user.has_vendor_access) return true;
 
   const r = normalizeRole(user.role);
-  if (['VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r)) return true;
+  if (['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r)) return true;
   if (isUserAdmin(user)) return true;
 
   // Pure customer: NEVER grant vendor access based on an unverified foreign currentSeller
@@ -56,7 +56,7 @@ export function isUserVendor(user?: UserProfile | null, currentSeller?: Vendor |
 export function isPureVendor(user?: UserProfile | null): boolean {
   if (!user) return false;
   const r = normalizeRole(user.role);
-  return ['VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r);
+  return ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r);
 }
 
 /**

@@ -11,8 +11,6 @@ class UserRole(models.TextChoices):
     VENDOR = 'VENDOR', 'Vendor'
     VENDOR_OWNER = 'VENDOR_OWNER', 'Vendor Owner'
     VENDOR_STAFF = 'VENDOR_STAFF', 'Vendor Staff'
-    SUPPLIER_OWNER = 'SUPPLIER_OWNER', 'Supplier Owner'
-    SUPPLIER_STAFF = 'SUPPLIER_STAFF', 'Supplier Staff'
     CUSTOMER = 'CUSTOMER', 'Customer'
 
 
@@ -49,7 +47,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     """
-    Primary User model for all 4 ecosystems (Customer, Vendor, Supplier, Admin).
+    Primary User model for Customer, Vendor, and Super Admin ecosystems.
     Uses email as the unique primary login identifier.
     """
     email = models.EmailField('Email Address', unique=True, db_index=True)

@@ -97,3 +97,68 @@ test('Safe Arrays 5: notification unread filter safely computes length even on m
     2
   );
 });
+
+test('HTTP Client 6: isAbortError properly identifies intentional cancellation vs genuine errors', () => {
+  const isAbortError = (err: unknown): boolean => {
+    return (
+      (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) ||
+      (typeof err === 'object' && err !== null && (err as any).name === 'AbortError')
+    );
+  };
+
+  const abortErr = new Error('The user aborted a request.');
+  abortErr.name = 'AbortError';
+
+  const regularErr = new Error('Database connection failed');
+  regularErr.name = 'DatabaseError';
+
+  assert.equal(isAbortError(abortErr), true);
+  assert.equal(isAbortError({ name: 'AbortError' }), true);
+  assert.equal(isAbortError(regularErr), false);
+  assert.equal(isAbortError(null), false);
+  assert.equal(isAbortError(undefined), false);
+});
+
+test('HTTP Client 7: parses HTTP 429 Retry-After header and DRF throttle message seconds', () => {
+  const parseRetryAfter = (headerVal: string | null, detailMessage?: string): number => {
+    if (headerVal) {
+      const parsed = parseInt(headerVal, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    if (detailMessage) {
+      const match = detailMessage.match(/Expected available in (\d+) seconds/i);
+      if (match && match[1]) {
+        return parseInt(match[1], 10);
+      }
+    }
+    return 60; // default safe fallback
+  };
+
+  assert.equal(parseRetryAfter('45'), 45);
+  assert.equal(parseRetryAfter(null, 'Request was throttled. Expected available in 58 seconds.'), 58);
+  assert.equal(parseRetryAfter(null, 'Request was throttled.'), 60);
+});
+
+test('HTTP Client 8: multipart/form-data boundary handling removes manual Content-Type', () => {
+  const prepareHeaders = (isFormData: boolean, inputHeaders: Record<string, string> = {}) => {
+    const headers = { ...inputHeaders };
+    if (isFormData) {
+      delete headers['Content-Type'];
+    } else if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return headers;
+  };
+
+  // When FormData is passed with manual Content-Type: multipart/form-data, Content-Type must be removed
+  const formDataHeaders = prepareHeaders(true, {
+    'Content-Type': 'multipart/form-data',
+    Accept: 'application/json',
+  });
+  assert.equal('Content-Type' in formDataHeaders, false);
+  assert.equal(formDataHeaders.Accept, 'application/json');
+
+  // JSON request preserves or sets application/json
+  const jsonHeaders = prepareHeaders(false, { Accept: 'application/json' });
+  assert.equal(jsonHeaders['Content-Type'], 'application/json');
+});

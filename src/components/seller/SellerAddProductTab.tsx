@@ -96,7 +96,7 @@ interface SellerAddProductTabProps {
 
 export default function SellerAddProductTab({
   effectiveVendor,
-  categories,
+  categories = [],
   loadingCategories,
   lastAddedProduct,
   productName,
@@ -122,12 +122,12 @@ export default function SellerAddProductTab({
   customImageUrl,
   setCustomImageUrl,
   uploadingPrimaryImg,
-  galleryUrls,
+  galleryUrls = [],
   setGalleryUrls,
   galleryUrlInput,
   setGalleryUrlInput,
   uploadingGalleryImg,
-  selectedSections,
+  selectedSections = [],
   toggleSection,
   submittingProduct,
   language,
@@ -138,6 +138,10 @@ export default function SellerAddProductTab({
   onAddGalleryUrl,
   onSubmit,
 }: SellerAddProductTabProps) {
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeVariantsList = Array.isArray(variantsList) ? variantsList : [];
+  const safeGalleryUrls = Array.isArray(galleryUrls) ? galleryUrls : [];
+  const safeSelectedSections = Array.isArray(selectedSections) ? selectedSections : [];
   const [previewImgError, setPreviewImgError] = useState(false);
   const [selectedBuilderColors, setSelectedBuilderColors] = useState<Array<{ name: string; code: string }>>([]);
   const [selectedBuilderSizes, setSelectedBuilderSizes] = useState<string[]>([]);
@@ -273,7 +277,7 @@ export default function SellerAddProductTab({
               <input
                 type="text"
                 required
-                value={productName}
+                value={productName ?? ''}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder={
                   language === 'ne' ? 'जस्तै: अर्गानिक फुजी स्याउ' : 'e.g. Premium Cotton T-Shirt, Running Shoes'
@@ -294,18 +298,18 @@ export default function SellerAddProductTab({
                 </div>
                 <select
                   id="product-category-select"
-                  value={categorySlug}
+                  value={categorySlug ?? ''}
                   onChange={(e) => setCategorySlug(e.target.value)}
-                  disabled={loadingCategories && categories.length === 0}
+                  disabled={loadingCategories && safeCategories.length === 0}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
-                  {categories.length === 0 ? (
+                  {safeCategories.length === 0 ? (
                     <option value="">
                       {loadingCategories ? 'Loading categories...' : 'No categories available'}
                     </option>
                   ) : (
-                    categories.map((cat) =>
-                      cat.subcategories && cat.subcategories.length > 0 ? (
+                    safeCategories.map((cat) =>
+                      Array.isArray(cat.subcategories) && cat.subcategories.length > 0 ? (
                         <optgroup key={cat.id} label={`📁 ${translateCategoryName(cat.slug, cat.name, language)}`}>
                           <option value={cat.slug}>
                             {translateCategoryName(cat.slug, cat.name, language)} (General / Main)
@@ -333,7 +337,7 @@ export default function SellerAddProductTab({
                 <input
                   type="text"
                   required
-                  value={unit}
+                  value={unit ?? ''}
                   onChange={(e) => setUnit(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500"
                 />
@@ -363,7 +367,7 @@ export default function SellerAddProductTab({
                   type="number"
                   min="1"
                   required
-                  value={discountedPrice}
+                  value={discountedPrice ?? ''}
                   onChange={(e) => setDiscountedPrice(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-mono focus:outline-none focus:border-emerald-500"
                 />
@@ -373,7 +377,7 @@ export default function SellerAddProductTab({
                 <input
                   type="number"
                   min="1"
-                  value={originalPrice}
+                  value={originalPrice ?? ''}
                   onChange={(e) => setOriginalPrice(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-mono focus:outline-none focus:border-emerald-500"
                 />
@@ -383,7 +387,7 @@ export default function SellerAddProductTab({
                 <input
                   type="number"
                   min="0"
-                  value={stockCount}
+                  value={stockCount ?? ''}
                   onChange={(e) => setStockCount(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-mono focus:outline-none focus:border-emerald-500"
                 />
@@ -410,7 +414,7 @@ export default function SellerAddProductTab({
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={hasVariants}
+                    checked={Boolean(hasVariants)}
                     onChange={(e) => {
                       if (setHasVariants) setHasVariants(e.target.checked);
                       if (!e.target.checked && setVariantsList) setVariantsList([]);
@@ -460,13 +464,13 @@ export default function SellerAddProductTab({
                       <input
                         type="text"
                         placeholder="Custom color (e.g. Maroon)"
-                        value={customColorName}
+                        value={customColorName ?? ''}
                         onChange={(e) => setCustomColorName(e.target.value)}
                         className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                       />
                       <input
                         type="color"
-                        value={customColorCode}
+                        value={customColorCode ?? '#000000'}
                         onChange={(e) => setCustomColorCode(e.target.value)}
                         className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer p-0.5 shrink-0"
                         title="Pick Color"
@@ -536,7 +540,7 @@ export default function SellerAddProductTab({
                       <input
                         type="text"
                         placeholder="Custom size (e.g. 500g, Free Size, 128GB)"
-                        value={customSizeText}
+                        value={customSizeText ?? ''}
                         onChange={(e) => setCustomSizeText(e.target.value)}
                         className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                       />
@@ -599,7 +603,7 @@ export default function SellerAddProductTab({
                                 <input
                                   type="number"
                                   min="1"
-                                  value={row.price || ''}
+                                  value={row.price ?? ''}
                                   onChange={(e) => updateVariantRow(idx, { price: Number(e.target.value) })}
                                   className="w-20 px-2 py-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
                                 />
@@ -617,7 +621,7 @@ export default function SellerAddProductTab({
                                 <input
                                   type="text"
                                   placeholder="https://..."
-                                  value={row.image_url || ''}
+                                  value={row.image_url ?? ''}
                                   onChange={(e) => updateVariantRow(idx, { image_url: e.target.value })}
                                   className="w-32 sm:w-44 px-2 py-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-[11px] focus:outline-none focus:border-emerald-500"
                                 />
@@ -625,7 +629,7 @@ export default function SellerAddProductTab({
                               <td className="p-2.5 text-center">
                                 <input
                                   type="checkbox"
-                                  checked={row.is_active !== false}
+                                  checked={Boolean(row.is_active !== false)}
                                   onChange={(e) => updateVariantRow(idx, { is_active: e.target.checked })}
                                   className="w-3.5 h-3.5 rounded text-emerald-600 bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 cursor-pointer"
                                 />
@@ -653,7 +657,7 @@ export default function SellerAddProductTab({
             <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
-                checked={isOrganic}
+                checked={Boolean(isOrganic)}
                 onChange={(e) => setIsOrganic(e.target.checked)}
                 className="w-4 h-4 rounded text-emerald-600 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-700"
               />
@@ -705,7 +709,7 @@ export default function SellerAddProductTab({
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('seller.productDesc')}</label>
               <textarea
                 rows={2}
-                value={description}
+                value={description ?? ''}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500"
               />

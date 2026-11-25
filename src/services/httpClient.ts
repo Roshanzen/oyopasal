@@ -4,12 +4,23 @@ import { safeStorage } from '../utils/storage';
 export class ApiRequestError extends Error {
   status: number;
   code?: string;
-  constructor(status: number, message: string, code?: string) {
+  data?: any;
+  retryAfterSeconds?: number;
+  constructor(status: number, message: string, code?: string, data?: any, retryAfterSeconds?: number) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
     this.code = code;
+    this.data = data;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+export function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof Error && (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'))) ||
+    (typeof err === 'object' && err !== null && (err as any).name === 'AbortError')
+  );
 }
 
 export interface RequestOptions extends RequestInit {
@@ -195,7 +206,11 @@ class HttpClient {
         ...((options.headers as Record<string, string>) || {}),
       };
 
-      if (!isFormData && !headers['Content-Type'] && method !== 'GET') {
+      if (isFormData) {
+        // When sending FormData, delete any manual Content-Type header so the browser
+        // can supply the exact multipart/form-data boundary delimiter.
+        delete headers['Content-Type'];
+      } else if (!headers['Content-Type'] && method !== 'GET') {
         headers['Content-Type'] = 'application/json';
       }
 
@@ -212,7 +227,7 @@ class HttpClient {
       }
 
       // Configure timeout and abort controller
-      const timeoutMs = options.timeoutMs ?? 15000;
+      const timeoutMs = options.timeoutMs ?? (isFormData ? 60000 : 15000);
       const controller = new AbortController();
       let didTimeout = false;
       const timer = setTimeout(() => {
@@ -221,11 +236,13 @@ class HttpClient {
       }, timeoutMs);
 
       // Chain incoming signal if provided
+      let abortListener: (() => void) | null = null;
       if (options.signal) {
         if (options.signal.aborted) {
           controller.abort();
         } else {
-          options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+          abortListener = () => controller.abort();
+          options.signal.addEventListener('abort', abortListener, { once: true });
         }
       }
 
@@ -243,9 +260,10 @@ class HttpClient {
           let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
           let isTokenNotValid = false;
           let parsedCode = '';
+          let errJson: any = null;
 
           try {
-            const errJson = (await response.json()) as any;
+            errJson = (await response.json()) as any;
             const detailStr = String(
               errJson?.detail || errJson?.code || errJson?.message || errJson?.error?.message || ''
             );
@@ -326,7 +344,25 @@ class HttpClient {
             }
           }
 
-          throw new ApiRequestError(response.status, errorDetail, parsedCode);
+          let retryAfterSeconds: number | undefined;
+          if (response.status === 429) {
+            parsedCode = parsedCode || 'throttled';
+            const retryHeader = response.headers.get('Retry-After');
+            if (retryHeader) {
+              const parsed = parseInt(retryHeader, 10);
+              if (!isNaN(parsed) && parsed > 0) {
+                retryAfterSeconds = parsed;
+              }
+            }
+            if (!retryAfterSeconds && errorDetail) {
+              const match = errorDetail.match(/Expected available in (\d+) seconds/i);
+              if (match && match[1]) {
+                retryAfterSeconds = parseInt(match[1], 10);
+              }
+            }
+          }
+
+          throw new ApiRequestError(response.status, errorDetail, parsedCode, errJson, retryAfterSeconds);
         }
 
         const data = (await response.json()) as T;
@@ -341,7 +377,6 @@ class HttpClient {
 
         return data;
       } catch (err: unknown) {
-        clearTimeout(timer);
         if (didTimeout) {
           throw new ApiRequestError(408, `Request timed out after ${timeoutMs}ms: ${endpoint}`);
         }
@@ -349,6 +384,11 @@ class HttpClient {
           throw err;
         }
         throw err;
+      } finally {
+        clearTimeout(timer);
+        if (abortListener && options.signal) {
+          options.signal.removeEventListener('abort', abortListener);
+        }
       }
     };
 
@@ -384,10 +424,10 @@ class HttpClient {
     const serializedBody = isFormData
       ? (body as FormData)
       : typeof body === 'string'
-      ? body
-      : body !== undefined
-      ? JSON.stringify(body)
-      : undefined;
+        ? body
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined;
 
     return this.request<T>(
       endpoint,
@@ -413,10 +453,10 @@ class HttpClient {
     const serializedBody = isFormData
       ? (body as FormData)
       : typeof body === 'string'
-      ? body
-      : body !== undefined
-      ? JSON.stringify(body)
-      : undefined;
+        ? body
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined;
 
     return this.request<T>(
       endpoint,
@@ -442,10 +482,10 @@ class HttpClient {
     const serializedBody = isFormData
       ? (body as FormData)
       : typeof body === 'string'
-      ? body
-      : body !== undefined
-      ? JSON.stringify(body)
-      : undefined;
+        ? body
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined;
 
     return this.request<T>(
       endpoint,

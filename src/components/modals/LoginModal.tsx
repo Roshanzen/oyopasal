@@ -11,9 +11,10 @@ import {
   User,
   Sparkles,
   Store,
-  ArrowRight,
   AlertCircle,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -30,8 +31,9 @@ export default function LoginModal() {
 
   const [mode, setMode] = useState<'signin' | 'create'>('signin');
   const [fullName, setFullName] = useState('');
-  const [identifier, setIdentifier] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +41,10 @@ export default function LoginModal() {
   useEffect(() => {
     if (!loginModalOpen) {
       setError('');
+      setEmailOrPhone('');
+      setPassword('');
+      setFullName('');
+      setShowPassword(false);
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,7 +64,7 @@ export default function LoginModal() {
       setError(t('login.errorName'));
       return;
     }
-    if (validateRequired(identifier, t('login.identifierLabel'))) {
+    if (validateRequired(emailOrPhone, t('login.identifierLabel'))) {
       setError(t('login.errorMissing'));
       return;
     }
@@ -75,17 +81,17 @@ export default function LoginModal() {
       if (mode === 'create') {
         authedUser = await registerCustomer({
           full_name: fullName.trim(),
-          phone_or_email: identifier.trim(),
+          phone_or_email: emailOrPhone.trim(),
           password,
         });
       } else {
         authedUser = await loginCustomer({
-          phone_or_email: identifier.trim(),
+          phone_or_email: emailOrPhone.trim(),
           password,
         });
       }
       setFullName('');
-      setIdentifier('');
+      setEmailOrPhone('');
       setPassword('');
 
       if (authedUser) {
@@ -96,28 +102,6 @@ export default function LoginModal() {
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to authenticate. Please verify your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const authedUser = await loginCustomer({
-        phone_or_email: '+977 9841234567',
-        full_name: 'Roshan Yadav',
-        demo_quick_login: true,
-      });
-      if (authedUser) {
-        const targetPath = getPostLoginRedirectPath(authedUser, window.location.pathname);
-        if (targetPath && targetPath !== window.location.pathname) {
-          navigate(targetPath);
-        }
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Demo login failed');
     } finally {
       setLoading(false);
     }
@@ -235,19 +219,25 @@ export default function LoginModal() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-3.5">
+              <form onSubmit={handleSubmit} autoComplete="off" className="space-y-3.5">
                 {mode === 'create' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label
+                      htmlFor="customer-register-fullname"
+                      className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5"
+                    >
                       {t('login.fullNameLabel')}
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
+                        id="customer-register-fullname"
+                        name="customer_fullname"
                         type="text"
-                        value={fullName}
+                        autoComplete="off"
+                        value={fullName ?? ''}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder={t('login.fullNamePlaceholder')}
+                        placeholder="Enter your full name"
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
@@ -255,34 +245,54 @@ export default function LoginModal() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="customer-login-identifier"
+                    className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5"
+                  >
                     {t('login.identifierLabel')}
                   </label>
                   <div className="relative">
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
+                      id="customer-login-identifier"
+                      name="customer_identifier"
                       type="text"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder={t('login.identifierPlaceholder')}
+                      autoComplete="off"
+                      value={emailOrPhone ?? ''}
+                      onChange={(e) => setEmailOrPhone(e.target.value)}
+                      placeholder="Enter your mobile number or email"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="customer-login-password"
+                    className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5"
+                  >
                     {t('login.passwordLabel')}
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
-                      value={password}
+                      id="customer-login-password"
+                      name="customer_password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete={mode === 'create' ? 'new-password' : 'off'}
+                      value={password ?? ''}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder={t('login.passwordPlaceholder')}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                      placeholder="Enter your password"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                   {mode === 'create' && (
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -314,23 +324,13 @@ export default function LoginModal() {
               <div className="relative py-1 flex items-center justify-center">
                 <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
                 <span className="px-3 bg-white dark:bg-[#111726] text-xs font-semibold text-slate-400 whitespace-nowrap">
-                  {t('login.orQuickDemo')}
+                  or
                 </span>
                 <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
               </div>
 
-              {/* 1-Click Demo & Google Sign-in */}
-              <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  disabled={loading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/70 text-emerald-800 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer"
-                >
-                  <span className="truncate">{t('login.demoBtn')}</span>
-                  <ArrowRight className="w-4 h-4 shrink-0" />
-                </button>
-
+              {/* Google Sign-in */}
+              <div>
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}

@@ -120,8 +120,7 @@ export default function AccountPage() {
               phone={acc.phone}
               savingProfile={acc.savingProfile}
               syncingGoogle={acc.syncingGoogle}
-              dbStatus={acc.dbStatus}
-              theme={acc.theme}
+              addresses={acc.addresses}
               language={acc.language}
               t={acc.t}
               onOpenLogin={() => acc.setLoginModalOpen(true)}
@@ -129,8 +128,9 @@ export default function AccountPage() {
               onChangePhone={acc.setPhone}
               onSaveProfile={acc.handleSaveProfile}
               onGoogleSignIn={acc.handleGoogleSignIn}
-              onToggleTheme={acc.toggleTheme}
-              onChangeLanguage={acc.setLanguage}
+              onAddAddress={() => acc.setLocationModalOpen(true)}
+              onSignOut={acc.logoutCustomer}
+              showToast={acc.showToast}
             />
           )}
 

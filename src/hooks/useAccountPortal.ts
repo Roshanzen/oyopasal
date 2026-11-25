@@ -65,9 +65,9 @@ export function useAccountPortal() {
 
   useEffect(() => {
     if (user) {
-      setFullName(user.full_name);
-      setEmail(user.email);
-      setPhone(user.phone);
+      setFullName(user.full_name ?? '');
+      setEmail(user.email ?? '');
+      setPhone(user.phone ?? '');
     }
   }, [user]);
 
@@ -156,13 +156,6 @@ export function useAccountPortal() {
       loadNotifs();
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    productService
-      .getDbStatus()
-      .then((data) => setDbStatus(data))
-      .catch(() => {});
-  }, []);
 
   const setTab = (tab: string) => {
     setSearchParams({ tab });
@@ -338,6 +331,7 @@ export function useAccountPortal() {
     savingProfile,
     syncingGoogle,
     dbStatus,
+    showToast,
     handleGoogleSignIn,
     handleSaveProfile,
     handleReorder,

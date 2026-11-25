@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { APP_CONFIG } from '../config';
 import { ApiRequestError, authService, httpClient, sellerService } from '../services';
 import { SellerLoginPayload, Vendor } from '../types';
@@ -39,10 +39,14 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
 
+  const currentSellerRef = useRef<Vendor | null>(currentSeller);
+  currentSellerRef.current = currentSeller;
+  const inFlightRefreshRef = useRef(false);
+
   const refreshSellerSession = useCallback(async () => {
     // If user is logged in but has no vendor access, never load or retain seller session
     if (user && !isUserVendor(user)) {
-      if (currentSeller || safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)) {
+      if (currentSellerRef.current || safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)) {
         httpClient.clearSellerToken();
         safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
         setCurrentSeller(null);
@@ -50,16 +54,30 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (inFlightRefreshRef.current) return;
+
     const savedSeller = (user?.vendor as Vendor) || safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
     if (!savedSeller || !savedSeller.id) return;
 
+    inFlightRefreshRef.current = true;
     try {
       const storeRes = await sellerService.getSellerStore(savedSeller.id, {
         bypassCache: true,
         headers: { 'Cache-Control': 'no-cache, no-store' },
       });
       if (storeRes?.vendor) {
-        setCurrentSeller(storeRes.vendor);
+        const cur = currentSellerRef.current;
+        const changed =
+          !cur ||
+          cur.id !== storeRes.vendor.id ||
+          cur.status !== storeRes.vendor.status ||
+          cur.is_verified !== storeRes.vendor.is_verified ||
+          cur.is_online !== storeRes.vendor.is_online ||
+          cur.name !== storeRes.vendor.name ||
+          cur.logo_url !== storeRes.vendor.logo_url;
+        if (changed) {
+          setCurrentSeller(storeRes.vendor);
+        }
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
       }
     } catch (err: unknown) {
@@ -68,11 +86,16 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
         safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
         setCurrentSeller(null);
       }
+    } finally {
+      inFlightRefreshRef.current = false;
     }
-  }, [user, currentSeller]);
+  }, [user?.id, user?.role]);
 
   const updateCurrentSeller = useCallback((vendor: Vendor) => {
-    setCurrentSeller(vendor);
+    const cur = currentSellerRef.current;
+    if (!cur || cur.id !== vendor.id || cur.status !== vendor.status || cur.name !== vendor.name) {
+      setCurrentSeller(vendor);
+    }
     safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, vendor);
   }, []);
 
@@ -81,7 +104,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
       if (isUserVendor(user)) {
         if (user.vendor) {
           const userVendor = user.vendor as Vendor;
-          if (!currentSeller || currentSeller.id !== userVendor.id) {
+          if (!currentSellerRef.current || currentSellerRef.current.id !== userVendor.id) {
             setCurrentSeller(userVendor);
             safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, userVendor);
           }
@@ -94,7 +117,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       // No user logged in: ensure no unauthenticated seller session lingers without seller token
-      if (!httpClient.getSellerToken() && currentSeller) {
+      if (!httpClient.getSellerToken() && currentSellerRef.current) {
         setCurrentSeller(null);
         safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
       }
@@ -105,7 +128,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
     if (user ? isUserVendor(user) : Boolean(httpClient.getSellerToken())) {
       refreshSellerSession();
     }
-  }, [user?.role, refreshSellerSession]);
+  }, [user?.id, user?.role, refreshSellerSession]);
 
   const loginAsSeller = useCallback(
     async (payload: SellerLoginPayload) => {

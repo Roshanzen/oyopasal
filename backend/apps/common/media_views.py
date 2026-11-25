@@ -16,7 +16,7 @@ from apps.common.models import MediaAsset
 
 ALLOWED_MEDIA_ROLES = {
     'SUPER_ADMIN', 'ADMIN', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN',
-    'VENDOR_OWNER', 'VENDOR_STAFF', 'SUPPLIER_OWNER', 'SUPPLIER_STAFF'
+    'VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SUPPLIER_OWNER', 'SUPPLIER_STAFF'
 }
 
 def detect_image_type(buffer: bytes) -> str | None:
@@ -53,7 +53,13 @@ class MediaUploadView(APIView):
     def post(self, request):
         user = request.user
         user_role = getattr(user, 'role', '')
-        if not (user.is_staff or user.is_superuser or user_role in ALLOWED_MEDIA_ROLES):
+        if not (
+            user.is_staff
+            or user.is_superuser
+            or user_role in ALLOWED_MEDIA_ROLES
+            or getattr(user, 'is_vendor', False)
+            or hasattr(user, 'vendor_profile')
+        ):
             return Response({
                 'success': False,
                 'error': {

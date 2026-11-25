@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from apps.stores.models import Store
+from apps.stores.models import Store, StoreGalleryImage
 from apps.vendors.models import VendorProfile, VendorStatus
+
+class StoreGalleryImageInline(admin.TabularInline):
+    model = StoreGalleryImage
+    extra = 1
+    fields = ('image', 'caption', 'sort_order')
 
 @admin.action(description=_("Approve & Verify Selected Stores"))
 def approve_and_verify_stores(modeladmin, request, queryset):
@@ -36,6 +41,7 @@ class StoreAdmin(admin.ModelAdmin):
     search_fields = ('name', 'vendor__business_name', 'contact_email', 'contact_phone')
     prepopulated_fields = {'slug': ('name',)}
     actions = [approve_and_verify_stores]
+    inlines = [StoreGalleryImageInline]
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

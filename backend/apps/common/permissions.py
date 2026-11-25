@@ -70,6 +70,30 @@ class IsVendor(permissions.BasePermission):
         )
 
 
+class IsApprovedVendor(permissions.BasePermission):
+    """
+    Strictly verifies that the authenticated user is an APPROVED vendor.
+    Rejects customers, pending/rejected/suspended vendors, and unauthenticated users.
+    """
+    message = "Only active and approved merchant store owners can configure store profiles."
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.user.is_superuser or getattr(request.user, 'role', '') in ['SUPER_ADMIN', 'ADMIN']:
+            return True
+        if getattr(request.user, 'role', '') == 'CUSTOMER' and not hasattr(request.user, 'vendor_profile'):
+            return False
+        if hasattr(request.user, 'vendor_profile'):
+            vp = request.user.vendor_profile
+            return str(getattr(vp, 'status', '')).upper() == 'APPROVED'
+        if getattr(request.user, 'role', '') in ['VENDOR', 'VENDOR_OWNER']:
+            if hasattr(request.user, 'vendor_profile'):
+                return str(getattr(request.user.vendor_profile, 'status', '')).upper() == 'APPROVED'
+            return True
+        return False
+
+
 class IsAuthenticatedVendor(permissions.BasePermission):
     """
     Strictly verifies that the user is authenticated, has a vendor role or store/vendor_profile,

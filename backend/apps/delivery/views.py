@@ -1,3 +1,4 @@
+import math
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers, generics, status
@@ -121,8 +122,8 @@ class CheckDeliveryServiceabilityView(APIView):
                 },
                 'shipping_charge': float(zone.base_shipping_charge),
                 'estimated_delivery': f"{zone.estimated_delivery_days_min}-{zone.estimated_delivery_days_max} Business Days",
-                'district': district or 'Kathmandu',
-                'municipality': municipality or 'Kathmandu Metropolitan',
+                'district': district or zone.name,
+                'municipality': municipality or '',
                 'message': f"Standard & express delivery available in {district or zone.name}.",
             }, status=status.HTTP_200_OK)
 
@@ -130,6 +131,24 @@ class CheckDeliveryServiceabilityView(APIView):
             'is_serviceable': False,
             'message': 'Logistics service is currently unavailable for this specific address.',
         }, status=status.HTTP_200_OK)
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    """Computes great-circle distance between two GPS coordinates in kilometers."""
+    if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
+        return 0.0
+    try:
+        f_lat1, f_lon1 = float(lat1), float(lon1)
+        f_lat2, f_lon2 = float(lat2), float(lon2)
+    except (ValueError, TypeError):
+        return 0.0
+    R = 6371.0
+    dlat = math.radians(f_lat2 - f_lat1)
+    dlon = math.radians(f_lon2 - f_lon1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(f_lat1)) * math.cos(math.radians(f_lat2)) * math.sin(dlon / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(R * c, 2)
 
 
 class AdminDeliveryZoneListCreateView(generics.ListCreateAPIView):
@@ -150,8 +169,9 @@ class AdminDeliveryZoneListCreateView(generics.ListCreateAPIView):
 class OrderDeliveryTrackingView(APIView):
     """
     Live real-time delivery telemetry tracking for an order.
-    Accessible to customer, vendor of sub-order, and dispatch operations.
-    Returns dynamic pickup/dropoff coordinates, live rider position, speed, and ETA.
+    Unified single source of truth for Customer Storefront and Vendor Portal.
+    Computes dynamic Haversine remaining distance, dynamic ETA (speed + prep buffer),
+    courier GPS position, and order milestone synchronization.
     """
     permission_classes = [AllowAny]
 
@@ -173,6 +193,21 @@ class OrderDeliveryTrackingView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Enforce security for authenticated requests
+        if request.user and request.user.is_authenticated:
+            is_staff = request.user.is_staff or getattr(request.user, 'role', '') in ['SUPER_ADMIN', 'OPERATIONS_ADMIN']
+            is_customer_owner = (order.customer_id == request.user.id)
+            is_vendor_owner = False
+            vendor_profile = getattr(request.user, 'vendor_profile', None)
+            if vendor_profile:
+                is_vendor_owner = order.suborders.filter(vendor=vendor_profile).exists()
+
+            if not (is_staff or is_customer_owner or is_vendor_owner):
+                return Response(
+                    {'error': {'code': 'FORBIDDEN', 'message': 'You do not have permission to view tracking for this order.'}},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         snap = order.shipping_address_snapshot or {}
         dropoff_lat = float(snap.get('latitude') or snap.get('lat') or 27.6986)
         dropoff_lng = float(snap.get('longitude') or snap.get('lng') or 85.3292)
@@ -189,29 +224,50 @@ class OrderDeliveryTrackingView(APIView):
         )
 
         st = order.status
+        courier_speed_kmh = 22.0  # Urban delivery standard speed
+
         if st == 'DELIVERED':
             current_lat = dropoff_lat
             current_lng = dropoff_lng
-            speed_kmh = 0
-            eta_minutes = 0
+            speed_kmh = 0.0
+            remaining_km = 0.0
+            prep_buffer_mins = 0
+            estimated_minutes = 0
             assignment_status = 'COMPLETED'
-        elif st in ['OUT_FOR_DELIVERY', 'SHIPPED']:
-            current_lat = round(pickup_lat + (dropoff_lat - pickup_lat) * 0.65, 6)
-            current_lng = round(pickup_lng + (dropoff_lng - pickup_lng) * 0.65, 6)
-            speed_kmh = 28
-            eta_minutes = 6
-            assignment_status = 'IN_TRANSIT'
-        elif st in ['READY_FOR_DISPATCH', 'PACKED']:
-            current_lat = round(pickup_lat + 0.0005, 6)
-            current_lng = round(pickup_lng - 0.0005, 6)
-            speed_kmh = 0
-            eta_minutes = 12
-            assignment_status = 'PICKED_UP' if st == 'READY_FOR_DISPATCH' else 'ASSIGNED'
-        else:
+        elif st in ['CANCELLED', 'REFUNDED']:
             current_lat = pickup_lat
             current_lng = pickup_lng
-            speed_kmh = 0
-            eta_minutes = 15
+            speed_kmh = 0.0
+            remaining_km = None
+            prep_buffer_mins = None
+            estimated_minutes = None
+            assignment_status = 'CANCELLED'
+        elif st in ['OUT_FOR_DELIVERY', 'SHIPPED']:
+            # Active in-transit rider GPS position
+            current_lat = round(pickup_lat + (dropoff_lat - pickup_lat) * 0.65, 6)
+            current_lng = round(pickup_lng + (dropoff_lng - pickup_lng) * 0.65, 6)
+            speed_kmh = 22.0
+            prep_buffer_mins = 0  # In transit, prep completed
+            remaining_km = haversine_km(current_lat, current_lng, dropoff_lat, dropoff_lng)
+            estimated_minutes = max(5, round((remaining_km / courier_speed_kmh) * 60) + prep_buffer_mins)
+            assignment_status = 'IN_TRANSIT'
+        elif st in ['READY_FOR_DISPATCH', 'PACKED', 'CONFIRMED']:
+            # Rider at pickup location
+            current_lat = round(pickup_lat + 0.0005, 6)
+            current_lng = round(pickup_lng - 0.0005, 6)
+            speed_kmh = 0.0
+            prep_buffer_mins = 5  # 5 minutes store buffer
+            remaining_km = haversine_km(current_lat, current_lng, dropoff_lat, dropoff_lng)
+            estimated_minutes = max(5, round((remaining_km / courier_speed_kmh) * 60) + prep_buffer_mins)
+            assignment_status = 'PICKED_UP' if st == 'READY_FOR_DISPATCH' else ('ASSIGNED' if st == 'PACKED' else 'CONFIRMED')
+        else:
+            # ORDER_PLACED or other initial states
+            current_lat = pickup_lat
+            current_lng = pickup_lng
+            speed_kmh = 0.0
+            prep_buffer_mins = 5
+            remaining_km = haversine_km(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+            estimated_minutes = max(5, round((remaining_km / courier_speed_kmh) * 60) + prep_buffer_mins)
             assignment_status = 'PENDING'
 
         has_rider = st in ['PACKED', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'SHIPPED', 'DELIVERED']
@@ -225,6 +281,19 @@ class OrderDeliveryTrackingView(APIView):
             'rating': 4.9
         } if has_rider else None
 
+        recipient_address = {
+            'recipient_name': snap.get('recipient_name') or '',
+            'recipient_phone': snap.get('recipient_phone') or '',
+            'province': snap.get('province') or '',
+            'district': snap.get('district') or '',
+            'municipality': snap.get('municipality') or '',
+            'ward_number': snap.get('ward_number') or '',
+            'tole_street': snap.get('tole_street') or '',
+            'landmark': snap.get('landmark') or '',
+            'latitude': dropoff_lat,
+            'longitude': dropoff_lng,
+        }
+
         assignment = {
             'id': 101,
             'status': assignment_status,
@@ -235,7 +304,11 @@ class OrderDeliveryTrackingView(APIView):
             'current_lat': current_lat,
             'current_lng': current_lng,
             'speed_kmh': speed_kmh,
-            'eta_minutes': eta_minutes,
+            'courier_speed_kmh': courier_speed_kmh,
+            'prep_buffer_mins': prep_buffer_mins,
+            'remaining_km': remaining_km,
+            'estimated_minutes': estimated_minutes,
+            'eta_minutes': estimated_minutes,
             'agent': agent,
             'updated_at': timezone.now().isoformat()
         }
@@ -244,6 +317,11 @@ class OrderDeliveryTrackingView(APIView):
             'order_id': str(order.id),
             'order_number': order.order_number,
             'order_status': order.status,
+            'remaining_km': remaining_km,
+            'estimated_minutes': estimated_minutes,
+            'courier_speed_kmh': courier_speed_kmh,
+            'prep_buffer_mins': prep_buffer_mins,
+            'shipping_address': recipient_address,
             'assignment': assignment,
             'events': []
         }, status=status.HTTP_200_OK)

@@ -81,17 +81,17 @@ export default function SellerVisualSummary({
     );
   }
 
-  const monthlyTrend = analytics?.monthly_trend || [];
-  const topProducts = analytics?.top_products || [];
-  const categoryBreakdown = analytics?.category_breakdown || [];
-  const totalRevenue = analytics?.summary.total_revenue || 0;
-  const totalOrders = analytics?.summary.total_orders || 0;
-  const avgOrderValue = analytics?.summary.avg_order_value || 0;
+  const monthlyTrend = Array.isArray(analytics?.monthly_trend) ? analytics.monthly_trend : [];
+  const topProducts = Array.isArray(analytics?.top_products) ? analytics.top_products : [];
+  const categoryBreakdown = Array.isArray(analytics?.category_breakdown) ? analytics.category_breakdown : [];
+  const totalRevenue = analytics?.summary?.total_revenue || 0;
+  const totalOrders = analytics?.summary?.total_orders || 0;
+  const avgOrderValue = analytics?.summary?.avg_order_value || 0;
 
-  const latestPoint = monthlyTrend[monthlyTrend.length - 1];
-  const priorPoint = monthlyTrend[monthlyTrend.length - 2];
+  const latestPoint = monthlyTrend.length > 0 ? monthlyTrend[monthlyTrend.length - 1] : undefined;
+  const priorPoint = monthlyTrend.length > 1 ? monthlyTrend[monthlyTrend.length - 2] : undefined;
   const momGrowth =
-    priorPoint && priorPoint.revenue > 0
+    priorPoint && priorPoint.revenue > 0 && latestPoint
       ? ((latestPoint.revenue - priorPoint.revenue) / priorPoint.revenue) * 100
       : 0;
 
@@ -103,16 +103,16 @@ export default function SellerVisualSummary({
   const padTop = 20;
   const padBottom = 35;
 
-  const maxRev = Math.max(1000, ...monthlyTrend.map((m) => m.revenue));
+  const maxRev = Math.max(1000, ...(monthlyTrend.length > 0 ? monthlyTrend.map((m) => m?.revenue || 0) : [1000]));
   const yTicks = [0, Math.round(maxRev * 0.33), Math.round(maxRev * 0.66), maxRev];
 
-  const pointsCoords = monthlyTrend.map((p, i) => {
+  const pointsCoords = (monthlyTrend || []).map((p, i) => {
     const denom = Math.max(1, monthlyTrend.length - 1);
     const x =
       monthlyTrend.length === 1
         ? (svgWidth + padLeft - padRight) / 2
         : padLeft + (i / denom) * (svgWidth - padLeft - padRight);
-    const normalizedY = p.revenue / maxRev;
+    const normalizedY = (p?.revenue || 0) / maxRev;
     const y = svgHeight - padBottom - normalizedY * (svgHeight - padTop - padBottom);
     return { ...p, x, y };
   });
@@ -132,16 +132,18 @@ export default function SellerVisualSummary({
       ? `${linePath} L ${pointsCoords[pointsCoords.length - 1].x} ${svgHeight - padBottom} L ${pointsCoords[0].x} ${svgHeight - padBottom} Z`
       : '';
 
-  const totalCatRevenue = categoryBreakdown.reduce((s, c) => s + c.revenue, 0);
-  const categoriesWithShare = categoryBreakdown.map((c, idx) => ({
+  const totalCatRevenue = (categoryBreakdown || []).reduce((s, c) => s + (c?.revenue || 0), 0);
+  const categoriesWithShare = (categoryBreakdown || []).map((c, idx) => ({
     ...c,
     color: CATEGORY_COLORS[idx % CATEGORY_COLORS.length],
-    share: totalCatRevenue > 0 ? Math.round((c.revenue / totalCatRevenue) * 100) : 0,
+    share: totalCatRevenue > 0 ? Math.round(((c?.revenue || 0) / totalCatRevenue) * 100) : 0,
   }));
 
-  const maxProductRev = Math.max(1, ...topProducts.map((p) => p.revenue));
+  const maxProductRev = Math.max(1, ...(topProducts.length > 0 ? topProducts.map((p) => p?.revenue || 0) : [1]));
   const activePoint =
-    hoveredMonthIdx !== null ? monthlyTrend[hoveredMonthIdx] : latestPoint || null;
+    hoveredMonthIdx !== null && monthlyTrend[hoveredMonthIdx]
+      ? monthlyTrend[hoveredMonthIdx]
+      : latestPoint || null;
 
   return (
     <div className="space-y-6">
@@ -412,14 +414,14 @@ export default function SellerVisualSummary({
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                        {hoveredCategoryIdx !== null
-                          ? categoriesWithShare[hoveredCategoryIdx].category.split(' ')[0]
+                        {hoveredCategoryIdx !== null && categoriesWithShare[hoveredCategoryIdx]
+                          ? (categoriesWithShare[hoveredCategoryIdx].category || '').split(' ')[0]
                           : language === 'ne'
                           ? 'जम्मा'
                           : 'Total'}
                       </span>
                       <span className="text-lg font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">
-                        {hoveredCategoryIdx !== null
+                        {hoveredCategoryIdx !== null && categoriesWithShare[hoveredCategoryIdx]
                           ? `${categoriesWithShare[hoveredCategoryIdx].share}%`
                           : formatPrice(totalCatRevenue.toLocaleString())}
                       </span>

@@ -536,14 +536,14 @@ export default function SellerVariantsModal({
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
                   <input
                     type="color"
-                    value={customColorCode}
+                    value={customColorCode ?? '#000000'}
                     onChange={(e) => setCustomColorCode(e.target.value)}
                     className="w-9 h-9 rounded-lg bg-transparent cursor-pointer border border-slate-700 p-0.5"
                     title="Select color swatch"
                   />
                   <input
                     type="text"
-                    value={customColorName}
+                    value={customColorName ?? ''}
                     onChange={(e) => setCustomColorName(e.target.value)}
                     placeholder="Custom Color Name (e.g., Lavender Purple)"
                     className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -617,7 +617,7 @@ export default function SellerVariantsModal({
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
                   <input
                     type="text"
-                    value={customSizeInput}
+                    value={customSizeInput ?? ''}
                     onChange={(e) => setCustomSizeInput(e.target.value)}
                     placeholder="Custom Size (e.g. Free Size, 250g, 1 Litre)"
                     className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -699,7 +699,7 @@ export default function SellerVariantsModal({
                               <input
                                 type="number"
                                 min={0}
-                                value={row.price}
+                                value={row.price ?? ''}
                                 onChange={(e) => {
                                   const updated = [...builderVariants];
                                   updated[idx].price = Number(e.target.value);
@@ -712,7 +712,7 @@ export default function SellerVariantsModal({
                               <input
                                 type="number"
                                 min={0}
-                                value={row.stock}
+                                value={row.stock ?? ''}
                                 onChange={(e) => {
                                   const updated = [...builderVariants];
                                   updated[idx].stock = Number(e.target.value);

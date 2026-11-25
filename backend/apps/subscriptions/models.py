@@ -3,7 +3,6 @@ from django.db import models
 from django.utils import timezone
 from apps.common.models import BaseModel, SoftDeletableModel
 from apps.vendors.models import VendorProfile
-from apps.suppliers.models import SupplierProfile
 
 class SubscriptionTier(models.TextChoices):
     FREE_TRIAL = 'FREE_TRIAL', 'Free Trial'
@@ -80,13 +79,6 @@ class TenantSubscription(BaseModel):
     """
     vendor = models.OneToOneField(
         VendorProfile,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='subscription'
-    )
-    supplier = models.OneToOneField(
-        SupplierProfile,
         on_delete=models.CASCADE,
         null=True,
         blank=True,

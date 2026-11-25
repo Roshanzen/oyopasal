@@ -14,7 +14,7 @@ interface SellerReviewsTabProps {
 }
 
 export default function SellerReviewsTab({
-  sellerReviews,
+  sellerReviews = [],
   reviewsAvg,
   reviewsLoading,
   reviewsError,
@@ -22,6 +22,7 @@ export default function SellerReviewsTab({
   t,
   onRefresh,
 }: SellerReviewsTabProps) {
+  const safeReviews = Array.isArray(sellerReviews) ? sellerReviews : [];
   return (
     <div className="bg-white dark:bg-[#0F172A] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -31,7 +32,7 @@ export default function SellerReviewsTab({
             <span>{language === 'ne' ? 'ग्राहक समीक्षा र मूल्याङ्कन' : 'Customer Reviews & Ratings'}</span>
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-            Average Store Product Rating: <strong className="text-amber-500 dark:text-amber-400">{reviewsAvg || 0} ★</strong> ({sellerReviews.length} reviews)
+            Average Store Product Rating: <strong className="text-amber-500 dark:text-amber-400">{reviewsAvg || 0} ★</strong> ({safeReviews.length} reviews)
           </p>
         </div>
         <button

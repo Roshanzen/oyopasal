@@ -84,8 +84,8 @@ export default function VendorActivationPage() {
 
       // Store vendor auth tokens
       if (res.access) {
-        safeStorage.setItem(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH, res.access);
-        safeStorage.setItem(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN, res.access);
+        safeStorage.set(APP_CONFIG.STORAGE_KEYS.VENDOR_AUTH, res.access);
+        safeStorage.set(APP_CONFIG.STORAGE_KEYS.SELLER_TOKEN, res.access);
       }
       if (res.vendor) {
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, res.vendor);
@@ -182,7 +182,7 @@ export default function VendorActivationPage() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={token}
+                    value={token ?? ''}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="Paste activation token from email"
                     className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none focus:border-emerald-500"
@@ -243,7 +243,7 @@ export default function VendorActivationPage() {
                     <input
                       type="password"
                       required
-                      value={password}
+                      value={password ?? ''}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Minimum 6 characters"
                       autoComplete="new-password"
@@ -261,7 +261,7 @@ export default function VendorActivationPage() {
                     <input
                       type="password"
                       required
-                      value={confirmPassword}
+                      value={confirmPassword ?? ''}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter password"
                       autoComplete="new-password"

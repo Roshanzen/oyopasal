@@ -2,24 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { orderService } from '../services';
 import { Address, DeliveryTrackingTelemetry, Order } from '../types';
-import { calculateDistanceInKm } from '../utils';
+import { calculateDistanceInKm, extractCoordinates } from '../utils';
 
 export interface LatLng {
   lat: number;
   lng: number;
 }
 
-export function resolveAddressCoords(addr?: Address | null, fallback?: LatLng): LatLng {
-  if (
-    addr &&
-    typeof addr.lat === 'number' &&
-    typeof addr.lng === 'number' &&
-    !Number.isNaN(addr.lat) &&
-    !Number.isNaN(addr.lng)
-  ) {
-    return { lat: addr.lat, lng: addr.lng };
+export function resolveAddressCoords(addr?: unknown, fallback?: LatLng): LatLng {
+  const extracted = extractCoordinates(addr);
+  if (extracted) {
+    return extracted;
   }
-  return fallback || { lat: 27.7172, lng: 85.324 };
+  const fallbackExtracted = extractCoordinates(fallback);
+  return fallbackExtracted || { lat: 27.7172, lng: 85.324 };
 }
 
 export function calculateBearing(from: LatLng, to: LatLng): number {
@@ -30,6 +26,29 @@ export function calculateBearing(from: LatLng, to: LatLng): number {
   const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
   const brng = (Math.atan2(y, x) * 180) / Math.PI;
   return (brng + 360) % 360;
+}
+
+export function formatEta(etaMinutes: number | null | undefined, language: string = 'en'): string {
+  if (etaMinutes === null || etaMinutes === undefined || Number.isNaN(etaMinutes)) {
+    return '--';
+  }
+  if (etaMinutes <= 0) {
+    return language === 'ne' ? 'डेलिभर भयो' : 'Delivered';
+  }
+  const mins = Math.round(etaMinutes);
+  if (mins < 60) {
+    return language === 'ne' ? `${mins} मिनेट` : `${mins} mins`;
+  }
+  const hours = Math.floor(mins / 60);
+  const remMinutes = mins % 60;
+  if (remMinutes === 0) {
+    if (language === 'ne') return `${hours} घण्टा`;
+    return hours === 1 ? '1 hr' : `${hours} hrs`;
+  }
+  if (language === 'ne') {
+    return `${hours} घण्टा ${remMinutes} मिनेट`;
+  }
+  return `${hours === 1 ? '1 hr' : `${hours} hrs`} ${remMinutes} mins`;
 }
 
 export function useOrderTracking(orderId?: string) {
@@ -169,7 +188,7 @@ export function useOrderTracking(orderId?: string) {
     const pickupLng = tracking?.assignment?.pickup_lng ?? dbVendor?.lng ?? currentCoordinates.lng;
     return {
       name: order?.items_by_vendor?.[0]?.vendor?.name || dbVendor?.name || 'Fulfillment Store',
-      area: dbVendor?.area || dbVendor?.location || 'Kathmandu Valley',
+      area: dbVendor?.area || dbVendor?.location || '',
       coords: { lat: pickupLat, lng: pickupLng },
     };
   }, [order, tracking, vendors, currentCoordinates]);
@@ -225,26 +244,49 @@ export function useOrderTracking(orderId?: string) {
     );
   }, [routeMetrics.distanceMeters, hubInfo.coords, destinationCoords]);
 
+  const courierSpeedKmh = assignment?.courier_speed_kmh ?? 22.0;
+  const prepBufferMins = assignment?.prep_buffer_mins ?? (order?.status === 'OUT_FOR_DELIVERY' || order?.status === 'SHIPPED' ? 0 : 5);
+
   const remainingDistanceKm = useMemo(() => {
     if (order?.status === 'DELIVERED') return 0;
+    if (assignment?.remaining_km !== null && assignment?.remaining_km !== undefined) {
+      return assignment.remaining_km;
+    }
+    if (tracking?.remaining_km !== null && tracking?.remaining_km !== undefined) {
+      return tracking.remaining_km;
+    }
     if (!riderPosition) return totalRouteKm;
     return Math.max(
       0.02,
       calculateDistanceInKm(riderPosition.lat, riderPosition.lng, destinationCoords.lat, destinationCoords.lng)
     );
-  }, [order?.status, riderPosition, destinationCoords, totalRouteKm]);
+  }, [order?.status, assignment?.remaining_km, tracking?.remaining_km, riderPosition, destinationCoords, totalRouteKm]);
 
-  const speedKmh = assignment?.speed_kmh ?? 0;
+  const dynamicEtaMinutes = useMemo(() => {
+    if (order?.status === 'CANCELLED') return null;
+    if (order?.status === 'DELIVERED') return 0;
+    if (assignment?.estimated_minutes !== null && assignment?.estimated_minutes !== undefined) {
+      return assignment.estimated_minutes;
+    }
+    if (tracking?.estimated_minutes !== null && tracking?.estimated_minutes !== undefined) {
+      return tracking.estimated_minutes;
+    }
+    if (assignment?.eta_minutes !== null && assignment?.eta_minutes !== undefined) {
+      return assignment.eta_minutes;
+    }
+    return Math.max(
+      5,
+      Math.round((remainingDistanceKm / courierSpeedKmh) * 60) + prepBufferMins
+    );
+  }, [order?.status, assignment?.estimated_minutes, tracking?.estimated_minutes, assignment?.eta_minutes, remainingDistanceKm, courierSpeedKmh, prepBufferMins]);
+
+  const speedKmh = assignment?.speed_kmh ?? (order?.status === 'OUT_FOR_DELIVERY' || order?.status === 'SHIPPED' ? 22 : 0);
+
   const etaDisplay = useMemo(() => {
     if (order?.status === 'CANCELLED') return language === 'ne' ? 'रद्द गरिएको' : 'Cancelled';
     if (order?.status === 'DELIVERED') return language === 'ne' ? 'डेलिभर भयो' : 'Arrived at Doorstep';
-    if (!assignment) return `${order?.estimated_delivery_mins || 14} ${t('common.mins')}`;
-    if (assignment.eta_minutes !== null && assignment.eta_minutes !== undefined) {
-      return `${assignment.eta_minutes} ${t('common.mins')}`;
-    }
-    const mins = Math.max(2, Math.round((remainingDistanceKm / Math.max(18, speedKmh || 24)) * 60));
-    return `${mins} ${t('common.mins')}`;
-  }, [order, assignment, remainingDistanceKm, speedKmh, language, t]);
+    return formatEta(dynamicEtaMinutes, language);
+  }, [order?.status, dynamicEtaMinutes, language]);
 
   const handleCancelOrder = async () => {
     if (!order) return;
@@ -289,6 +331,9 @@ export function useOrderTracking(orderId?: string) {
     totalRouteKm,
     remainingDistanceKm,
     speedKmh,
+    courierSpeedKmh,
+    prepBufferMins,
+    dynamicEtaMinutes,
     etaDisplay,
     addresses,
     currentCoordinates,

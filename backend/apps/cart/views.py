@@ -246,6 +246,52 @@ class ValidateCheckoutView(APIView):
                     'authoritative_cart': CartSerializer(cart).data
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Express Delivery Zone Radius Validation
+        data = request.data or {}
+        deliv_opt = data.get('delivery_option') or data.get('deliveryOption')
+        if (deliv_opt or '').upper() in ['EXPRESS', 'EXPRESS_12_MINS', 'INSTANT']:
+            cust_lat = data.get('latitude') or data.get('lat')
+            cust_lng = data.get('longitude') or data.get('lng')
+            if not cust_lat or not cust_lng:
+                addr_dict = data.get('shipping_address') or data.get('delivery_address') or {}
+                cust_lat = addr_dict.get('latitude') or addr_dict.get('lat')
+                cust_lng = addr_dict.get('longitude') or addr_dict.get('lng')
+            if not cust_lat and data.get('address_id'):
+                try:
+                    from apps.customers.models import Address
+                    addr_obj = Address.objects.filter(id=data.get('address_id')).first()
+                    if addr_obj and addr_obj.latitude is not None and addr_obj.longitude is not None:
+                        cust_lat = float(addr_obj.latitude)
+                        cust_lng = float(addr_obj.longitude)
+                except Exception:
+                    pass
+
+            if cust_lat is not None and cust_lng is not None:
+                from apps.delivery.views import haversine_km
+                for item in cart.items.select_related('variant__product__vendor', 'variant__product__store').all():
+                    prod = getattr(item.variant, 'product', None)
+                    if prod:
+                        store = getattr(prod, 'store', None)
+                        vendor = getattr(prod, 'vendor', None)
+                        store_lat = float(store.latitude) if (store and getattr(store, 'latitude', None) is not None) else (
+                            float(vendor.latitude) if (vendor and getattr(vendor, 'latitude', None) is not None) else None
+                        )
+                        store_lng = float(store.longitude) if (store and getattr(store, 'longitude', None) is not None) else (
+                            float(vendor.longitude) if (vendor and getattr(vendor, 'longitude', None) is not None) else None
+                        )
+                        if store_lat is not None and store_lng is not None:
+                            dist_km = haversine_km(store_lat, store_lng, cust_lat, cust_lng)
+                            max_rad = float(store.max_local_delivery_km) if (store and getattr(store, 'max_local_delivery_km', None) is not None) else 15.0
+                            if dist_km > max_rad:
+                                return Response({
+                                    'valid': False,
+                                    'is_outside_express_zone': True,
+                                    'max_local_delivery_km': max_rad,
+                                    'distance_km': dist_km,
+                                    'message': f"Outside {max_rad:g} km Express Zone ({dist_km:.1f} km away) — Available via Intercity Standard Delivery (1–2 Days)",
+                                    'authoritative_cart': CartSerializer(cart).data
+                                }, status=status.HTTP_400_BAD_REQUEST)
+
         cart_data = CartSerializer(cart).data
         return Response({
             'valid': True,

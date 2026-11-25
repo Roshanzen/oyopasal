@@ -17,15 +17,16 @@ from apps.inventory.services import InventoryService, InsufficientStockError
 class CheckoutService:
     @classmethod
     @transaction.atomic
-    def process_checkout(cls, user, shipping_address_data: dict, payment_method: str = 'COD', customer_notes: str = '') -> Order:
+    def process_checkout(cls, user, shipping_address_data: dict, payment_method: str = 'COD', customer_notes: str = '', delivery_option: str = 'EXPRESS_12_MINS') -> Order:
         """
         Executes atomic multi-vendor checkout:
         1. Validates cart content and active product statuses.
-        2. Reserves required stock across warehouse records.
-        3. Groups line items by vendor.
-        4. Calculates suborders, commissions, and taxes.
-        5. Generates Parent Order and VendorSubOrders.
-        6. Clears customer cart.
+        2. Validates local delivery radius for express orders.
+        3. Reserves required stock across warehouse records.
+        4. Groups line items by vendor.
+        5. Calculates suborders, commissions, and taxes.
+        6. Generates Parent Order and VendorSubOrders.
+        7. Clears customer cart.
         """
         try:
             cart = Cart.objects.select_for_update().filter(user=user).first()
@@ -70,6 +71,29 @@ class CheckoutService:
                     'items': []
                 }
             vendor_groups[v_id]['items'].append(item)
+
+        # Validate delivery radius for Express options
+        from apps.delivery.views import haversine_km
+        cust_lat = shipping_address_data.get('latitude') or shipping_address_data.get('lat')
+        cust_lng = shipping_address_data.get('longitude') or shipping_address_data.get('lng')
+
+        if (delivery_option or '').upper() in ['EXPRESS', 'EXPRESS_12_MINS', 'INSTANT'] and cust_lat is not None and cust_lng is not None:
+            for group in vendor_groups.values():
+                store = group.get('store')
+                vendor = group.get('vendor')
+                store_lat = float(store.latitude) if (store and getattr(store, 'latitude', None) is not None) else (
+                    float(vendor.latitude) if (vendor and getattr(vendor, 'latitude', None) is not None) else None
+                )
+                store_lng = float(store.longitude) if (store and getattr(store, 'longitude', None) is not None) else (
+                    float(vendor.longitude) if (vendor and getattr(vendor, 'longitude', None) is not None) else None
+                )
+                if store_lat is not None and store_lng is not None:
+                    dist_km = haversine_km(store_lat, store_lng, cust_lat, cust_lng)
+                    max_radius = float(store.max_local_delivery_km) if (store and getattr(store, 'max_local_delivery_km', None) is not None) else 15.0
+                    if dist_km > max_radius:
+                        raise ValueError(
+                            f"Outside {max_radius:g} km Express Zone ({dist_km:.1f} km away) — Available via Intercity Standard Delivery (1–2 Days)"
+                        )
 
         # Calculate authoritative subtotal
         order_subtotal = Decimal('0.00')
@@ -241,9 +265,11 @@ class CheckoutService:
 
 class OrderService:
     VALID_TRANSITIONS = {
+        OrderStatus.PENDING_PAYMENT: [OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],
+        OrderStatus.PAYMENT_PROCESSING: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED, OrderStatus.FAILED],
         OrderStatus.CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
         OrderStatus.PROCESSING: [OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
-        OrderStatus.PACKED: [OrderStatus.READY_FOR_DISPATCH, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+        OrderStatus.PACKED: [OrderStatus.READY_FOR_DISPATCH, OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED],
         OrderStatus.READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
         OrderStatus.SHIPPED: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
         OrderStatus.OUT_FOR_DELIVERY: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
@@ -261,6 +287,15 @@ class OrderService:
         sub_order = VendorSubOrder.objects.select_for_update().get(id=sub_order_id)
         current_status = sub_order.status
 
+        # Idempotent: already at target status
+        if current_status == new_status:
+            if tracking_number:
+                sub_order.tracking_number = tracking_number
+            if delivery_provider:
+                sub_order.delivery_provider = delivery_provider
+            sub_order.save(update_fields=['tracking_number', 'delivery_provider', 'updated_at'])
+            return sub_order
+
         # Validate transition rules
         allowed = cls.VALID_TRANSITIONS.get(current_status, [])
         if new_status not in allowed and not (user.is_superuser or user.role == 'SUPER_ADMIN'):
@@ -273,8 +308,9 @@ class OrderService:
             sub_order.tracking_number = tracking_number
         if delivery_provider:
             sub_order.delivery_provider = delivery_provider
-        if new_status == OrderStatus.SHIPPED:
-            sub_order.shipped_at = timezone.now()
+        if new_status in [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY]:
+            if not sub_order.shipped_at:
+                sub_order.shipped_at = timezone.now()
             # Commit all linked inventory reservations
             for item in sub_order.items.all():
                 if item.reservation_id:
@@ -335,5 +371,9 @@ class OrderService:
         elif any(s in [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY] for s in statuses):
             if parent_order.status != OrderStatus.DELIVERED:
                 parent_order.status = OrderStatus.SHIPPED
+                parent_order.save(update_fields=['status', 'updated_at'])
+        elif any(s in [OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH] for s in statuses):
+            if parent_order.status not in [OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+                parent_order.status = OrderStatus.PROCESSING
                 parent_order.save(update_fields=['status', 'updated_at'])
 

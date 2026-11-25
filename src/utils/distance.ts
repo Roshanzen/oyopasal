@@ -71,7 +71,63 @@ export function calculateDistanceInKm(
     return { estimatedMinutes: totalMinutes, etaText };
   }
 
-  export function estimateDeliveryMinutes(distanceKm: number, baseMins = 10): number {
-    return calculateDeliveryEstimate(distanceKm, baseMins).estimatedMinutes;
+export function estimateDeliveryMinutes(distanceKm: number, baseMins = 10): number {
+  return calculateDeliveryEstimate(distanceKm, baseMins).estimatedMinutes;
+}
+
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Validates whether a value is a valid, finite numeric coordinate.
+ */
+export function isValidCoordinate(val: unknown): val is number {
+  if (typeof val === 'number') {
+    return !Number.isNaN(val) && Number.isFinite(val);
   }
+  if (typeof val === 'string' && val.trim() !== '') {
+    const parsed = parseFloat(val);
+    return !Number.isNaN(parsed) && Number.isFinite(parsed);
+  }
+  return false;
+}
+
+/**
+ * Normalizes coordinate objects from either {lat, lng} or {latitude, longitude},
+ * handling strings, numbers, nulls, undefined, and empty values safely.
+ */
+export function extractCoordinates(obj: unknown): Coordinates | null {
+  if (!obj || typeof obj !== 'object') return null;
+  const o = obj as Record<string, unknown>;
+  const rawLat = o.lat ?? o.latitude;
+  const rawLng = o.lng ?? o.longitude;
+
+  if (rawLat == null || rawLng == null || rawLat === '' || rawLng === '') {
+    return null;
+  }
+
+  const lat = typeof rawLat === 'number' ? rawLat : parseFloat(String(rawLat));
+  const lng = typeof rawLng === 'number' ? rawLng : parseFloat(String(rawLng));
+
+  if (!Number.isNaN(lat) && !Number.isNaN(lng) && Number.isFinite(lat) && Number.isFinite(lng)) {
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+  return null;
+}
+
+/**
+ * Safely formats coordinates to N decimal places without crashing on null/undefined.
+ * Returns "Coordinates unavailable" fallback when coordinates are missing.
+ */
+export function formatCoordinates(coords: unknown, digits = 4): string {
+  const extracted = extractCoordinates(coords);
+  if (!extracted) {
+    return 'Coordinates unavailable';
+  }
+  return `${extracted.lat.toFixed(digits)}, ${extracted.lng.toFixed(digits)}`;
+}
 

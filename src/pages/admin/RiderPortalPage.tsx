@@ -241,12 +241,13 @@ export default function RiderPortalPage() {
       ) : (
         <div className="space-y-5">
           {assignments.map(a => {
-            const draft = gpsCoords[a.id] || {
+            const defaultDraft = {
               lat: String(a.current_lat || a.pickup_lat || 27.6915),
               lng: String(a.current_lng || a.pickup_lng || 85.3420),
               speed: String(a.speed_kmh || 26),
-              eta: String(a.eta_minutes || 6)
+              eta: String(a.eta_minutes || 6),
             };
+            const draft = { ...defaultDraft, ...(gpsCoords[a.id] || {}) };
             return (
               <div key={a.id} className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
@@ -338,28 +339,28 @@ export default function RiderPortalPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <input
                         type="text"
-                        value={draft.lat}
+                        value={draft.lat ?? ''}
                         onChange={e => setGpsCoords(p => ({ ...p, [a.id]: { ...draft, lat: e.target.value } }))}
                         placeholder="Lat"
                         className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white"
                       />
                       <input
                         type="text"
-                        value={draft.lng}
+                        value={draft.lng ?? ''}
                         onChange={e => setGpsCoords(p => ({ ...p, [a.id]: { ...draft, lng: e.target.value } }))}
                         placeholder="Lng"
                         className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white"
                       />
                       <input
                         type="number"
-                        value={draft.speed}
+                        value={draft.speed ?? ''}
                         onChange={e => setGpsCoords(p => ({ ...p, [a.id]: { ...draft, speed: e.target.value } }))}
                         placeholder="km/h"
                         className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white"
                       />
                       <input
                         type="number"
-                        value={draft.eta}
+                        value={draft.eta ?? ''}
                         onChange={e => setGpsCoords(p => ({ ...p, [a.id]: { ...draft, eta: e.target.value } }))}
                         placeholder="ETA min"
                         className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white"

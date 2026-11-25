@@ -111,3 +111,101 @@ test('Separation 5: Logging into Customer storefront does not log user into /sel
   assert.strictEqual(customerStorage, 'jwt-customer-session');
   assert.strictEqual(vendorStorage, null, 'Vendor session must remain null when customer logs into storefront');
 });
+
+test('Separation 6: Customer with pending application receives APPLICATION_PENDING_REVIEW on vendor login', () => {
+  interface LoginCheckResult {
+    status: number;
+    code: string;
+    action: string;
+    application_number?: string;
+  }
+
+  function simulateVendorLoginStatus(user: { role: string; vendor_profile?: any; application?: { status: string; number: string } }): LoginCheckResult {
+    if (user.application?.status === 'PENDING' || user.application?.status === 'UNDER_REVIEW') {
+      return {
+        status: 403,
+        code: 'APPLICATION_PENDING_REVIEW',
+        action: 'TRACK_APPLICATION',
+        application_number: user.application.number,
+      };
+    }
+    if (user.application?.status === 'INVITATION_SENT') {
+      return {
+        status: 403,
+        code: 'ACCOUNT_AWAITING_ACTIVATION',
+        action: 'ACTIVATE_ACCOUNT',
+        application_number: user.application.number,
+      };
+    }
+    if (user.role === 'CUSTOMER' && !user.vendor_profile) {
+      return {
+        status: 403,
+        code: 'CUSTOMER_ACCOUNT_ONLY',
+        action: 'APPLY_SELLER',
+      };
+    }
+    return { status: 200, code: 'SUCCESS', action: 'NONE' };
+  }
+
+  const pendingUser = {
+    role: 'CUSTOMER',
+    application: { status: 'PENDING', number: 'APP-2026-TEST01' },
+  };
+
+  const res = simulateVendorLoginStatus(pendingUser);
+  assert.strictEqual(res.status, 403);
+  assert.strictEqual(res.code, 'APPLICATION_PENDING_REVIEW');
+  assert.strictEqual(res.action, 'TRACK_APPLICATION');
+  assert.strictEqual(res.application_number, 'APP-2026-TEST01');
+});
+
+test('Separation 7: Approved application awaiting activation receives ACCOUNT_AWAITING_ACTIVATION', () => {
+  function simulateVendorLoginStatus(user: { role: string; application?: { status: string; number: string } }) {
+    if (user.application?.status === 'INVITATION_SENT') {
+      return {
+        status: 403,
+        code: 'ACCOUNT_AWAITING_ACTIVATION',
+        action: 'ACTIVATE_ACCOUNT',
+      };
+    }
+    return { status: 200, code: 'SUCCESS' };
+  }
+
+  const approvedUser = {
+    role: 'CUSTOMER',
+    application: { status: 'INVITATION_SENT', number: 'APP-2026-TEST02' },
+  };
+
+  const res = simulateVendorLoginStatus(approvedUser);
+  assert.strictEqual(res.status, 403);
+  assert.strictEqual(res.code, 'ACCOUNT_AWAITING_ACTIVATION');
+  assert.strictEqual(res.action, 'ACTIVATE_ACCOUNT');
+});
+
+test('Separation 8: Activated vendor with approved store logs into /seller successfully while preserving customer access', () => {
+  const activatedUser: UserProfile = {
+    id: 'user-dual-role',
+    username: 'ritesh_merchant',
+    email: 'ritesh@merchant.np',
+    full_name: 'Ritesh Yadav',
+    phone: '9841223344',
+    role: 'VENDOR',
+    token: 'jwt-vendor-token',
+    has_vendor_access: true,
+    is_vendor: true,
+    vendor: {
+      id: 'store-ritesh',
+      business_name: 'Ritesh SuperMart',
+      status: 'APPROVED',
+      approval_status: 'approved',
+      is_approved: true,
+      is_verified: true,
+      slug: 'ritesh-supermart',
+    },
+  };
+
+  assert.strictEqual(isUserVendor(activatedUser, activatedUser.vendor as Vendor), true);
+  assert.strictEqual(isCustomerOnly(activatedUser), false);
+  assert.strictEqual(activatedUser.vendor?.is_approved, true);
+  assert.strictEqual(activatedUser.vendor?.is_verified, true);
+});

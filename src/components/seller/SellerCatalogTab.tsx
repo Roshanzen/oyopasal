@@ -40,9 +40,9 @@ interface SellerCatalogTabProps {
 }
 
 export default function SellerCatalogTab({
-  sellerProducts,
-  lowStockItems,
-  healthyItems,
+  sellerProducts = [],
+  lowStockItems = [],
+  healthyItems = [],
   searchCatalogQuery,
   setSearchCatalogQuery,
   inventoryFilter,
@@ -63,20 +63,25 @@ export default function SellerCatalogTab({
 }: SellerCatalogTabProps) {
   const [brokenThumbs, setBrokenThumbs] = useState<Record<string, boolean>>({});
 
-  let filtered = sellerProducts.filter(
+  const safeProducts = Array.isArray(sellerProducts) ? sellerProducts : [];
+  const safeLowStock = Array.isArray(lowStockItems) ? lowStockItems : [];
+  const safeHealthy = Array.isArray(healthyItems) ? healthyItems : [];
+
+  let filtered = safeProducts.filter(
     (p) =>
-      p.name.toLowerCase().includes(searchCatalogQuery.toLowerCase()) ||
-      p.category.name.toLowerCase().includes(searchCatalogQuery.toLowerCase())
+      p &&
+      ((p.name || '').toLowerCase().includes((searchCatalogQuery || '').toLowerCase()) ||
+        (p.category?.name || '').toLowerCase().includes((searchCatalogQuery || '').toLowerCase()))
   );
   if (inventoryFilter === 'low') {
-    filtered = filtered.filter((p) => p.stock <= (p.low_stock_threshold ?? 5) || !p.in_stock);
+    filtered = filtered.filter((p) => p && (p.stock <= (p.low_stock_threshold ?? 5) || !p.in_stock));
   } else if (inventoryFilter === 'healthy') {
-    filtered = filtered.filter((p) => p.stock > (p.low_stock_threshold ?? 5) && p.in_stock);
+    filtered = filtered.filter((p) => p && p.stock > (p.low_stock_threshold ?? 5) && p.in_stock);
   }
 
   return (
     <div className="bg-white dark:bg-[#0F172A] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-      {lowStockItems.length > 0 && (
+      {safeLowStock.length > 0 && (
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 dark:from-red-950/90 dark:via-red-900/60 dark:to-rose-950/90 border border-red-200 dark:border-red-700/80 text-white dark:text-red-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-white/20 dark:bg-red-600 flex items-center justify-center text-white shrink-0">
@@ -85,7 +90,7 @@ export default function SellerCatalogTab({
             <div>
               <h3 className="font-extrabold text-white text-base sm:text-lg">{t('seller.lowAlertTitle')}</h3>
               <p className="text-sm text-red-100 dark:text-red-200 mt-1">
-                {lowStockItems.length}{' '}
+                {safeLowStock.length}{' '}
                 {language === 'ne'
                   ? 'सामान कम स्टक वा स्टक सकिएको अवस्थामा छ।'
                   : 'products are at critical stock or out of stock.'}
@@ -152,7 +157,7 @@ export default function SellerCatalogTab({
               : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          {t('seller.filterAll', { count: sellerProducts.length })}
+          {t('seller.filterAll', { count: safeProducts.length })}
         </button>
         <button
           onClick={() => setInventoryFilter('low')}
@@ -162,7 +167,7 @@ export default function SellerCatalogTab({
               : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          {t('seller.filterLow', { count: lowStockItems.length })}
+          {t('seller.filterLow', { count: safeLowStock.length })}
         </button>
         <button
           onClick={() => setInventoryFilter('healthy')}
@@ -172,7 +177,7 @@ export default function SellerCatalogTab({
               : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          {t('seller.filterHealthy', { count: healthyItems.length })}
+          {t('seller.filterHealthy', { count: safeHealthy.length })}
         </button>
       </div>
 

@@ -99,6 +99,11 @@ export interface DeliveryTrackingTelemetry {
   order_id: string;
   order_number: string;
   order_status: string;
+  remaining_km?: number | null;
+  estimated_minutes?: number | null;
+  courier_speed_kmh?: number | null;
+  prep_buffer_mins?: number | null;
+  shipping_address?: Record<string, any> | null;
   assignment: {
     id: number;
     status: string;
@@ -109,6 +114,10 @@ export interface DeliveryTrackingTelemetry {
     current_lat: number | null;
     current_lng: number | null;
     speed_kmh: number;
+    courier_speed_kmh?: number | null;
+    prep_buffer_mins?: number | null;
+    remaining_km?: number | null;
+    estimated_minutes?: number | null;
     eta_minutes: number | null;
     agent: {
       id: number;

@@ -27,6 +27,9 @@ export default function CheckoutPage() {
     currentAddress,
     deliveryOption,
     setDeliveryOption,
+    maxDistanceKm,
+    maxAllowedExpressKm,
+    isOutsideExpressZone,
     paymentMethod,
     setPaymentMethod,
     orderNotes,
@@ -232,22 +235,33 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setDeliveryOption('EXPRESS_12_MINS')}
-                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                    deliveryOption === 'EXPRESS_12_MINS'
-                      ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600'
-                      : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
+                  disabled={isOutsideExpressZone}
+                  onClick={() => !isOutsideExpressZone && setDeliveryOption('EXPRESS_12_MINS')}
+                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 ${
+                    isOutsideExpressZone
+                      ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                      : deliveryOption === 'EXPRESS_12_MINS'
+                      ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600 cursor-pointer'
+                      : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700 cursor-pointer'
                   }`}
                 >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isOutsideExpressZone ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' : 'bg-emerald-600 text-white'}`}>
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">{t('checkout.instantTitle')}</span>
-                      <span className="text-xs font-extrabold bg-emerald-600 text-white px-2 py-0.5 rounded">{t('checkout.fastestBadge')}</span>
+                      {!isOutsideExpressZone && (
+                        <span className="text-xs font-extrabold bg-emerald-600 text-white px-2 py-0.5 rounded">{t('checkout.fastestBadge')}</span>
+                      )}
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('checkout.instantSub')}</p>
+                    {isOutsideExpressZone ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-1 leading-relaxed">
+                        Outside {maxAllowedExpressKm} km Express Zone ({maxDistanceKm.toFixed(1)} km away) — Available via Intercity Standard Delivery (1–2 Days)
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('checkout.instantSub')}</p>
+                    )}
                   </div>
                 </button>
 
@@ -392,7 +406,7 @@ export default function CheckoutPage() {
                 <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 block mb-1.5">{t('checkout.notesLabel')}</label>
                 <input
                   type="text"
-                  value={orderNotes}
+                  value={orderNotes ?? ''}
                   onChange={(e) => setOrderNotes(e.target.value)}
                   placeholder={t('checkout.notesPlaceholder')}
                   className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -423,7 +437,7 @@ export default function CheckoutPage() {
                   <form onSubmit={onCouponFormSubmit} className="flex gap-2">
                     <input
                       type="text"
-                      value={couponCode}
+                      value={couponCode ?? ''}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder={language === 'ne' ? 'कुपन कोड राख्नुहोस्' : 'Enter coupon code'}
                       className="flex-1 px-3.5 py-2.5 text-sm uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"

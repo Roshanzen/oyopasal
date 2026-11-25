@@ -25,7 +25,10 @@ function AppShell() {
   const isPortalRoute =
     location.pathname.startsWith('/admin') ||
     location.pathname.startsWith('/rider') ||
-    location.pathname.startsWith('/seller');
+    location.pathname.startsWith('/seller') ||
+    location.pathname.startsWith('/vendor') ||
+    location.pathname === '/become-seller' ||
+    location.pathname === '/track-application';
 
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
@@ -49,7 +52,7 @@ function AppShell() {
       <SellerDashboardModal />
       <LoginModal />
       {!isPortalRoute && <MobileBottomNav />}
-      <ChatConcierge />
+      {!isPortalRoute && <ChatConcierge />}
       <ToastContainer />
     </div>
   );

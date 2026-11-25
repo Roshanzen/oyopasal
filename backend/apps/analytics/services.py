@@ -5,7 +5,6 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 from apps.accounts.models import User, UserRole
 from apps.vendors.models import VendorProfile, VendorStatus
-from apps.suppliers.models import SupplierProfile, SupplierStatus
 from apps.stores.models import Store
 from apps.catalogue.models import Product, ProductStatus
 from apps.inventory.models import InventoryItem
@@ -13,7 +12,6 @@ from apps.orders.models import Order, VendorSubOrder, OrderItem, OrderStatus
 from apps.payments.models import Payment, PaymentStatus, FinancialLedgerEntry
 from apps.commissions.models import CommissionRecord
 from apps.settlements.models import VendorSettlement, SettlementStatus
-from apps.procurement.models import PurchaseOrder, PurchaseOrderStatus, SupplierInvoice
 
 class AnalyticsService:
     @classmethod
@@ -28,10 +26,6 @@ class AnalyticsService:
         active_vendors = VendorProfile.objects.filter(status=VendorStatus.APPROVED).count()
         pending_vendors = VendorProfile.objects.filter(status=VendorStatus.PENDING).count()
         suspended_vendors = VendorProfile.objects.filter(status=VendorStatus.SUSPENDED).count()
-
-        total_suppliers = SupplierProfile.objects.count()
-        active_suppliers = SupplierProfile.objects.filter(status=SupplierStatus.APPROVED).count()
-        pending_suppliers = SupplierProfile.objects.filter(status=SupplierStatus.PENDING).count()
 
         total_customers = User.objects.filter(role=UserRole.CUSTOMER).count()
         customers_today = User.objects.filter(role=UserRole.CUSTOMER, created_at__date=today).count()
@@ -95,26 +89,15 @@ class AnalyticsService:
         successful_payments = Payment.objects.filter(status=PaymentStatus.SUCCESS).count()
         failed_payments = Payment.objects.filter(status=PaymentStatus.FAILED).count()
 
-        # 4. Procurement & B2B Wholesale Overview
-        total_pos = PurchaseOrder.objects.count()
-        in_transit_pos = PurchaseOrder.objects.filter(status=PurchaseOrderStatus.DISPATCHED).count()
-        delivered_pos = PurchaseOrder.objects.filter(status=PurchaseOrderStatus.DELIVERED).count()
-        unpaid_invoices_aggr = SupplierInvoice.objects.filter(payment_status='UNPAID').aggregate(
-            count=Count('id'),
-            total=Sum('billed_amount')
-        )
-        unpaid_invoices_count = unpaid_invoices_aggr['count'] or 0
-        unpaid_invoices_amount = unpaid_invoices_aggr['total'] or Decimal('0.00')
-
         return {
             'business': {
                 'total_vendors': total_vendors,
                 'active_vendors': active_vendors,
                 'pending_vendors': pending_vendors,
                 'suspended_vendors': suspended_vendors,
-                'total_suppliers': total_suppliers,
-                'active_suppliers': active_suppliers,
-                'pending_suppliers': pending_suppliers,
+                'total_suppliers': 0,
+                'active_suppliers': 0,
+                'pending_suppliers': 0,
                 'total_customers': total_customers,
                 'new_customers_today': customers_today,
                 'total_stores': total_stores,
@@ -147,11 +130,11 @@ class AnalyticsService:
                 'failed_payments_count': failed_payments,
             },
             'procurement': {
-                'total_purchase_orders': total_pos,
-                'in_transit_pos': in_transit_pos,
-                'delivered_pos': delivered_pos,
-                'unpaid_supplier_invoices_count': unpaid_invoices_count,
-                'unpaid_supplier_invoices_amount': str(unpaid_invoices_amount),
+                'total_purchase_orders': 0,
+                'in_transit_pos': 0,
+                'delivered_pos': 0,
+                'unpaid_supplier_invoices_count': 0,
+                'unpaid_supplier_invoices_amount': '0.00',
             }
         }
 

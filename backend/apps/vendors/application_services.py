@@ -61,7 +61,23 @@ def create_seller_application(data: dict, applicant_user: User = None) -> Seller
     if not business_name:
         raise ValidationError({'business_name': 'Business or store name is required.'})
 
-    # Check for active pending or under_review applications with same email
+    # Link existing registered user only if email matches
+    if applicant_user and applicant_user.email.strip().lower() != email:
+        applicant_user = None
+    if not applicant_user:
+        applicant_user = User.objects.filter(email__iexact=email).first()
+
+    # Check if this account is already an active approved vendor
+    existing_user = applicant_user or User.objects.filter(email__iexact=email).first()
+    if existing_user and hasattr(existing_user, 'vendor_profile'):
+        vp = existing_user.vendor_profile
+        if vp and (vp.status == VendorStatus.APPROVED or vp.stores.filter(is_verified=True).exists()):
+            raise ValidationError({
+                'detail': "An active seller store already exists for this email address. Please sign in directly to the Vendor Portal.",
+                'code': 'VENDOR_ALREADY_ACTIVE'
+            })
+
+    # Check for active pending or under_review applications with same email or user
     existing_pending = SellerApplication.objects.filter(
         email__iexact=email,
         status__in=[
@@ -70,6 +86,16 @@ def create_seller_application(data: dict, applicant_user: User = None) -> Seller
             SellerApplicationStatus.INVITATION_SENT,
         ]
     ).first()
+
+    if not existing_pending and applicant_user:
+        existing_pending = SellerApplication.objects.filter(
+            applicant_user=applicant_user,
+            status__in=[
+                SellerApplicationStatus.PENDING,
+                SellerApplicationStatus.UNDER_REVIEW,
+                SellerApplicationStatus.INVITATION_SENT,
+            ]
+        ).first()
 
     if existing_pending:
         raise ValidationError({
@@ -250,8 +276,12 @@ def admin_approve_and_invite(
     and issues a secure, single-use activation invitation token.
     """
     with transaction.atomic():
-        # Check if user already exists with this email
-        user = User.objects.filter(email__iexact=application.email.strip()).first()
+        # Check if user already exists with this email or applicant_user
+        user = None
+        if application.applicant_user and application.applicant_user.email.strip().lower() == application.email.strip().lower():
+            user = application.applicant_user
+        if not user:
+            user = User.objects.filter(email__iexact=application.email.strip()).first()
         if not user:
             # Create user account with role VENDOR and unusable password until activation
             user = User.objects.create_user(
@@ -264,10 +294,10 @@ def admin_approve_and_invite(
                 is_verified=True,
             )
         else:
-            # Existing user: ensure they have vendor role access while preserving customer identity
-            if user.role == UserRole.CUSTOMER:
-                user.role = UserRole.VENDOR
-                user.save(update_fields=['role'])
+            # Associate existing customer account with application
+            if not application.applicant_user:
+                application.applicant_user = user
+                application.save(update_fields=['applicant_user'])
 
         # Prepare or retrieve VendorProfile
         vp = getattr(user, 'vendor_profile', None)

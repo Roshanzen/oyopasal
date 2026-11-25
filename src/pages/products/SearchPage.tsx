@@ -121,7 +121,7 @@ export default function SearchPage() {
           <label className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-700 dark:text-slate-300 shadow-2xs cursor-pointer select-none">
             <input
               type="checkbox"
-              checked={inStockOnly}
+              checked={Boolean(inStockOnly)}
               onChange={(e) => {
                 setInStockOnly(e.target.checked);
                 setPage(1);
@@ -162,7 +162,7 @@ export default function SearchPage() {
                 <input
                   type="number"
                   min={0}
-                  value={minPrice}
+                  value={minPrice ?? ''}
                   onChange={(e) => {
                     setMinPrice(e.target.value);
                     setPage(1);
@@ -173,7 +173,7 @@ export default function SearchPage() {
                 <input
                   type="number"
                   min={0}
-                  value={maxPrice}
+                  value={maxPrice ?? ''}
                   onChange={(e) => {
                     setMaxPrice(e.target.value);
                     setPage(1);

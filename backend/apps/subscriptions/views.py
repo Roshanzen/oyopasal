@@ -35,9 +35,9 @@ class TenantCurrentSubscriptionView(APIView):
     )
     def get(self, request, *args, **kwargs):
         user = request.user
-        tenant = getattr(user, 'vendor_profile', None) or getattr(user, 'supplier_profile', None)
+        tenant = getattr(user, 'vendor_profile', None)
         if not tenant:
-            return Response({'detail': 'Only vendors and suppliers have subscription accounts.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Only vendors have subscription accounts.'}, status=status.HTTP_400_BAD_REQUEST)
 
         usage = SubscriptionService.get_tenant_limits_usage(tenant)
         serializer = TenantUsageResponseSerializer(usage)
@@ -57,9 +57,9 @@ class SubscribeOrUpgradeView(APIView):
     )
     def post(self, request, *args, **kwargs):
         user = request.user
-        tenant = getattr(user, 'vendor_profile', None) or getattr(user, 'supplier_profile', None)
+        tenant = getattr(user, 'vendor_profile', None)
         if not tenant:
-            return Response({'detail': 'Only vendors and suppliers can subscribe to plans.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Only vendors can subscribe to plans.'}, status=status.HTTP_400_BAD_REQUEST)
 
         req_serializer = SubscribeRequestSerializer(data=request.data)
         req_serializer.is_valid(raise_exception=True)

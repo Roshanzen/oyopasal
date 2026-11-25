@@ -101,8 +101,8 @@ export function useChatConcierge() {
 
   const effectiveLocation = useMemo(
     () => ({
-      latitude: currentAddress?.lat ?? currentCoordinates?.lat ?? geoCoords?.latitude ?? 27.6986,
-      longitude: currentAddress?.lng ?? currentCoordinates?.lng ?? geoCoords?.longitude ?? 85.3292,
+      latitude: currentAddress?.lat ?? (currentAddress as any)?.latitude ?? currentCoordinates?.lat ?? geoCoords?.latitude ?? 27.6986,
+      longitude: currentAddress?.lng ?? (currentAddress as any)?.longitude ?? currentCoordinates?.lng ?? geoCoords?.longitude ?? 85.3292,
       area: currentAddress?.area || 'New Baneshwor',
       street: currentAddress?.street || 'New Baneshwor Chowk',
       city: currentAddress?.city || 'Kathmandu',

@@ -140,6 +140,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# File and Request Body Upload Limits (25 MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400
+FILE_UPLOAD_MAX_MEMORY_SIZE = 26214400
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

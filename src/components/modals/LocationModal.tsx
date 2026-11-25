@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context';
-import { calculateDistanceInKm } from '../../utils';
+import { calculateDistanceInKm, extractCoordinates, formatCoordinates } from '../../utils';
 import { addressService } from '../../services';
-import { geocodingService, GeocodedAddress } from '../../services/geocodingService';
+import { geocodingService, GeocodedAddress, GeocodedSearchResult } from '../../services/geocodingService';
 import { useNativeGeolocation } from '../../hooks/useNativeGeolocation';
 import { LeafletLocationPicker } from '../common/LeafletLocationPicker';
 import { Address, Coordinates, DeliveryZoneItem } from '../../types';
@@ -22,6 +22,7 @@ import {
   Edit3,
   Trash2,
   Loader2,
+  Search,
 } from 'lucide-react';
 
 export default function LocationModal() {
@@ -42,16 +43,32 @@ export default function LocationModal() {
     user,
   } = useApp();
 
+  const safeAddresses = Array.isArray(addresses) ? addresses : [];
+  const safeVendors = Array.isArray(vendors) ? vendors : [];
+
   const [activeTab, setActiveTab] = useState<'map' | 'saved' | 'manual'>('map');
-  const [pickedCoords, setPickedCoords] = useState<Coordinates>(currentCoordinates);
+  const [pickedCoords, setPickedCoords] = useState<Coordinates | null>(() => {
+    return extractCoordinates(currentCoordinates) ?? extractCoordinates(currentAddress);
+  });
   const [pickedAreaName, setPickedAreaName] = useState<string>(currentAddress?.area || 'Kathmandu Valley');
   const [geocodedAddress, setGeocodedAddress] = useState<GeocodedAddress | null>(null);
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
+
+  // Address Search and Suggestions State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GeocodedSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   // Delivery Zones
   const [zones, setZones] = useState<DeliveryZoneItem[]>([]);
   const [zonesLoading, setZonesLoading] = useState(false);
   const [zonesError, setZonesError] = useState<string | null>(null);
+
+  const safeZones = Array.isArray(zones) ? zones : [];
 
   // Native Geolocation
   const {
@@ -81,21 +98,30 @@ export default function LocationModal() {
     setZonesError(null);
     try {
       const res = await addressService.getZones();
-      setZones(res.results || []);
+      const list = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? (res as DeliveryZoneItem[]) : []);
+      setZones(list);
     } catch (err: unknown) {
       setZonesError(err instanceof Error ? err.message : 'Could not load delivery zones');
+      setZones([]);
     } finally {
       setZonesLoading(false);
     }
   }, []);
 
   // Perform reverse geocode with debouncing
-  const performReverseGeocode = useCallback((coords: Coordinates) => {
+  const performReverseGeocode = useCallback((coordsInput: unknown) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     if (geocodeAbortRef.current) {
       geocodeAbortRef.current.abort();
+    }
+
+    const coords = extractCoordinates(coordsInput);
+    if (!coords) {
+      setGeocodedAddress(null);
+      setIsGeocoding(false);
+      return;
     }
 
     setIsGeocoding(true);
@@ -122,11 +148,63 @@ export default function LocationModal() {
     }, 450);
   }, []);
 
+  // Address search query handler
+  const handleSearchQueryChange = (q: string) => {
+    setSearchQuery(q);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+
+    const query = q.trim();
+    if (query.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setHasSearched(false);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setShowSuggestions(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+      try {
+        const results = await geocodingService.searchAddress(query, { signal: controller.signal });
+        const list = Array.isArray(results) ? results : [];
+        setSearchResults(list);
+        setHasSearched(true);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        setSearchResults([]);
+        setHasSearched(true);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+  };
+
+  // Select an address suggestion from search
+  const handleSelectSearchResult = (result: GeocodedSearchResult) => {
+    const coords = extractCoordinates(result);
+    if (coords) {
+      setPickedCoords(coords);
+      setPickedAreaName(result.area || result.name || result.city || 'Selected Location');
+      if (result.street) setStreet(result.street);
+      if (result.area) setArea(result.area);
+      if (result.city) setCity(result.city);
+      setShowSuggestions(false);
+      setSearchQuery(result.formattedAddress);
+      clearGpsError();
+      performReverseGeocode(coords);
+    }
+  };
+
   // Sync coords when modal opens
   useEffect(() => {
     if (locationModalOpen) {
       loadZones();
-      setPickedCoords(currentCoordinates);
+      const resolved = extractCoordinates(currentCoordinates) ?? extractCoordinates(currentAddress);
+      setPickedCoords(resolved);
       if (currentAddress?.area) {
         setPickedAreaName(currentAddress.area);
         setArea(currentAddress.area);
@@ -138,25 +216,32 @@ export default function LocationModal() {
         setCity(currentAddress.city);
       }
       if (user?.full_name && !recipientName) {
-        setRecipientName(user.full_name);
+        setRecipientName(user.full_name ?? '');
       }
       if (user?.phone && !recipientPhone) {
-        setRecipientPhone(user.phone);
+        setRecipientPhone(user.phone ?? '');
       }
-      // Run initial reverse geocode
-      performReverseGeocode(currentCoordinates);
+      // Run initial reverse geocode if coordinates available
+      if (resolved) {
+        performReverseGeocode(resolved);
+      }
     }
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (geocodeAbortRef.current) geocodeAbortRef.current.abort();
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (searchAbortRef.current) searchAbortRef.current.abort();
     };
   }, [locationModalOpen, currentCoordinates, currentAddress, loadZones, performReverseGeocode, user]);
 
   // Handle marker move or map click from LeafletLocationPicker
   const handleCoordsChange = (newCoords: Coordinates) => {
-    setPickedCoords(newCoords);
-    clearGpsError();
-    performReverseGeocode(newCoords);
+    const valid = extractCoordinates(newCoords);
+    if (valid) {
+      setPickedCoords(valid);
+      clearGpsError();
+      performReverseGeocode(valid);
+    }
   };
 
   // Handle Use Current Location (Browser GPS)
@@ -164,9 +249,12 @@ export default function LocationModal() {
     clearGpsError();
     try {
       const userCoords = await detectLocation();
-      setPickedCoords(userCoords);
-      performReverseGeocode(userCoords);
-      showToast('Located your current position!', 'success');
+      const valid = extractCoordinates(userCoords);
+      if (valid) {
+        setPickedCoords(valid);
+        performReverseGeocode(valid);
+        showToast('Located your current position!', 'success');
+      }
     } catch {
       // Error message is stored in gpsError from useNativeGeolocation
     }
@@ -174,27 +262,37 @@ export default function LocationModal() {
 
   // Select zone button
   const handleSelectZone = (zone: DeliveryZoneItem) => {
-    const coords = { lat: zone.center_lat, lng: zone.center_lng };
-    setPickedCoords(coords);
-    setPickedAreaName(`${zone.name}, ${zone.city}`);
-    setArea(zone.name);
-    setCity(zone.city);
-    clearGpsError();
-    performReverseGeocode(coords);
+    const coords = extractCoordinates({ lat: zone.center_lat, lng: zone.center_lng });
+    if (coords) {
+      setPickedCoords(coords);
+      setPickedAreaName(`${zone.name}, ${zone.city}`);
+      setArea(zone.name);
+      setCity(zone.city);
+      clearGpsError();
+      performReverseGeocode(coords);
+    }
   };
 
   // Confirm map location
   const handleConfirmMapLocation = () => {
-    const finalStreet = geocodedAddress?.street || `Pin (${pickedCoords.lat.toFixed(4)}, ${pickedCoords.lng.toFixed(4)})`;
-    setDeliveryLocationFromMap(pickedCoords, pickedAreaName, finalStreet);
+    const coords = extractCoordinates(pickedCoords);
+    if (!coords) {
+      showToast('Please select or pin a delivery location on the map', 'info');
+      return;
+    }
+    const finalStreet = geocodedAddress?.street || `Pin (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`;
+    setDeliveryLocationFromMap(coords, pickedAreaName, finalStreet);
     setLocationModalOpen(false);
   };
 
   // Select a saved address
   const handleSelectSavedAddress = (addr: Address) => {
     setCurrentAddress(addr);
-    if (typeof addr.lat === 'number' && typeof addr.lng === 'number') {
-      setDeliveryLocationFromMap({ lat: addr.lat, lng: addr.lng }, addr.area, addr.street);
+    const coords = extractCoordinates(addr);
+    if (coords) {
+      setDeliveryLocationFromMap(coords, addr.area, addr.street);
+    } else if (pickedCoords) {
+      setDeliveryLocationFromMap(pickedCoords, addr.area, addr.street);
     }
     setLocationModalOpen(false);
   };
@@ -220,6 +318,7 @@ export default function LocationModal() {
 
     setSubmitting(true);
     try {
+      const coords = extractCoordinates(pickedCoords);
       await addNewAddress({
         title,
         recipient_name: recipientName.trim() || user?.full_name || 'Customer',
@@ -228,9 +327,11 @@ export default function LocationModal() {
         area: area.trim(),
         city: city.trim() || 'Kathmandu',
         landmark: landmark.trim(),
-        is_default: addresses.length === 0,
-        lat: pickedCoords.lat,
-        lng: pickedCoords.lng,
+        is_default: safeAddresses.length === 0,
+        lat: coords ? coords.lat : undefined,
+        lng: coords ? coords.lng : undefined,
+        latitude: coords ? coords.lat : undefined,
+        longitude: coords ? coords.lng : undefined,
       });
       setLocationModalOpen(false);
     } catch (err) {
@@ -291,11 +392,10 @@ export default function LocationModal() {
               <button
                 type="button"
                 onClick={() => setActiveTab('map')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'map'
-                    ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'map'
+                  ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>{t('loc.tabMap')}</span>
@@ -304,24 +404,22 @@ export default function LocationModal() {
               <button
                 type="button"
                 onClick={() => setActiveTab('saved')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'saved'
-                    ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'saved'
+                  ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Home className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                <span>{t('loc.tabSaved', { count: addresses.length })}</span>
+                <span>{t('loc.tabSaved', { count: safeAddresses.length })}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('manual')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'manual'
-                    ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`flex items-center gap-1.5 py-2.5 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'manual'
+                  ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-white dark:bg-[#0f1422] rounded-t-xl shadow-2xs'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <span>{t('loc.tabManual')}</span>
@@ -380,13 +478,72 @@ export default function LocationModal() {
                     </button>
                   </div>
 
+                  {/* Address Search & Suggestion Bar */}
+                  <div className="relative p-2.5 bg-slate-50 dark:bg-slate-900/90 border-b border-slate-100 dark:border-slate-800 z-30">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => handleSearchQueryChange(e.target.value)}
+                        onFocus={() => {
+                          if (searchResults.length > 0) setShowSuggestions(true);
+                        }}
+                        placeholder="Search area, neighborhood, tole, or landmark..."
+                        className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      {isSearching ? (
+                        <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin absolute right-2.5 top-2.5" />
+                      ) : searchQuery ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSearchResults([]);
+                            setShowSuggestions(false);
+                            setHasSearched(false);
+                          }}
+                          className="w-4 h-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 absolute right-2.5 top-2.5 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && (
+                      <div className="absolute left-2.5 right-2.5 top-full mt-1 bg-white dark:bg-[#111726] rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-52 overflow-y-auto z-50 divide-y divide-slate-100 dark:divide-slate-800">
+                        {searchResults.length > 0 ? (
+                          searchResults.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleSelectSearchResult(item)}
+                              className="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-start gap-2 cursor-pointer"
+                            >
+                              <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{item.formattedAddress}</p>
+                              </div>
+                            </button>
+                          ))
+                        ) : hasSearched && !isSearching ? (
+                          <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                            No address suggestions found. Tap anywhere on the map to pin your location.
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Interactive Leaflet OpenStreetMap Container */}
                   <div className="h-64 sm:h-80 w-full relative bg-slate-100 dark:bg-slate-900">
                     <LeafletLocationPicker
                       coords={pickedCoords}
                       onChangeCoords={handleCoordsChange}
-                      vendors={vendors}
-                      zones={zones}
+                      vendors={safeVendors}
+                      zones={safeZones}
                       className="w-full h-full"
                     />
 
@@ -407,7 +564,7 @@ export default function LocationModal() {
                         {geocodedAddress?.formattedAddress || pickedAreaName}
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Coords: {pickedCoords.lat.toFixed(4)}, {pickedCoords.lng.toFixed(4)}
+                        Coords: {formatCoordinates(pickedCoords)}
                         {geocodedAddress?.postalCode ? ` · Postcode: ${geocodedAddress.postalCode}` : ''}
                       </p>
                     </div>
@@ -445,20 +602,19 @@ export default function LocationModal() {
                           <RefreshCw className="w-3 h-3" /> Retry
                         </button>
                       </div>
-                    ) : zones.length === 0 ? (
+                    ) : safeZones.length === 0 ? (
                       <div className="text-xs text-slate-500">No active delivery zones configured yet.</div>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
-                        {zones.map((zone) => (
+                        {safeZones.map((zone) => (
                           <button
                             key={zone.id}
                             type="button"
                             onClick={() => handleSelectZone(zone)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                              pickedAreaName.includes(zone.name)
-                                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                                : 'bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-800 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
-                            }`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${pickedAreaName.includes(zone.name)
+                              ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                              : 'bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-800 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
+                              }`}
                           >
                             {zone.name} · ~{zone.estimated_mins}m
                           </button>
@@ -479,10 +635,12 @@ export default function LocationModal() {
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {vendors.slice(0, 4).map((vendor) => {
-                        const vLat = vendor.lat ?? pickedCoords.lat;
-                        const vLng = vendor.lng ?? pickedCoords.lng;
-                        const dist = calculateDistanceInKm(pickedCoords.lat, pickedCoords.lng, vLat, vLng);
+                      {safeVendors.slice(0, 4).map((vendor) => {
+                        const vCoords = extractCoordinates(vendor);
+                        const userCoords = extractCoordinates(pickedCoords);
+                        const dist = (vCoords && userCoords)
+                          ? calculateDistanceInKm(userCoords.lat, userCoords.lng, vCoords.lat, vCoords.lng)
+                          : null;
                         const baseMins = parseInt(String(vendor.delivery_time_mins || '12'), 10) || 12;
                         return (
                           <div
@@ -494,11 +652,14 @@ export default function LocationModal() {
                             </span>
                             <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/60 dark:border-slate-700 text-xs">
                               <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
-                                {dist.toFixed(1)} {language === 'ne' ? 'कि.मि.' : 'km'}
+                                {dist != null && Number.isFinite(dist)
+                                  ? `${dist.toFixed(1)} ${language === 'ne' ? 'कि.मि.' : 'km'}`
+                                  : '—'}
                               </span>
                               <span className="text-slate-400 dark:text-slate-500">
-                                ~{Math.round(baseMins + dist * 2)}
-                                {language === 'ne' ? 'मि' : 'm'}
+                                {dist != null && Number.isFinite(dist)
+                                  ? `~${Math.round(baseMins + dist * 2)}${language === 'ne' ? 'मि' : 'm'}`
+                                  : '—'}
                               </span>
                             </div>
                           </div>
@@ -526,7 +687,7 @@ export default function LocationModal() {
                     {t('loc.savedTitle')}
                   </span>
 
-                  {addresses.length === 0 ? (
+                  {safeAddresses.length === 0 ? (
                     <div className="py-12 text-center bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-2">
                       <Home className="w-8 h-8 text-slate-400 mx-auto" />
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No saved addresses yet</p>
@@ -541,7 +702,7 @@ export default function LocationModal() {
                       </button>
                     </div>
                   ) : (
-                    addresses.map((addr) => {
+                    safeAddresses.map((addr) => {
                       const isSelected = currentAddress?.id === addr.id;
                       const IconComp = addr.title.toLowerCase().includes('office') ? Briefcase : Home;
 
@@ -549,19 +710,17 @@ export default function LocationModal() {
                         <div
                           key={addr.id}
                           onClick={() => handleSelectSavedAddress(addr)}
-                          className={`group flex items-start justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500 shadow-2xs'
-                              : 'bg-white dark:bg-[#111726] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                          }`}
+                          className={`group flex items-start justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${isSelected
+                            ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500 shadow-2xs'
+                            : 'bg-white dark:bg-[#111726] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
                         >
                           <div className="flex items-start gap-3 min-w-0 flex-1">
                             <div
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                                isSelected
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                              }`}
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isSelected
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                }`}
                             >
                               <IconComp className="w-4 h-4" />
                             </div>
@@ -645,11 +804,10 @@ export default function LocationModal() {
                           key={item.value}
                           type="button"
                           onClick={() => setTitle(item.value as 'Home' | 'Office' | 'Other')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                            title === item.value
-                              ? 'bg-slate-900 dark:bg-emerald-600 text-white'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                          }`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${title === item.value
+                            ? 'bg-slate-900 dark:bg-emerald-600 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
                         >
                           {item.label}
                         </button>
@@ -666,9 +824,9 @@ export default function LocationModal() {
                       <input
                         type="text"
                         required
-                        value={recipientName}
+                        value={recipientName ?? ''}
                         onChange={(e) => setRecipientName(e.target.value)}
-                        placeholder="e.g. Roshan Yadav"
+                        placeholder="e.g. Ram Bahadur"
                         className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
@@ -679,7 +837,7 @@ export default function LocationModal() {
                       <input
                         type="tel"
                         required
-                        value={recipientPhone}
+                        value={recipientPhone ?? ''}
                         onChange={(e) => setRecipientPhone(e.target.value)}
                         placeholder="e.g. +977 9801234567"
                         className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -695,7 +853,7 @@ export default function LocationModal() {
                     <input
                       type="text"
                       required
-                      value={street}
+                      value={street ?? ''}
                       onChange={(e) => setStreet(e.target.value)}
                       placeholder="e.g. House #28, Maitidevi Road"
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -710,7 +868,7 @@ export default function LocationModal() {
                       <input
                         type="text"
                         required
-                        value={area}
+                        value={area ?? ''}
                         onChange={(e) => setArea(e.target.value)}
                         placeholder="e.g. New Baneshwor"
                         className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -724,7 +882,7 @@ export default function LocationModal() {
                       <input
                         type="text"
                         required
-                        value={city}
+                        value={city ?? ''}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="e.g. Kathmandu"
                         className="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -739,7 +897,7 @@ export default function LocationModal() {
                     </label>
                     <input
                       type="text"
-                      value={landmark}
+                      value={landmark ?? ''}
                       onChange={(e) => setLandmark(e.target.value)}
                       placeholder="e.g. Opposite Standard Chartered Bank, near Seto Pul"
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
@@ -751,7 +909,7 @@ export default function LocationModal() {
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>
-                        Pin: {pickedCoords.lat.toFixed(4)}, {pickedCoords.lng.toFixed(4)}
+                        Pin: {formatCoordinates(pickedCoords)}
                       </span>
                     </div>
                     <button

@@ -156,7 +156,7 @@ export const orderService = {
   },
 
   getOrderTracking(orderId: string, options?: RequestOptions): Promise<DeliveryTrackingTelemetry> {
-    return httpClient.request<DeliveryTrackingTelemetry>(`/delivery/orders/${orderId}/tracking/`, options);
+    return httpClient.request<DeliveryTrackingTelemetry>(`/orders/${orderId}/tracking/`, options);
   },
 
   getDeliveryProfile(): Promise<DeliveryAgentProfile> {

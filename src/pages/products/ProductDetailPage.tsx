@@ -834,7 +834,7 @@ export default function ProductDetailPage() {
 
                         <input
                           type="text"
-                          value={reviewTitle}
+                          value={reviewTitle ?? ''}
                           onChange={(e) => setReviewTitle(e.target.value)}
                           placeholder={language === 'ne' ? 'शीर्षक (ऐच्छिक)' : 'Headline (optional)'}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -842,7 +842,7 @@ export default function ProductDetailPage() {
                         <textarea
                           rows={3}
                           required
-                          value={reviewComment}
+                          value={reviewComment ?? ''}
                           onChange={(e) => setReviewComment(e.target.value)}
                           placeholder={
                             language === 'ne'

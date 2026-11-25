@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_CONFIG } from '../config';
 import { useApp } from '../context';
 import { adminService, categoryService, sellerService } from '../services';
+import { ApiRequestError, isAbortError } from '../services/httpClient';
 import { safeStorage } from '../utils';
 import {
   Category,
@@ -14,7 +15,7 @@ import {
   Vendor,
 } from '../types';
 
-export type SellerTab = 'analytics' | 'add' | 'products' | 'orders' | 'messages' | 'reviews' | 'ledger' | 'settings';
+export type SellerTab = 'analytics' | 'add' | 'products' | 'orders' | 'messages' | 'reviews' | 'ledger' | 'settings' | 'profile';
 
 export function useSellerPortal() {
   const {
@@ -73,6 +74,7 @@ export function useSellerPortal() {
   const [customPassword, setCustomPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [customLoginError, setCustomLoginError] = useState<string | null>(null);
+  const [customLoginErrorCode, setCustomLoginErrorCode] = useState<string | null>(null);
   const [vendorsRefreshing, setVendorsRefreshing] = useState(false);
 
   // New Product form state
@@ -117,20 +119,25 @@ export function useSellerPortal() {
   const refreshCategories = useCallback(async (selectSlug?: string) => {
     try {
       setLoadingCategories(true);
-      const res = await categoryService.getCategories({ bypassCache: true });
-      const list = res.results || [];
+      const res = await categoryService.getCategories({ bypassCache: false });
+      const list = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
       setCategories(list);
       if (selectSlug) {
         setCategorySlug(selectSlug);
-      } else if (list.length > 0 && !list.some((c) => c.slug === categorySlug)) {
-        setCategorySlug(list[0].slug);
+      } else {
+        setCategorySlug((prev) => {
+          if (!prev && list.length > 0) return list[0].slug;
+          return prev;
+        });
       }
     } catch (err) {
-      console.error('Failed to load categories:', err);
+      if (!isAbortError(err)) {
+        console.warn('Failed to load categories:', err);
+      }
     } finally {
       setLoadingCategories(false);
     }
-  }, [categorySlug]);
+  }, []);
 
   useEffect(() => {
     refreshCategories();
@@ -149,11 +156,31 @@ export function useSellerPortal() {
 
   const inFlightDashboardRef = useRef(false);
   const inFlightOrdersRef = useRef(false);
+  const inFlightMovementsRef = useRef(false);
+  const inFlightReviewsRef = useRef(false);
+  const initialLoadedSellerIdRef = useRef<string | null>(null);
+  const loadedTabsRef = useRef<Set<string>>(new Set());
+  const throttledUntilRef = useRef<number>(0);
   const lastSyncTimestampRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const handleThrottleError = useCallback((err: ApiRequestError) => {
+    let waitSeconds = 60;
+    if (err.retryAfterSeconds && err.retryAfterSeconds > 0) {
+      waitSeconds = err.retryAfterSeconds;
+    } else {
+      const match = String(err.message || '').match(/Expected available in (\d+) seconds/i);
+      if (match && match[1]) {
+        waitSeconds = parseInt(match[1], 10);
+      }
+    }
+    throttledUntilRef.current = Date.now() + (waitSeconds + 1) * 1000;
+    console.warn(`Seller API throttled. Backing off for ${waitSeconds} seconds.`);
+  }, []);
+
   const loadSellerDashboard = useCallback(async (options?: { signal?: AbortSignal }) => {
     if (!currentSeller?.id || inFlightDashboardRef.current) return;
+    if (Date.now() < throttledUntilRef.current) return;
     inFlightDashboardRef.current = true;
     setLoadingProducts(true);
     setDashboardError(null);
@@ -163,66 +190,80 @@ export function useSellerPortal() {
         headers: { 'Cache-Control': 'no-cache, no-store' },
         ...options,
       });
+      if (options?.signal?.aborted) return;
       setDashboardStats(dash.stats || null);
       if (Array.isArray(dash.products)) {
         setSellerProducts(dash.products);
       } else {
         const res = await sellerService.getSellerProducts(currentSeller.id, options);
-        setSellerProducts(res.results || []);
+        if (options?.signal?.aborted) return;
+        setSellerProducts(Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : []);
       }
       if (dash.vendor) {
         setStoreProfile(dash.vendor);
-        updateCurrentSeller?.(dash.vendor);
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, dash.vendor);
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return;
+      if (isAbortError(err)) return;
+      if (err instanceof ApiRequestError && err.status === 429) {
+        handleThrottleError(err);
+        return;
+      }
       const msg = err instanceof Error ? err.message : 'Failed to load seller dashboard';
       setDashboardError(msg);
-      console.error('Failed to load seller dashboard', err);
+      console.warn('Failed to load seller dashboard', err);
     } finally {
       inFlightDashboardRef.current = false;
       setLoadingProducts(false);
     }
-  }, [currentSeller?.id]);
+  }, [currentSeller?.id, handleThrottleError]);
 
   const loadSellerOrders = useCallback(
     async (silent = false, options?: { signal?: AbortSignal }) => {
       if (!currentSeller?.id || inFlightOrdersRef.current) return;
+      if (Date.now() < throttledUntilRef.current) return;
       inFlightOrdersRef.current = true;
       if (!silent) setLoadingOrders(true);
       setOrdersError(null);
       try {
         const res = await sellerService.getSellerOrders(currentSeller.id, options);
-        setSellerOrders(res.results || []);
+        if (options?.signal?.aborted) return;
+        setSellerOrders(Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : []);
         lastSyncTimestampRef.current = Date.now();
       } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') return;
+        if (isAbortError(err)) return;
+        if (err instanceof ApiRequestError && err.status === 429) {
+          handleThrottleError(err);
+          return;
+        }
         const msg = err instanceof Error ? err.message : 'Failed to load store orders';
         setOrdersError(msg);
-        console.error('Failed to load seller orders', err);
+        console.warn('Failed to load seller orders', err);
       } finally {
         inFlightOrdersRef.current = false;
         if (!silent) setLoadingOrders(false);
       }
     },
-    [currentSeller?.id]
+    [currentSeller?.id, handleThrottleError]
   );
 
-  const loadMovementsAndStore = useCallback(async () => {
-    if (!currentSeller?.id) return;
+  const loadMovementsAndStore = useCallback(async (options?: { signal?: AbortSignal }) => {
+    if (!currentSeller?.id || inFlightMovementsRef.current) return;
+    if (Date.now() < throttledUntilRef.current) return;
+    inFlightMovementsRef.current = true;
     try {
       const [movRes, storeRes] = await Promise.all([
-        sellerService.getSellerInventoryMovements(currentSeller.id, { bypassCache: true }),
+        sellerService.getSellerInventoryMovements(currentSeller.id, { bypassCache: true, ...options }),
         sellerService.getSellerStore(currentSeller.id, {
           bypassCache: true,
           headers: { 'Cache-Control': 'no-cache, no-store' },
+          ...options,
         }),
       ]);
-      setMovements(movRes.results || []);
-      if (storeRes.vendor) {
+      if (options?.signal?.aborted) return;
+      setMovements(Array.isArray(movRes?.results) ? movRes.results : Array.isArray(movRes) ? movRes : []);
+      if (storeRes?.vendor) {
         setStoreProfile(storeRes.vendor);
-        updateCurrentSeller?.(storeRes.vendor);
         safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, storeRes.vendor);
         setStoreOnline(storeRes.vendor.is_online !== false);
         setOpenTime(storeRes.vendor.open_time || '06:30');
@@ -232,54 +273,83 @@ export function useSellerPortal() {
         setStoreLogoUrl(storeRes.vendor.logo_url || '');
         setStoreCoverUrl(storeRes.vendor.cover_image_url || storeRes.vendor.image || '');
       }
-      setSettlements(storeRes.settlements || []);
-    } catch (err) {
-      console.error('Failed to load movements/store', err);
+      setSettlements(Array.isArray(storeRes?.settlements) ? storeRes.settlements : []);
+    } catch (err: unknown) {
+      if (isAbortError(err)) return;
+      if (err instanceof ApiRequestError && err.status === 429) {
+        handleThrottleError(err);
+        return;
+      }
+      console.warn('Failed to load movements/store', err);
+    } finally {
+      inFlightMovementsRef.current = false;
     }
-  }, [currentSeller?.id]);
+  }, [currentSeller?.id, handleThrottleError]);
 
-  const loadSellerReviews = useCallback(async () => {
-    if (!currentSeller?.id) return;
+  const loadSellerReviews = useCallback(async (options?: { signal?: AbortSignal }) => {
+    if (!currentSeller?.id || inFlightReviewsRef.current) return;
+    if (Date.now() < throttledUntilRef.current) return;
+    inFlightReviewsRef.current = true;
     setReviewsLoading(true);
     setReviewsError(null);
     try {
-      const res = await sellerService.getSellerReviews(currentSeller.id);
-      setSellerReviews(res.results || []);
+      const res = await sellerService.getSellerReviews(currentSeller.id, options);
+      if (options?.signal?.aborted) return;
+      setSellerReviews(Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : []);
       setReviewsAvg(res.average_rating || 0);
-    } catch (err) {
+    } catch (err: unknown) {
+      if (isAbortError(err)) return;
+      if (err instanceof ApiRequestError && err.status === 429) {
+        handleThrottleError(err);
+        return;
+      }
       setReviewsError(err instanceof Error ? err.message : 'Failed to load customer reviews');
     } finally {
+      inFlightReviewsRef.current = false;
       setReviewsLoading(false);
     }
-  }, [currentSeller?.id]);
+  }, [currentSeller?.id, handleThrottleError]);
 
-  // Initial load when currentSeller changes
+  // Initial load when currentSeller ID changes
   useEffect(() => {
-    if (!currentSeller?.id) return;
+    const sellerId = currentSeller?.id;
+    if (!sellerId) return;
+
+    if (initialLoadedSellerIdRef.current === sellerId) return;
+    initialLoadedSellerIdRef.current = sellerId;
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    refreshSellerSession?.();
     loadSellerDashboard({ signal: controller.signal });
     loadSellerOrders(false, { signal: controller.signal });
-    loadMovementsAndStore();
-    loadSellerReviews();
+    loadMovementsAndStore({ signal: controller.signal });
+    loadSellerReviews({ signal: controller.signal });
 
     return () => {
       controller.abort();
     };
-  }, [currentSeller?.id, refreshSellerSession, loadSellerDashboard, loadSellerOrders, loadMovementsAndStore, loadSellerReviews]);
+  }, [currentSeller?.id, loadSellerDashboard, loadSellerOrders, loadMovementsAndStore, loadSellerReviews]);
 
-  // Tab switch to orders (only if stale, i.e. > 10s old)
+  // On-demand tab refresh: avoid repeated re-fetches for already loaded tabs
   useEffect(() => {
     if (!currentSeller?.id) return;
     if (activeTab === 'orders') {
-      const isStale = Date.now() - lastSyncTimestampRef.current > 10000;
+      const isStale = Date.now() - lastSyncTimestampRef.current > 15000;
       if (isStale) {
         loadSellerOrders(true);
       }
+    } else if (activeTab === 'reviews' && !loadedTabsRef.current.has('reviews')) {
+      loadedTabsRef.current.add('reviews');
+      loadSellerReviews();
+    } else if (activeTab === 'ledger' && !loadedTabsRef.current.has('ledger')) {
+      loadedTabsRef.current.add('ledger');
+      loadMovementsAndStore();
+    } else if (activeTab === 'settings' && !loadedTabsRef.current.has('settings')) {
+      loadedTabsRef.current.add('settings');
+      loadMovementsAndStore();
     }
-  }, [activeTab, currentSeller?.id, loadSellerOrders]);
+  }, [activeTab, currentSeller?.id, loadSellerOrders, loadSellerReviews, loadMovementsAndStore]);
 
   // Non-overlapping adaptive polling while currentSeller is active
   useEffect(() => {
@@ -290,19 +360,25 @@ export function useSellerPortal() {
 
     const pollLoop = async () => {
       if (isCancelled) return;
+      if (Date.now() < throttledUntilRef.current) {
+        const remaining = Math.max(5000, throttledUntilRef.current - Date.now());
+        if (!isCancelled) timerId = setTimeout(pollLoop, remaining);
+        return;
+      }
       if (document.visibilityState === 'visible') {
         await loadSellerOrders(true);
       }
       if (!isCancelled) {
-        timerId = setTimeout(pollLoop, 15000);
+        timerId = setTimeout(pollLoop, 20000);
       }
     };
 
-    timerId = setTimeout(pollLoop, 15000);
+    timerId = setTimeout(pollLoop, 20000);
 
     const syncOnFocus = () => {
       if (document.visibilityState === 'visible') {
-        const isStale = Date.now() - lastSyncTimestampRef.current > 10000;
+        if (Date.now() < throttledUntilRef.current) return;
+        const isStale = Date.now() - lastSyncTimestampRef.current > 15000;
         if (isStale) {
           loadSellerOrders(true);
           loadSellerDashboard();
@@ -352,11 +428,15 @@ export function useSellerPortal() {
       return;
     }
     setLoginLoading(true);
+    setCustomLoginError(null);
+    setCustomLoginErrorCode(null);
     try {
       await loginAsSeller({ identifier: customStoreId.trim(), password: customPassword });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       setCustomLoginError(msg);
+      const code = (err as any)?.code || (err as any)?.error?.code || null;
+      setCustomLoginErrorCode(code);
     } finally {
       setLoginLoading(false);
     }
@@ -607,7 +687,7 @@ export function useSellerPortal() {
 
   const handleFulfillmentUpdate = async (
     fulfillmentId: string | number,
-    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'REJECTED'
+    nextStatus: 'CONFIRMED_BY_VENDOR' | 'PACKED_BY_VENDOR' | 'READY_FOR_RIDER_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED'
   ) => {
     setUpdatingOrderId(fulfillmentId);
     try {
@@ -785,6 +865,7 @@ export function useSellerPortal() {
     customPassword,
     setCustomPassword,
     customLoginError,
+    customLoginErrorCode,
     setCustomLoginError,
     loginLoading,
     vendorsRefreshing,

@@ -45,6 +45,7 @@ export function AppRoutes() {
         <Route path="/orders/:id" element={<OrderTrackingPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/become-seller" element={<BecomeSellerPage />} />
+        <Route path="/seller/apply" element={<BecomeSellerPage />} />
         <Route path="/seller/track" element={<TrackApplicationPage />} />
         <Route path="/track-application" element={<TrackApplicationPage />} />
         <Route path="/vendor/activate" element={<VendorActivationPage />} />
