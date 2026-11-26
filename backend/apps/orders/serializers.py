@@ -67,6 +67,81 @@ class VendorSubOrderListSerializer(serializers.ModelSerializer):
         ]
 
 
+def normalize_status_to_step_index(raw_status):
+    """
+    Normalizes order/suborder status string to milestone sequence index (0 to 5):
+    1. Order Placed (0)
+    2. Store Confirmed (1)
+    3. Packing Items (2)
+    4. Ready for Pickup (3)
+    5. Out for Delivery (4)
+    6. Delivered (5)
+    """
+    if not raw_status:
+        return 0
+    s = str(raw_status).strip().upper().replace(' ', '_').replace('-', '_')
+    if s in ['DELIVERED', 'COMPLETED']:
+        return 5
+    if s in ['OUT_FOR_DELIVERY', 'SHIPPED', 'DISPATCHED']:
+        return 4
+    if s in ['READY_FOR_DISPATCH', 'READY_FOR_PICKUP', 'READY_FOR_RIDER_PICKUP']:
+        return 3
+    if s in ['PACKED', 'PACKED_BY_VENDOR', 'PROCESSING']:
+        return 2
+    if s in ['CONFIRMED', 'CONFIRMED_BY_VENDOR']:
+        return 1
+    return 0  # PENDING, PLACED, ORDER_PLACED, PENDING_PAYMENT
+
+
+def build_milestones_for_status(status_str, timeline_entries=None, created_at=None, shipped_at=None, delivered_at=None):
+    """
+    Constructs the 6 live delivery milestones with accurate status synchronization,
+    highlighting the current milestone, and attaching real backend timestamps without fabrication.
+    """
+    cur_idx = normalize_status_to_step_index(status_str)
+
+    milestone_definitions = [
+        ('ORDER_PLACED', 'Order Placed', 'Your order was successfully placed and recorded in OyoPasal.'),
+        ('CONFIRMED', 'Store Confirmed', 'Vendor verified inventory and accepted your order.'),
+        ('PACKING', 'Packing Items', 'Fresh goods are being gathered and carefully packaged.'),
+        ('READY_FOR_PICKUP', 'Ready for Pickup', 'Bag sealed with tamper-proof tag, assigned to rider.'),
+        ('OUT_FOR_DELIVERY', 'Out for Delivery', 'Rider has picked up package and is en route to you.'),
+        ('DELIVERED', 'Delivered', 'Order handed over successfully at your doorstep.')
+    ]
+
+    timestamps = {}
+    if created_at:
+        timestamps[0] = created_at.strftime('%I:%M %p')
+
+    if timeline_entries:
+        for entry in timeline_entries:
+            st = getattr(entry, 'new_status', '')
+            idx = normalize_status_to_step_index(st)
+            ts = getattr(entry, 'created_at', None)
+            if idx > 0 and ts and idx not in timestamps:
+                timestamps[idx] = ts.strftime('%I:%M %p')
+
+    if shipped_at and 4 not in timestamps:
+        timestamps[4] = shipped_at.strftime('%I:%M %p')
+    if delivered_at and 5 not in timestamps:
+        timestamps[5] = delivered_at.strftime('%I:%M %p')
+
+    steps = []
+    for i, (key, title, desc) in enumerate(milestone_definitions):
+        is_done = i <= cur_idx
+        is_current = (i == cur_idx)
+        ts = timestamps.get(i, '') if is_done else ''
+        steps.append({
+            'key': key,
+            'title': title,
+            'description': desc,
+            'done': is_done,
+            'current': is_current,
+            'timestamp': ts
+        })
+    return steps
+
+
 def build_order_items_by_vendor(instance):
     """
     Build items_by_vendor array matching the React frontend Order contract.
@@ -78,7 +153,7 @@ def build_order_items_by_vendor(instance):
         return items_by_vendor
 
     for sub in suborders.select_related('vendor', 'store').prefetch_related(
-        'items', 'items__variant', 'items__variant__product', 'items__variant__product__images'
+        'items', 'items__variant', 'items__variant__product', 'items__variant__product__images', 'timeline'
     ).all():
         v = getattr(sub, 'vendor', None)
         st = getattr(sub, 'store', None)
@@ -104,23 +179,33 @@ def build_order_items_by_vendor(instance):
                 'image_url': img_url
             })
         st_lat = float(st.latitude) if (st and getattr(st, 'latitude', None) is not None) else (
-            float(v.latitude) if (v and getattr(v, 'latitude', None) is not None) else 27.7033
+            float(v.latitude) if (v and getattr(v, 'latitude', None) is not None) else None
         )
         st_lng = float(st.longitude) if (st and getattr(st, 'longitude', None) is not None) else (
-            float(v.longitude) if (v and getattr(v, 'longitude', None) is not None) else 85.3120
+            float(v.longitude) if (v and getattr(v, 'longitude', None) is not None) else None
         )
+        vendor_area = (st.address if st and st.address else getattr(v, 'city', '')) if v else ''
+        sub_timeline = list(sub.timeline.all()) if hasattr(sub, 'timeline') else []
         items_by_vendor.append({
             'vendor': {
                 'id': str(v.id) if v else (str(st.id) if st else ''),
                 'name': v.business_name if v else (st.name if st else 'Local Store'),
                 'lat': st_lat,
                 'lng': st_lng,
-                'area': (st.address if st and st.address else getattr(v, 'city', 'Kathmandu')) if v else 'Kathmandu',
+                'area': vendor_area,
             },
             'fulfillment_status': sub.status,
             'fulfillment_id': str(sub.id),
+            'sub_order_number': sub.sub_order_number,
             'items': v_items,
             'vendor_delivery_fee': float(sub.delivery_fee or 0.0),
+            'tracking_updates': build_milestones_for_status(
+                status_str=sub.status,
+                timeline_entries=sub_timeline,
+                created_at=sub.created_at,
+                shipped_at=sub.shipped_at,
+                delivered_at=sub.delivered_at
+            )
         })
     return items_by_vendor
 
@@ -144,8 +229,12 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         snap = instance.shipping_address_snapshot or {}
-        lat_val = snap.get('latitude') or snap.get('lat')
-        lng_val = snap.get('longitude') or snap.get('lng')
+        lat_val = snap.get('latitude') if snap.get('latitude') is not None else snap.get('lat')
+        lng_val = snap.get('longitude') if snap.get('longitude') is not None else snap.get('lng')
+
+        city_val = snap.get('city') or snap.get('district') or ''
+        area_val = snap.get('area') or snap.get('municipality') or snap.get('tole_street') or ''
+        street_val = snap.get('street') or snap.get('tole_street') or ''
 
         # Structured delivery_address
         ret['delivery_address'] = {
@@ -153,45 +242,54 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'title': snap.get('title', 'Delivery Address'),
             'recipient_name': snap.get('recipient_name', 'Customer'),
             'phone': snap.get('recipient_phone') or snap.get('phone', ''),
-            'street': snap.get('tole_street') or snap.get('street', ''),
-            'area': snap.get('municipality') or snap.get('area') or snap.get('district') or '',
-            'city': snap.get('district') or snap.get('city') or '',
+            'street': street_val,
+            'area': area_val,
+            'city': city_val,
+            'district': snap.get('district') or city_val,
+            'country': snap.get('country') or 'Nepal',
             'landmark': snap.get('landmark', ''),
             'is_default': True,
-            'lat': float(lat_val) if lat_val is not None else 27.7172,
-            'lng': float(lng_val) if lng_val is not None else 85.3240,
+            'lat': float(lat_val) if lat_val is not None else 0.0,
+            'lng': float(lng_val) if lng_val is not None else 0.0,
         }
 
         # Build items_by_vendor matching frontend Order interface
         ret['items_by_vendor'] = build_order_items_by_vendor(instance)
 
-        # Build milestone tracking steps
-        status_steps = [
-            ('ORDER_PLACED', 'Order Placed', 'Your order was successfully placed and recorded in OyoPasal.'),
-            ('CONFIRMED', 'Store Confirmed', 'Vendor verified inventory and accepted your order.'),
-            ('PROCESSING', 'Packing Items', 'Fresh goods are being gathered and carefully packaged.'),
-            ('READY_FOR_DISPATCH', 'Ready for Pickup', 'Bag sealed with tamper-proof tag, assigned to rider.'),
-            ('OUT_FOR_DELIVERY', 'Out for Delivery', 'Rider has picked up package and is en route to you.'),
-            ('DELIVERED', 'Delivered', 'Order handed over successfully at your doorstep.')
-        ]
-        status_order = ['ORDER_PLACED', 'CONFIRMED', 'PROCESSING', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'DELIVERED']
-        cur_status = instance.status
-        cur_idx = status_order.index(cur_status) if cur_status in status_order else 0
+        # Collect timeline entries and timestamps across order and suborders
+        order_timeline = list(instance.timeline.all()) if hasattr(instance, 'timeline') else []
+        suborders = list(instance.suborders.all()) if hasattr(instance, 'suborders') else []
+        for s in suborders:
+            if hasattr(s, 'timeline'):
+                order_timeline.extend(list(s.timeline.all()))
 
-        tracking_steps = []
-        for i, (code, title, desc) in enumerate(status_steps):
-            tracking_steps.append({
-                'title': title,
-                'description': desc,
-                'done': i <= cur_idx,
-                'timestamp': instance.created_at.strftime('%I:%M %p') if i == 0 else ''
-            })
-        ret['tracking_updates'] = tracking_steps
+        # Determine effective parent status (if any suborder has advanced, reflect it)
+        effective_status = instance.status
+        if suborders:
+            max_sub_idx = max(normalize_status_to_step_index(s.status) for s in suborders)
+            parent_idx = normalize_status_to_step_index(instance.status)
+            if max_sub_idx > parent_idx:
+                status_keys = ['ORDER_PLACED', 'CONFIRMED', 'PACKED', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'DELIVERED']
+                effective_status = status_keys[max_sub_idx]
+
+        shipped_at = next((s.shipped_at for s in suborders if getattr(s, 'shipped_at', None)), None)
+        delivered_at = next((s.delivered_at for s in suborders if getattr(s, 'delivered_at', None)), None)
+
+        ret['tracking_updates'] = build_milestones_for_status(
+            status_str=effective_status,
+            timeline_entries=order_timeline,
+            created_at=instance.created_at,
+            shipped_at=shipped_at,
+            delivered_at=delivered_at
+        )
 
         ret['total_amount'] = float(instance.grand_total or 0)
+        ret['grand_total'] = float(instance.grand_total or 0)
         ret['subtotal'] = float(instance.subtotal or 0)
         ret['delivery_fee'] = float(instance.delivery_total or 0)
-        ret['handling_fee'] = 15.0
+        ret['delivery_total'] = float(instance.delivery_total or 0)
+        ret['tax_total'] = float(instance.tax_total or 0)
+        ret['handling_fee'] = 0.0
         ret['coupon_discount'] = float(instance.discount_total or 0)
         ret['estimated_delivery_mins'] = 12
         ret['delivery_option'] = 'EXPRESS_12_MINS'

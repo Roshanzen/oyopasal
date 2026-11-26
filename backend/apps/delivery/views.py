@@ -223,7 +223,16 @@ class OrderDeliveryTrackingView(APIView):
             float(vendor.longitude) if (vendor and getattr(vendor, 'longitude', None) is not None) else 85.3120
         )
 
+        suborders = list(order.suborders.all())
+        from apps.orders.serializers import normalize_status_to_step_index
         st = order.status
+        if suborders:
+            max_sub_idx = max(normalize_status_to_step_index(s.status) for s in suborders)
+            parent_idx = normalize_status_to_step_index(st)
+            if max_sub_idx > parent_idx:
+                status_keys = ['ORDER_PLACED', 'CONFIRMED', 'PACKED', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'DELIVERED']
+                st = status_keys[max_sub_idx]
+
         courier_speed_kmh = 22.0  # Urban delivery standard speed
 
         if st == 'DELIVERED':
@@ -270,16 +279,16 @@ class OrderDeliveryTrackingView(APIView):
             estimated_minutes = max(5, round((remaining_km / courier_speed_kmh) * 60) + prep_buffer_mins)
             assignment_status = 'PENDING'
 
+        # Stable, deterministic rider assignment per order to prevent telemetry jumps on re-renders
+        order_seed = sum(ord(c) for c in str(order.order_number or order.id))
+        riders_pool = [
+            {'id': 101, 'full_name': 'Ramesh Shrestha', 'phone': '+977 9841234567', 'phone_number': '+977 9841234567', 'vehicle_type': 'Honda EV Scooter', 'vehicle_number': 'BA 2 PA 4921', 'rating': 4.9},
+            {'id': 102, 'full_name': 'Bikash Tamang', 'phone': '+977 9841987654', 'phone_number': '+977 9841987654', 'vehicle_type': 'Super Soco CPx', 'vehicle_number': 'BA 3 PA 8812', 'rating': 4.8},
+            {'id': 103, 'full_name': 'Sunil Maharjan', 'phone': '+977 9841555123', 'phone_number': '+977 9841555123', 'vehicle_type': 'NIU NQi GTS', 'vehicle_number': 'BA 1 PA 3109', 'rating': 4.9},
+        ]
+        assigned_agent = riders_pool[order_seed % len(riders_pool)]
         has_rider = st in ['PACKED', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'SHIPPED', 'DELIVERED']
-        agent = {
-            'id': 101,
-            'full_name': 'Ramesh Shrestha',
-            'phone': '+977 9841234567',
-            'phone_number': '+977 9841234567',
-            'vehicle_type': 'Honda EV Scooter',
-            'vehicle_number': 'BA 2 PA 4921',
-            'rating': 4.9
-        } if has_rider else None
+        agent = assigned_agent if has_rider else None
 
         recipient_address = {
             'recipient_name': snap.get('recipient_name') or '',
@@ -309,6 +318,7 @@ class OrderDeliveryTrackingView(APIView):
             'remaining_km': remaining_km,
             'estimated_minutes': estimated_minutes,
             'eta_minutes': estimated_minutes,
+            'is_live_telemetry': st in ['OUT_FOR_DELIVERY', 'SHIPPED'],
             'agent': agent,
             'updated_at': timezone.now().isoformat()
         }
@@ -317,6 +327,7 @@ class OrderDeliveryTrackingView(APIView):
             'order_id': str(order.id),
             'order_number': order.order_number,
             'order_status': order.status,
+            'is_live_telemetry': st in ['OUT_FOR_DELIVERY', 'SHIPPED'],
             'remaining_km': remaining_km,
             'estimated_minutes': estimated_minutes,
             'courier_speed_kmh': courier_speed_kmh,

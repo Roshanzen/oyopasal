@@ -200,11 +200,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       coords: Coordinates,
       areaName?: string,
       streetName?: string,
-      recipientFallback?: { full_name?: string; phone?: string }
+      recipientFallback?: { full_name?: string; phone?: string; city?: string; district?: string; country?: string }
     ) => {
       setCurrentCoordinates(coords);
-      const computedArea = areaName || 'Kathmandu Valley';
+      const computedArea = areaName || '';
       const computedStreet = streetName || `Pin (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`;
+      const detectedCity = recipientFallback?.city || recipientFallback?.district || (computedArea && !computedArea.includes('(') ? computedArea : '');
 
       const mappedAddress: Address = {
         id: `addr-map-${Date.now()}`,
@@ -213,15 +214,15 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         phone: recipientFallback?.phone || '+977 9800000000',
         street: computedStreet,
         area: computedArea,
-        city: 'Kathmandu',
-        landmark: 'Selected via Google Geo Map',
+        city: detectedCity,
+        landmark: 'Selected via Map Pin',
         is_default: true,
         lat: coords.lat,
         lng: coords.lng,
       };
 
       setCurrentAddressState(mappedAddress);
-      showToast(t('toast.locationSet', { area: computedArea }), 'success');
+      showToast(t('toast.locationSet', { area: computedArea || 'Selected Location' }), 'success');
     },
     [showToast, t]
   );

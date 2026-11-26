@@ -37,6 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!hasToken) return;
       try {
         const me = await authService.getUser();
+        const roleStr = String(me.role || '').toUpperCase();
+        const vendorRoles = ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'];
+        const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN'];
+        if (vendorRoles.includes(roleStr) && !adminRoles.includes(roleStr)) {
+          // Token in customer auth storage belongs to a vendor account! Purge customer token.
+          httpClient.clearToken();
+          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN);
+          setUser(null);
+          return;
+        }
+
         const profileUser: UserProfile = {
           ...me,
           vendor: (me as any)?.vendor || null,
@@ -58,14 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setUserDirect = useCallback(
     (newUser: UserProfile | null) => {
-      setUser(newUser);
       if (newUser) {
+        const roleStr = String(newUser.role || '').toUpperCase();
+        const vendorRoles = ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'];
+        const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN'];
+        if (vendorRoles.includes(roleStr) && !adminRoles.includes(roleStr)) {
+          httpClient.clearToken();
+          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN);
+          setUser(null);
+          return;
+        }
+        setUser(newUser);
         if (newUser.token) httpClient.setToken(newUser.token);
         safeStorage.set(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN, 'true');
         refreshAddresses();
         refreshWishlist();
         refreshCart();
       } else {
+        setUser(null);
         httpClient.clearToken();
         safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN);
       }
@@ -77,6 +98,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (payload: CustomerLoginPayload): Promise<UserProfile> => {
       try {
         const res = await authService.loginCustomer(payload);
+        const roleStr = String(res.user?.role || '').toUpperCase();
+        const vendorRoles = ['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'];
+        const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN'];
+        if (vendorRoles.includes(roleStr) && !adminRoles.includes(roleStr)) {
+          httpClient.clearToken();
+          safeStorage.remove(APP_CONFIG.STORAGE_KEYS.CUSTOMER_LOGGED_IN);
+          throw new Error('This account is registered as a Merchant/Vendor. Please sign in via the Merchant Portal at /seller.');
+        }
+
         if (res.token) {
           httpClient.setToken(res.token);
         }

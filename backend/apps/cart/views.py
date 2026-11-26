@@ -141,7 +141,10 @@ class CartView(APIView):
     def delete(self, request):
         cart = get_or_create_cart(request)
         cart.items.all().delete()
-        return Response(CartSerializer(cart).data)
+        c_data = CartSerializer(cart).data
+        res = dict(c_data)
+        res['data'] = dict(c_data)
+        return Response(res, status=status.HTTP_200_OK)
 
 
 class CartItemDetailView(APIView):
@@ -203,13 +206,22 @@ class CartItemDetailView(APIView):
 
 
 class CartClearView(APIView):
-    """Clear all items from active cart."""
+    """Clear all items from active customer cart."""
     permission_classes = [AllowAny]
 
-    def post(self, request):
+    def _clear_cart(self, request):
         cart = get_or_create_cart(request)
         cart.items.all().delete()
-        return Response(CartSerializer(cart).data)
+        c_data = CartSerializer(cart).data
+        res = dict(c_data)
+        res['data'] = dict(c_data)
+        return Response(res, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        return self._clear_cart(request)
+
+    def delete(self, request):
+        return self._clear_cart(request)
 
 
 class ValidateCheckoutView(APIView):

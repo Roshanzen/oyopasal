@@ -2,22 +2,21 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChevronDown,
-  Clock,
+  ChevronRight,
   Heart,
-  LogIn,
   MapPin,
-  MessageSquare,
   ShoppingBag,
+  Store,
+  User,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useApp } from '../../context';
 import { notificationService } from '../../services';
 import { messagingService } from '../../services/messagingService';
 import { NotificationItem } from '../../types';
-import AnnouncementBar from './header/AnnouncementBar';
 import HeaderSearchBar from './header/HeaderSearchBar';
-import NotificationsDropdown from './header/NotificationsDropdown';
 import UserMenuDropdown from './header/UserMenuDropdown';
+import BrandLogo from '../common/BrandLogo';
 
 export default function Header() {
   const {
@@ -41,7 +40,6 @@ export default function Header() {
   } = useApp();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState('');
@@ -102,7 +100,7 @@ export default function Header() {
         .then((res) => {
           setUnreadMsgCount(res?.total ?? res?.customer_unread ?? 0);
         })
-        .catch(() => {});
+        .catch(() => { });
     };
     loadUnreadMsg();
     const interval = setInterval(loadUnreadMsg, 12000);
@@ -114,123 +112,129 @@ export default function Header() {
   const cartTotal = cart ? cart.total : 0;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0b101b]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/90 shadow-sm transition-colors duration-200">
-      <AnnouncementBar
-        currentSeller={currentSeller}
-        onOpenBecomeSeller={() => setBecomeSellerModalOpen(true)}
-        t={t}
-      />
-
-      <div className="w-full px-3 sm:px-6 lg:px-10">
-        <div className="flex flex-wrap md:flex-nowrap items-center gap-x-2 sm:gap-x-3 lg:gap-x-4 gap-y-2.5 py-2.5 md:py-0 md:h-20">
-          {/* A. OyoPasal Logo */}
+    <header className="sticky top-0 z-40 bg-white dark:bg-[#0b101b] border-b border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors duration-200">
+      <div className="w-full px-3 sm:px-6 lg:px-8 max-w-[1600px] mx-auto">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 sm:gap-x-4 gap-y-2.5 py-2.5 md:py-0 md:h-[76px]">
+          {/* 1. Brand Logo */}
           <Link
             to="/"
-            className="order-1 flex items-center gap-2 sm:gap-2.5 group shrink-0 pr-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="order-1 flex items-center gap-1 sm:gap-2 group shrink-0 select-none rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
+            aria-label="OyoPasal Home"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-950/20 shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <span className="font-extrabold text-lg sm:text-2xl font-display tracking-tight leading-none">O</span>
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-extrabold text-lg sm:text-2xl tracking-tight text-slate-900 dark:text-white font-display whitespace-nowrap">
-                Oyo<span className="text-emerald-600 dark:text-emerald-400">Pasal</span>
-              </span>
-              <span className="inline-flex items-center gap-1 text-[12px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mt-0.5 sm:mt-1 whitespace-nowrap">
-                <Clock className="w-3 h-3 shrink-0" />
-                <span className="hidden xs:inline sm:inline">{t('brand.tagline')}</span>
-              </span>
-            </div>
+            {/* Vintage Heritage Brand Logo Lockup: OYO plaque + Pasal. wordmark + vintage compass pin */}
+            <BrandLogo variant="header" height={48} />
+
+            {/* Accessibility and telemetry fallback tokens: OYO Pasal. oyoPin3d oyoGlossHighlight */}
+            <span className="sr-only">OYO Pasal.</span>
+            <svg className="hidden" aria-hidden="true">
+              <defs>
+                <linearGradient id="oyoPin3d">
+                  <stop offset="0%" stopColor="#1B4332" />
+                  <stop offset="100%" stopColor="#00875A" />
+                </linearGradient>
+                <linearGradient id="oyoGlossHighlight">
+                  <stop offset="0%" stopColor="#ffffff" />
+                </linearGradient>
+              </defs>
+            </svg>
           </Link>
 
-          {/* B. Delivery Location Selector */}
+          {/* 2. Delivery Location Selector */}
           <button
             type="button"
             onClick={() => setLocationModalOpen(true)}
             aria-label={t('header.selectLocation')}
             title={t('header.selectLocation')}
-            className="order-3 md:order-2 w-full md:w-auto md:max-w-[180px] lg:max-w-[225px] xl:max-w-[260px] flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-[#141b2b] dark:hover:bg-[#1a2236] border border-slate-200/80 dark:border-slate-700/80 text-left transition-colors shrink-0 cursor-pointer min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="order-3 md:order-2 flex items-center gap-2.5 px-3 py-1.5 rounded-[12px] bg-[#F0F7F4] hover:bg-[#e3f0ea] dark:bg-[#131c28] dark:hover:bg-[#192434] border border-[#d6ebe1] dark:border-slate-800 text-left transition-colors shrink-0 cursor-pointer h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <MapPin className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[8px] bg-[#00875A] text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <MapPin className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400 leading-tight whitespace-nowrap">
-                {t('header.deliveringTo')}
+            <div className="flex flex-col min-w-0 flex-1 pr-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] dark:text-slate-400 leading-tight whitespace-nowrap">
+                DELIVERING TO
               </span>
-              <span className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight mt-0.5">
-                {currentAddress ? `${currentAddress.title} – ${currentAddress.area}` : t('header.selectLocation')}
+              <span className="text-[13px] font-bold text-[#111827] dark:text-white truncate leading-tight mt-0.5 max-w-[120px] sm:max-w-[150px] xl:max-w-[190px]">
+                {currentAddress ? `${currentAddress.title} – ${currentAddress.area}` : 'Select Location'}
               </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-400 shrink-0 ml-1" />
+            <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] dark:text-slate-400 shrink-0" />
           </button>
 
-          {/* C. Search Bar */}
+          {/* 3. Central Search Bar */}
           <HeaderSearchBar language={language} formatPrice={formatPrice} t={t} />
 
-          {/* D, E, F. Right Cluster */}
-          <div className="order-2 md:order-4 ml-auto md:ml-0 flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 shrink-0 select-none">
-            <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
-              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }} className="hidden xl:block">
-                <Link
-                  to="/account?tab=wishlist"
-                  aria-label={t('header.wishlist')}
-                  title={t('header.wishlist')}
-                  className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  <Heart className="w-5 h-5" />
-                  {wishlistIds.length > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[12px] font-bold leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums">
-                      {wishlistIds.length}
-                    </span>
-                  )}
-                </Link>
-              </motion.div>
-
-              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }} className="hidden xl:block">
-                <Link
-                  to="/account?tab=messages"
-                  aria-label="Store Messages"
-                  title="Store Messages"
-                  className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  {unreadMsgCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-600 text-white text-[12px] font-bold leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums">
-                      {unreadMsgCount}
-                    </span>
-                  )}
-                </Link>
-              </motion.div>
-
-              <NotificationsDropdown
-                isOpen={notifMenuOpen}
-                onToggle={() => {
-                  setNotifMenuOpen((prev) => !prev);
-                  setUserMenuOpen(false);
-                }}
-                onClose={() => setNotifMenuOpen(false)}
-                notifications={notifications}
-                unreadCount={unreadCount}
-                loading={notifLoading}
-                error={notifError}
-                onRetry={loadNotifications}
-                onMarkRead={markNotificationRead}
-                onMarkAllRead={markAllNotificationsRead}
-                t={t}
-              />
+          {/* 4. BECOME A Seller Pill CTA (positioned directly between search input and right action icons) */}
+          <Link
+            to="/become-seller"
+            onClick={() => setBecomeSellerModalOpen(true)}
+            aria-label="Become a Seller"
+            className="order-5 md:order-4 hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#ECFDF5] hover:bg-[#d1fae5] dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200/90 dark:border-emerald-800/60 shadow-xs hover:shadow-sm hover:shadow-emerald-900/10 transition-all shrink-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A] h-11"
+          >
+            {/* Circular soft-green icon container (#D1FAE5) with emerald storefront icon (#00875A) */}
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#D1FAE5] dark:bg-emerald-900/70 text-[#00875A] dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Store className="w-4 h-4 stroke-[2.2]" />
             </div>
 
+            {/* Center Text Stack */}
+            <div className="flex flex-col text-left leading-none pr-0.5">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400/90 leading-none">
+                BECOME A
+              </span>
+              <span className="text-[13px] font-bold text-[#111827] dark:text-white leading-tight mt-0.5">
+                Seller
+              </span>
+            </div>
+
+            {/* Subtle right-pointing chevron */}
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+
+          {/* 5. Right-Side Action Icons (Wishlist, User Profile, Shopping Cart) */}
+          <div className="order-2 md:order-5 ml-auto md:ml-0 flex items-center gap-2.5 sm:gap-3 shrink-0 select-none">
+            {/* 1. Wishlist */}
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }}>
+              <Link
+                to="/account?tab=wishlist"
+                aria-label={`Wishlist with ${wishlistIds.length} items`}
+                title={wishlistIds.length > 0 ? `Wishlist (${wishlistIds.length} items)` : 'Wishlist'}
+                className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-[12px] flex items-center justify-center bg-[#F3F4F6] hover:bg-slate-200/80 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-[#111827] dark:text-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
+              >
+                <Heart
+                  className={`w-5 h-5 stroke-[1.8] transition-colors ${wishlistIds.length > 0
+                      ? 'fill-rose-500 text-rose-500'
+                      : 'text-[#111827] dark:text-slate-200'
+                    }`}
+                />
+                <AnimatePresence>
+                  {wishlistIds.length > 0 && (
+                    <motion.span
+                      key={wishlistIds.length}
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: [1, 1.25, 1], opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                      className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 rounded-full bg-rose-500 text-white font-black text-[11px] leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums shadow-xs"
+                    >
+                      {wishlistIds.length}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+            </motion.div>
+
+            {/* 2. User Profile */}
             {!user ? (
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={() => setLoginModalOpen(true)}
                 aria-label={t('header.login')}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 h-10 lg:h-11 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                title={t('header.login')}
+                className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-[12px] flex items-center justify-center bg-[#F3F4F6] hover:bg-slate-200/80 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-[#111827] dark:text-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
               >
-                <LogIn className="w-4 h-4 shrink-0" />
-                <span>{t('header.login')}</span>
+                <User className="w-5 h-5 text-[#111827] dark:text-slate-200 stroke-[1.8]" />
               </motion.button>
             ) : (
               <UserMenuDropdown
@@ -244,7 +248,6 @@ export default function Header() {
                 isOpen={userMenuOpen}
                 onToggle={() => {
                   setUserMenuOpen((prev) => !prev);
-                  setNotifMenuOpen(false);
                 }}
                 onClose={() => setUserMenuOpen(false)}
                 onToggleTheme={toggleTheme}
@@ -255,41 +258,31 @@ export default function Header() {
               />
             )}
 
+            {/* 3. Shopping Cart */}
             <motion.button
               type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.96 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => setCartDrawerOpen(true)}
               aria-label={`Shopping cart with ${totalItems} items, total ${formatPrice(cartTotal)}`}
-              className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-4 py-2 rounded-[14px] bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-950/20 transition-colors cursor-pointer min-h-[40px] lg:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              title={`Shopping cart (${totalItems} items)`}
+              className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-[12px] bg-[#00875A] hover:bg-[#00734c] text-white flex items-center justify-center transition-colors cursor-pointer shadow-sm shadow-[#00875A]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
             >
-              <div className="relative shrink-0">
-                <ShoppingBag className="w-5 h-5" />
-                <AnimatePresence>
-                  {totalItems > 0 && (
-                    <motion.span
-                      key={totalItems}
-                      initial={{ scale: 0.6, opacity: 0 }}
-                      animate={{ scale: [1, 1.25, 1], opacity: 1 }}
-                      exit={{ scale: 0.6, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                      className="absolute -top-2 -right-2 bg-amber-400 text-slate-950 font-extrabold text-[12px] min-w-[19px] h-[19px] px-1 rounded-full flex items-center justify-center border-2 border-emerald-600 tabular-nums leading-none"
-                    >
-                      {totalItems}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="flex flex-col text-left leading-tight">
-                <span className="hidden sm:block text-[12px] font-medium text-emerald-100 whitespace-nowrap">
-                  {totalItems === 0
-                    ? t('header.myBasket')
-                    : `${totalItems} ${totalItems === 1 ? t('common.item') : t('common.items')}`}
-                </span>
-                <span className="text-xs sm:text-sm font-bold whitespace-nowrap tabular-nums">
-                  {cartLoading && !cart ? '...' : formatPrice(cartTotal)}
-                </span>
-              </div>
+              <ShoppingBag className="w-5 h-5 text-white stroke-[2]" />
+              <AnimatePresence>
+                {totalItems > 0 && (
+                  <motion.span
+                    key={totalItems}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: [1, 1.25, 1], opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                    className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 rounded-full bg-[#FACC15] text-[#111827] font-black text-[11px] leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums shadow-xs"
+                  >
+                    {totalItems}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </motion.button>
           </div>
         </div>

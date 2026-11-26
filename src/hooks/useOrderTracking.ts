@@ -111,9 +111,8 @@ export function useOrderTracking(orderId?: string) {
 
         if (trackResult.status === 'fulfilled') {
           setTracking(trackResult.value);
-        } else if (trackResult.reason?.name !== 'AbortError') {
-          setTracking(null);
         }
+        // Preserve existing tracking on non-fatal background poll errors to prevent telemetry resets
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         setLoadError(err instanceof Error ? err.message : 'Unable to load order tracking');
@@ -135,46 +134,55 @@ export function useOrderTracking(orderId?: string) {
     };
   }, [fetchOrderAndTracking, user?.id]);
 
-  // Non-overlapping adaptive polling while order is active
+  // Non-overlapping 5-second polling and focus/visibility auto-refresh while order is active
   useEffect(() => {
     if (!orderId) return;
 
     let timerId: ReturnType<typeof setTimeout> | null = null;
     let isCancelled = false;
 
+    const isTerminal = (st?: string) => {
+      const norm = (st || '').toUpperCase().replace(/[\s-]+/g, '_');
+      return ['DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED', 'FAILED'].includes(norm);
+    };
+
     const pollLoop = async () => {
       if (isCancelled) return;
-      const status = orderStatusRef.current;
-      if (status === 'DELIVERED' || status === 'CANCELLED') return;
+      if (isTerminal(orderStatusRef.current)) return;
 
       if (document.visibilityState === 'visible') {
         await fetchOrderAndTracking(false);
       }
 
       if (!isCancelled) {
-        const nextStatus = orderStatusRef.current;
-        if (nextStatus !== 'DELIVERED' && nextStatus !== 'CANCELLED') {
-          timerId = setTimeout(pollLoop, 8000);
+        if (!isTerminal(orderStatusRef.current)) {
+          timerId = setTimeout(pollLoop, 5000);
         }
       }
     };
 
-    timerId = setTimeout(pollLoop, 8000);
+    timerId = setTimeout(pollLoop, 5000);
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const status = orderStatusRef.current;
-        if (status !== 'DELIVERED' && status !== 'CANCELLED') {
-          fetchOrderAndTracking(false);
-        }
+      if (document.visibilityState === 'visible' && !isTerminal(orderStatusRef.current)) {
+        fetchOrderAndTracking(false);
       }
     };
+
+    const onFocus = () => {
+      if (!isTerminal(orderStatusRef.current)) {
+        fetchOrderAndTracking(false);
+      }
+    };
+
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       isCancelled = true;
       if (timerId) clearTimeout(timerId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }

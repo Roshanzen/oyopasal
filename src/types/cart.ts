@@ -50,6 +50,8 @@ export interface CartSummary {
   free_delivery_threshold: number;
   amount_needed_for_free_delivery: number;
   handling_fee: number;
+  tax_total?: number;
+  tax?: number;
   coupon: Coupon | null;
   total: number;
 }

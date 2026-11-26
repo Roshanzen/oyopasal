@@ -156,5 +156,13 @@ class PaymentProcessingService:
             remarks=f"Payment verified successfully via {payment.provider}. Ref: {payment.gateway_reference}"
         )
 
+        # Trigger automated vendor email notifications upon confirmed payment
+        try:
+            from apps.notifications.vendor_notifications import VendorOrderNotificationService
+            VendorOrderNotificationService.notify_vendors_for_order(order)
+        except Exception as notif_err:
+            import logging
+            logging.getLogger('apps.notifications.vendor').warning("Vendor notification dispatch error on payment verification: %s", notif_err)
+
         return payment
 

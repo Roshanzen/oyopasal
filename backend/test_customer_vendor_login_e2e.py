@@ -181,16 +181,17 @@ def run_customer_vendor_login_tests():
     assert 'vendor' in vlogin_success_data
     assert vlogin_success_data['vendor']['is_approved'] is True
 
-    # Verify that normal Customer Login (POST /api/v1/auth/token/) ALSO functions cleanly!
+    # Verify that Customer Login strictly rejects Vendor credentials with 403 Forbidden!
     req_cust_login = factory.post('/api/v1/auth/token/', {
         'email': customer_email,
         'password': new_merchant_pwd
     }, format='json')
     res_cust_login = CustomTokenObtainPairView.as_view()(req_cust_login)
 
-    assert res_cust_login.status_code == 200, f"Expected 200 on customer login, got {res_cust_login.status_code}"
-    assert 'access' in res_cust_login.data
-    print("✓ Scenario 5: Activated vendor successfully logs in via Vendor Login and normal Customer Login is preserved")
+    assert res_cust_login.status_code == 403, f"Expected 403 on customer login for merchant account, got {res_cust_login.status_code}"
+    assert res_cust_login.data.get('error', {}).get('code') == 'VENDOR_ACCOUNT_PORTAL_MISMATCH'
+    assert 'registered as a merchant/vendor' in res_cust_login.data.get('detail', '').lower()
+    print("✓ Scenario 5: Activated vendor successfully logs in via Vendor Login and is strictly rejected from Customer Login (HTTP 403)")
 
     # 6. Test that an already active vendor cannot create a new duplicate seller application
     req_active_dup = factory.post('/api/v1/seller/applications/apply/', app_payload, format='json')

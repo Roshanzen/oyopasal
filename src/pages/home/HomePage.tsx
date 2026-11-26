@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Advertisement } from '../../types';
 import { useApp } from '../../context';
@@ -6,6 +6,7 @@ import { useHeroBanners, useHomeData } from '../../hooks';
 import { isExternalHttpUrl } from '../../utils';
 import PromotionalCarousel from '../../components/common/PromotionalCarousel';
 import ProductSection from '../../components/common/ProductSection';
+import ShopByCategorySection from '../../components/home/ShopByCategorySection';
 import { VendorMapModal } from '../../components/modals/VendorMapModal';
 import { ErrorAlert } from '../../components/feedback/ErrorAlert';
 import {
@@ -16,7 +17,11 @@ import {
   Star,
   CheckCircle,
   MapPin,
-  Megaphone
+  Megaphone,
+  Phone,
+  Mail,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { translateCategoryName, translateCategoryDescription } from '../../i18n';
@@ -50,6 +55,42 @@ export default function HomePage() {
 
   const markBrokenImage = (key: string) => {
     setBrokenImages((prev) => ({ ...prev, [key]: true }));
+  };
+
+  const vendorScrollRef = useRef<HTMLDivElement>(null);
+  const [canVendorScrollLeft, setCanVendorScrollLeft] = useState(false);
+  const [canVendorScrollRight, setCanVendorScrollRight] = useState(false);
+
+  const checkVendorScroll = useCallback(() => {
+    const el = vendorScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanVendorScrollLeft(scrollLeft > 6);
+    setCanVendorScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+  }, []);
+
+  useEffect(() => {
+    checkVendorScroll();
+    const el = vendorScrollRef.current;
+    if (!el) return;
+
+    el.addEventListener('scroll', checkVendorScroll, { passive: true });
+    window.addEventListener('resize', checkVendorScroll);
+
+    return () => {
+      el.removeEventListener('scroll', checkVendorScroll);
+      window.removeEventListener('resize', checkVendorScroll);
+    };
+  }, [checkVendorScroll, vendors]);
+
+  const handleVendorScroll = (direction: 'left' | 'right') => {
+    const el = vendorScrollRef.current;
+    if (!el) return;
+    const scrollAmount = Math.max(el.clientWidth * 0.75, 280);
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
   };
 
   const handleAdClick = (ad: Advertisement) => {
@@ -122,71 +163,10 @@ export default function HomePage() {
       />
 
       {/* 7. Shop by Category (Visual Grid) */}
-      <section className="py-6 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200/70 dark:border-slate-800 my-2 select-none">
-        <div className="w-full px-4 sm:px-6 lg:px-10">
-          <div className="flex items-end justify-between mb-4">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
-                {t('home.shopByCatTitle')}
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {t('home.shopByCatSub')}
-              </p>
-            </div>
-            <motion.div whileHover={{ x: 2 }} whileTap={{ scale: 0.95 }}>
-              <Link
-                to="/categories"
-                className="text-sm font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1"
-              >
-                <span>{t('home.allCategories')}</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </motion.div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {categories.map((cat) => {
-              const imgKey = `cat-${cat.id}`;
-              const hasValidImg = Boolean(cat.image_url) && !brokenImages[imgKey];
-              return (
-                <motion.div
-                  key={cat.id}
-                  whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => navigate(`/category/${cat.slug}`)}
-                  className="bg-white dark:bg-[#111726] rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-colors cursor-pointer group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold mb-2.5 overflow-hidden transition-colors">
-                      {hasValidImg ? (
-                        <img
-                          src={cat.image_url!}
-                          alt={cat.name}
-                          referrerPolicy="no-referrer"
-                          onError={() => markBrokenImage(imgKey)}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                      )}
-                    </div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                      {translateCategoryName(cat.slug, cat.name, language)}
-                    </h3>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
-                      {translateCategoryDescription(cat.slug, cat.description, language)}
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-bold">
-                    <span>{t('home.itemsCountPlus', { count: cat.item_count })}</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <ShopByCategorySection
+        initialCategories={categories}
+        initialLoading={loading}
+      />
 
       {/* Mid-page Dynamic Advertisements */}
       {midAds.length > 0 && (
@@ -314,7 +294,7 @@ export default function HomePage() {
       {/* 8. Popular Nearby Vendors */}
       <section className="py-6 sm:py-8 bg-white dark:bg-[#0b0f19] border-t border-slate-200/80 dark:border-slate-800 transition-colors duration-200 select-none">
         <div className="w-full px-4 sm:px-6 lg:px-10">
-          <div className="flex items-end justify-between mb-4">
+          <div className="flex items-end justify-between mb-4 sm:mb-5">
             <div>
               <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
                 <Store className="w-4 h-4" />
@@ -328,92 +308,156 @@ export default function HomePage() {
               </p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={() => setVendorMapOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer shadow-2xs"
-            >
-              <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>{t('home.exploreMaps')}</span>
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setVendorMapOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+              >
+                <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>{t('home.exploreMaps')}</span>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
+
+              {/* Desktop Navigation Arrows */}
+              <div className="hidden sm:flex items-center gap-1.5 pl-1">
+                <button
+                  type="button"
+                  onClick={() => handleVendorScroll('left')}
+                  disabled={!canVendorScrollLeft}
+                  aria-label="Scroll vendors left"
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                    canVendorScrollLeft
+                      ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-emerald-500 cursor-pointer shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-40'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleVendorScroll('right')}
+                  disabled={!canVendorScrollRight}
+                  aria-label="Scroll vendors right"
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                    canVendorScrollRight
+                      ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-emerald-500 cursor-pointer shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-40'
+                  }`}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {vendors.map((vendor) => {
-              const vDist = getDistanceToVendor(vendor.id);
-              const vImgKey = `vendor-${vendor.id}`;
-              return (
-                <motion.div
-                  key={vendor.id}
-                  whileHover={{ y: -4, transition: { duration: 0.18 } }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate(`/stores/${vendor.slug || vendor.id}`)}
-                  className="rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 p-4 transition-colors hover:shadow-lg cursor-pointer bg-slate-50/50 dark:bg-[#111726] hover:bg-white dark:hover:bg-slate-800/80 group"
-                >
-                  <div className="relative h-36 rounded-xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-800">
-                    {vendor.image && !brokenImages[vImgKey] ? (
-                      <img
-                        src={vendor.image}
-                        alt={vendor.name}
-                        referrerPolicy="no-referrer"
-                        onError={() => markBrokenImage(vImgKey)}
-                        className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-emerald-900/40 to-slate-800 flex items-center justify-center">
-                        <Store className="w-8 h-8 text-emerald-400" />
+          {/* Horizontal Slidable Vendor Row with Floating Controls */}
+          <div className="relative group/vendor-carousel">
+            {/* Floating Left Arrow */}
+            {canVendorScrollLeft && (
+              <button
+                type="button"
+                onClick={() => handleVendorScroll('left')}
+                aria-label="Scroll vendors left"
+                className="hidden md:flex absolute -left-3.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Floating Right Arrow */}
+            {canVendorScrollRight && (
+              <button
+                type="button"
+                onClick={() => handleVendorScroll('right')}
+                aria-label="Scroll vendors right"
+                className="hidden md:flex absolute -right-3.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+
+            <div
+              ref={vendorScrollRef}
+              className="flex items-stretch gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory pb-3 pt-1 px-1 -mx-1"
+            >
+              {vendors.map((vendor) => {
+                const vDist = getDistanceToVendor(vendor.id);
+                const vImgKey = `vendor-${vendor.id}`;
+                return (
+                  <motion.div
+                    key={vendor.id}
+                    whileHover={{ y: -4, transition: { duration: 0.18 } }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/stores/${vendor.slug || vendor.id}`)}
+                    className="w-[260px] sm:w-[280px] md:w-[300px] lg:w-[320px] shrink-0 snap-start rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 p-4 transition-colors hover:shadow-lg cursor-pointer bg-slate-50/50 dark:bg-[#111726] hover:bg-white dark:hover:bg-slate-800/80 group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="relative h-36 rounded-xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-800">
+                        {vendor.image && !brokenImages[vImgKey] ? (
+                          <img
+                            src={vendor.image}
+                            alt={vendor.name}
+                            referrerPolicy="no-referrer"
+                            onError={() => markBrokenImage(vImgKey)}
+                            className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-emerald-900/40 to-slate-800 flex items-center justify-center">
+                            <Store className="w-8 h-8 text-emerald-400" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs text-slate-900 dark:text-white text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs border border-slate-100 dark:border-slate-800">
+                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                          <span>{vendor.rating}</span>
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{vDist.etaText}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">
+                          {vendor.name}
+                        </h3>
+                        {vendor.verified && (
+                          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-semibold mb-2">
+                        <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>
+                          {t('home.distanceAwayFrom', {
+                            dist: vDist.distanceText,
+                            area: currentAddress?.area ? currentAddress.area.split(',')[0] : t('home.you')
+                          })}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-2.5">
+                        {vendor.location || vendor.area}
+                      </p>
+                    </div>
+
+                    {vendor.tags && (
+                      <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
+                        {vendor.tags.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-md"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs text-slate-900 dark:text-white text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs border border-slate-100 dark:border-slate-800">
-                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      <span>{vendor.rating}</span>
-                    </div>
-                    <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{vDist.etaText}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">
-                      {vendor.name}
-                    </h3>
-                    {vendor.verified && (
-                      <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1" />
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-semibold mb-2">
-                    <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>
-                      {t('home.distanceAwayFrom', {
-                        dist: vDist.distanceText,
-                        area: currentAddress?.area ? currentAddress.area.split(',')[0] : t('home.you')
-                      })}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-2.5">
-                    {vendor.location || vendor.area}
-                  </p>
-
-                  {vendor.tags && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {vendor.tags.map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-md"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -458,12 +502,24 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/account?tab=orders" className="hover:text-emerald-400">{t('home.footerTrackOrders')}</Link></li>
                 <li><Link to="/account?tab=addresses" className="hover:text-emerald-400">{t('home.footerDeliveryLocs')}</Link></li>
-                {supportInfo?.email && (
-                  <li><span className="text-slate-400">Helpdesk: {supportInfo.email}</span></li>
-                )}
-                {supportInfo?.phone && (
-                  <li><span className="text-slate-400">Helpline: {supportInfo.phone}</span></li>
-                )}
+                <li>
+                  <a
+                    href="tel:+9779818638565"
+                    className="flex items-center gap-2 text-slate-300 hover:text-emerald-400 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Helpline: +977 9818638565</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="mailto:oyopasal@gmail.com"
+                    className="flex items-center gap-2 text-slate-300 hover:text-emerald-400 transition-colors"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Helpdesk: oyopasal@gmail.com</span>
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -484,7 +540,13 @@ export default function HomePage() {
           <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
             <span>{t('home.footerRights')}</span>
             <div className="flex items-center gap-4">
-              <span>{t('home.footerPrivacy')}</span>
+              <Link to="/privacy-policy" className="hover:text-emerald-400 transition-colors">
+                {t('home.footerPrivacy')}
+              </Link>
+              <span>·</span>
+              <Link to="/vendor/privacy-policy" className="hover:text-emerald-400 transition-colors">
+                Vendor Privacy
+              </Link>
               <span>·</span>
               <span>{t('home.footerTerms')}</span>
               <span>·</span>

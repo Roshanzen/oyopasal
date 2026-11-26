@@ -33,7 +33,26 @@ export function useSellerPortal() {
     language,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<SellerTab>('analytics');
+  const [activeTab, setActiveTab] = useState<SellerTab>(() => {
+    if (typeof window !== 'undefined') {
+      const tabParam = new URLSearchParams(window.location.search).get('tab') as SellerTab;
+      const validTabs: SellerTab[] = ['analytics', 'add', 'products', 'orders', 'messages', 'reviews', 'ledger', 'settings', 'profile'];
+      if (tabParam && validTabs.includes(tabParam)) {
+        return tabParam;
+      }
+    }
+    return 'analytics';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const tabParam = new URLSearchParams(window.location.search).get('tab') as SellerTab;
+      const validTabs: SellerTab[] = ['analytics', 'add', 'products', 'orders', 'messages', 'reviews', 'ledger', 'settings', 'profile'];
+      if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
   const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
   const [dashboardStats, setDashboardStats] = useState<SellerDashboardStats | null>(null);
   const [sellerOrders, setSellerOrders] = useState<SellerFulfillmentItem[]>([]);

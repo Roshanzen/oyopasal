@@ -84,21 +84,18 @@ export default function UserMenuDropdown({
     <div ref={containerRef} className="relative">
       <motion.button
         type="button"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.92 }}
         onClick={onToggle}
         aria-label="Account menu"
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="flex items-center gap-2 pl-1.5 pr-2 sm:pr-3 py-1 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-800 dark:text-slate-100 transition-colors cursor-pointer min-h-[40px] lg:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        title={user.full_name}
+        className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-[12px] flex items-center justify-center bg-[#F3F4F6] hover:bg-slate-200/80 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] border border-transparent dark:border-slate-800 text-[#111827] dark:text-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
       >
-        <div className="w-8 h-8 rounded-full bg-emerald-600/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold text-xs flex items-center justify-center shrink-0">
-          {user.full_name.charAt(0)}
-        </div>
-        <span className="hidden sm:inline md:hidden lg:inline text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-          {user.full_name.split(' ')[0]}
-        </span>
-        <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-400 shrink-0" />
+        <User className="w-5 h-5 text-[#111827] dark:text-slate-200 stroke-[1.8]" />
+        {/* Subtle active status indicator dot */}
+        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#00875A] ring-2 ring-white dark:ring-[#0b101b]" />
       </motion.button>
 
       {isOpen && (

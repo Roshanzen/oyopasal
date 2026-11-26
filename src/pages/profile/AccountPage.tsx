@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Heart, LifeBuoy, LogIn, LogOut, MapPin, MessageSquare, Package, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, Heart, LifeBuoy, LogIn, LogOut, MapPin, MessageSquare, Package, ShieldCheck, User } from 'lucide-react';
 import { useAccountPortal } from '../../hooks/useAccountPortal';
 import ProfileTab from '../../components/account/ProfileTab';
 import OrdersTab from '../../components/account/OrdersTab';
@@ -108,6 +109,17 @@ export default function AccountPage() {
                 </button>
               );
             })}
+
+            {/* Legal & Privacy Policy Link */}
+            <div className="pt-3 mt-2 border-t border-slate-200 dark:border-slate-800 px-2">
+              <Link
+                to="/privacy-policy"
+                className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors py-1.5"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{acc.language === 'ne' ? 'गोपनीयता नीति' : 'Customer Privacy Policy'}</span>
+              </Link>
+            </div>
           </div>
         </div>
 

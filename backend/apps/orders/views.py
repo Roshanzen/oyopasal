@@ -122,6 +122,15 @@ class CustomerCheckoutView(APIView):
                 from django.core.cache import cache
                 cache.set(f"checkout_idemp_{user.id}_{idempotency_key}", str(order.id), timeout=86400)
 
+            # Trigger automated vendor email notification for confirmed COD orders
+            if order.status == OrderStatus.CONFIRMED or order.payment_method in ['COD', 'CASH_ON_DELIVERY', 'CASH']:
+                try:
+                    from apps.notifications.vendor_notifications import VendorOrderNotificationService
+                    VendorOrderNotificationService.notify_vendors_for_order(order)
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger('apps.notifications.vendor').warning("Vendor notification dispatch error: %s", notif_err)
+
             data = OrderDetailSerializer(order).data
             response_data = dict(data)
             response_data['success'] = True

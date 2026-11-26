@@ -156,9 +156,9 @@ class HttpClient {
     const token = this.getToken();
     const sellerToken = this.getSellerToken();
     const effectiveToken = useSellerTokenIfAvailable
-      ? (sellerToken || token)
-      : (token || sellerToken);
-    const usedSellerToken = Boolean(effectiveToken && effectiveToken === sellerToken);
+      ? sellerToken
+      : token;
+    const usedSellerToken = Boolean(useSellerTokenIfAvailable && effectiveToken);
 
     // Ensure public registration and unauthenticated endpoints NEVER attach stale/expired tokens
     const isPublicEndpoint =
@@ -314,7 +314,11 @@ class HttpClient {
           if (response.status === 401) {
             // Automatically clear expired auth tokens from localStorage when token_not_valid occurs
             if (isTokenNotValid || effectiveToken) {
-              this.clearAllAuth();
+              if (usedSellerToken) {
+                this.clearSellerToken();
+              } else {
+                this.clearToken();
+              }
             }
 
             if (this.unauthorizedHandler) {

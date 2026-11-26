@@ -224,6 +224,7 @@ export default function OrderTrackingPage() {
             assignment={track.assignment}
             isCancelled={isCancelled}
             t={track.t}
+            order={order}
           />
         </div>
 

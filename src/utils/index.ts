@@ -5,3 +5,5 @@ export * from './validation';
 export * from './storage';
 export * from './constants';
 export * from './roleUtils';
+export * from './addressFormatter';
+export * from './orderMilestones';

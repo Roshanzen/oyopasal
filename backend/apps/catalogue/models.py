@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
+from django.db.models.functions import Lower
+from django.core.exceptions import ValidationError
 from apps.common.models import BaseModel, SoftDeletableModel
 from apps.vendors.models import VendorProfile
 from apps.stores.models import Store
@@ -28,6 +30,28 @@ class Category(BaseModel, SoftDeletableModel):
         verbose_name = 'Category'
         verbose_name_plural = 'Categories'
         ordering = ['ordering', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                Lower('name'),
+                condition=models.Q(parent__isnull=True),
+                name='unique_top_level_category_name'
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.name:
+            self.name = self.name.strip()
+            # Enforce case-insensitive uniqueness for top-level categories
+            if not self.parent_id:
+                existing = Category.objects.filter(
+                    parent__isnull=True,
+                    name__iexact=self.name
+                )
+                if self.pk:
+                    existing = existing.exclude(pk=self.pk)
+                if existing.exists():
+                    raise ValidationError({'name': f"A top-level category with the name '{self.name}' already exists."})
 
     def __str__(self):
         if self.parent:
@@ -54,6 +78,19 @@ class Category(BaseModel, SoftDeletableModel):
         return descendant_ids
 
     def save(self, *args, **kwargs):
+        if self.name:
+            self.name = self.name.strip()
+            # Enforce case-insensitive uniqueness for top-level categories
+            if not self.parent_id:
+                existing = Category.objects.filter(
+                    parent__isnull=True,
+                    name__iexact=self.name
+                )
+                if self.pk:
+                    existing = existing.exclude(pk=self.pk)
+                if existing.exists():
+                    raise ValidationError(f"A top-level category with the name '{self.name}' already exists.")
+
         if not self.slug:
             base_slug = slugify(self.name) or 'cat'
         else:

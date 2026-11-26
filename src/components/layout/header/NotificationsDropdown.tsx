@@ -63,11 +63,11 @@ export default function NotificationsDropdown({
         aria-expanded={isOpen}
         aria-haspopup="menu"
         title={t('header.notifications')}
-        className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center border border-slate-200/80 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] text-slate-700 dark:text-slate-200 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-[12px] flex items-center justify-center bg-[#F3F4F6] hover:bg-slate-200/80 dark:bg-[#141b2b] dark:hover:bg-[#1c2539] border border-transparent dark:border-slate-800 text-[#111827] dark:text-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00875A]"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-5 h-5 text-[#111827] dark:text-slate-200 stroke-[1.8]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-950 text-[12px] font-extrabold leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums">
+          <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-black leading-none flex items-center justify-center border-2 border-white dark:border-[#0b101b] tabular-nums shadow-xs">
             {unreadCount}
           </span>
         )}

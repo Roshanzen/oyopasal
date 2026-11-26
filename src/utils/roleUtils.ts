@@ -29,25 +29,24 @@ export function isUserRider(target?: UserProfile | string | null): boolean {
 
 /**
  * Checks if the user has authorized vendor access.
- * Strict: Never returns true for pure customers even if a stale currentSeller exists,
- * unless currentSeller belongs to this user or user has explicit vendor claims.
+ * If currentSeller exists with an ID (from active vendor auth), returns true.
+ * If user has vendor claims (vendor profile, role VENDOR/VENDOR_OWNER/VENDOR_STAFF), returns true.
+ * If user is an Admin, returns true.
+ * Pure customer without active seller session returns false.
  */
 export function isUserVendor(user?: UserProfile | null, currentSeller?: Vendor | null): boolean {
-  if (!user) {
-    // If no user is logged in, only return true if an explicit seller session exists
-    return Boolean(currentSeller && currentSeller.id);
+  if (user) {
+    if (isUserAdmin(user)) return true;
+    if (user.vendor && user.vendor.id) return true;
+    if (user.has_vendor_access) return true;
+    const r = normalizeRole(user.role);
+    if (['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r)) return true;
+    // Pure customer: NEVER grant vendor access based on an unverified foreign currentSeller
+    return false;
   }
 
-  // Check user profile claims
-  if (user.vendor && user.vendor.id) return true;
-  if (user.has_vendor_access) return true;
-
-  const r = normalizeRole(user.role);
-  if (['VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF', 'SELLER'].includes(r)) return true;
-  if (isUserAdmin(user)) return true;
-
-  // Pure customer: NEVER grant vendor access based on an unverified foreign currentSeller
-  return false;
+  // If no user is logged in, only return true if an explicit seller session exists
+  return Boolean(currentSeller && currentSeller.id);
 }
 
 /**

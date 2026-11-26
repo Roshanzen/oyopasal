@@ -20,6 +20,7 @@ export default function HeaderSearchBar({ language, formatPrice, t }: HeaderSear
   const [categoriesFound, setCategoriesFound] = useState<AutocompleteCategory[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const query = debouncedSearch.trim();
@@ -52,6 +53,11 @@ export default function HeaderSearchBar({ language, formatPrice, t }: HeaderSear
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
       if (event.key === 'Escape') {
         setShowDropdown(false);
       }
@@ -88,8 +94,9 @@ export default function HeaderSearchBar({ language, formatPrice, t }: HeaderSear
     <div ref={searchContainerRef} className="order-4 md:order-3 w-full md:w-auto md:flex-1 min-w-0 relative">
       <form onSubmit={handleSearchSubmit} className="relative" role="search">
         <div className="relative flex items-center">
-          <Search className="w-5 h-5 text-slate-400 dark:text-slate-400 absolute left-3.5 pointer-events-none" />
+          <Search className="w-4 h-4 text-[#6B7280] dark:text-slate-400 absolute left-3.5 pointer-events-none stroke-[2]" />
           <input
+            ref={inputRef}
             type="text"
             value={searchInput}
             onChange={(e) => {
@@ -97,11 +104,11 @@ export default function HeaderSearchBar({ language, formatPrice, t }: HeaderSear
               setShowDropdown(true);
             }}
             onFocus={() => setShowDropdown(true)}
-            aria-label={t('header.searchPlaceholder')}
-            placeholder={t('header.searchPlaceholder')}
-            className="w-full pl-11 pr-10 py-2.5 md:py-3 rounded-[14px] bg-slate-100 hover:bg-slate-200/60 focus:bg-white dark:bg-[#141b2b] dark:hover:bg-[#182032] dark:focus:bg-[#182032] text-sm text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:text-slate-500 dark:placeholder:text-slate-400 font-medium"
+            aria-label="Search fresh veggies, tech accessories, books..."
+            placeholder="Search fresh veggies, tech accessories, books..."
+            className="w-full pl-10 pr-12 py-2.5 h-11 rounded-[12px] bg-[#F3F4F6] hover:bg-slate-200/60 focus:bg-white dark:bg-[#141b2b] dark:hover:bg-[#182032] dark:focus:bg-[#182032] text-sm text-[#111827] dark:text-slate-100 border border-transparent focus:border-[#00875A] focus:ring-2 focus:ring-[#00875A]/20 focus:outline-none transition-all placeholder:text-[#6B7280] dark:placeholder:text-slate-400 font-medium"
           />
-          {searchInput && (
+          {searchInput ? (
             <button
               type="button"
               aria-label="Clear search"
@@ -109,10 +116,16 @@ export default function HeaderSearchBar({ language, formatPrice, t }: HeaderSear
                 setSearchInput('');
                 setSuggestions([]);
               }}
-              className="absolute right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
+              className="absolute right-3 p-1 rounded-md text-[#6B7280] hover:text-[#111827] dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
+          ) : (
+            <div className="absolute right-3 hidden sm:flex items-center pointer-events-none select-none">
+              <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[5px] bg-white dark:bg-[#1f2937] text-[10px] font-semibold text-[#6B7280] dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <span className="text-[11px]">⌘</span>K
+              </kbd>
+            </div>
           )}
         </div>
       </form>

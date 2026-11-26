@@ -192,82 +192,107 @@ const ChatConciergeInner: React.FC = () => {
               <div
                 data-testid="chat-concierge-drawer"
                 role="dialog"
-                aria-label={t('chat.title')}
+                aria-label="Ai Assistant"
                 className={`fixed z-[52] ${isMinimized
                     ? 'bottom-20 sm:bottom-6 right-4 sm:right-5 w-80'
-                    : 'bottom-4 sm:bottom-6 right-3 sm:right-6 w-[calc(100vw-24px)] sm:w-[460px] max-w-[480px] h-[min(640px,88vh)]'
-                  } bg-white dark:bg-[#111726] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden opacity-100`}
+                    : 'bottom-4 sm:bottom-6 right-3 sm:right-6 w-[calc(100vw-24px)] sm:w-[480px] md:w-[500px] max-w-[520px] h-[min(650px,90vh)]'
+                  } bg-white dark:bg-[#111726] rounded-[24px] shadow-2xl border border-emerald-900/20 dark:border-slate-800 flex flex-col overflow-hidden opacity-100`}
               >
-                <div className="bg-gradient-to-r from-emerald-700 via-emerald-800 to-teal-950 text-white p-3.5 flex items-center justify-between select-none shadow-sm border-b border-emerald-600/30">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden ring-1.5 ring-amber-400/80 border border-white/20 shrink-0 bg-emerald-950 shadow-xs">
+                {/* Redesigned Emerald-to-Forest Gradient Header */}
+                <div
+                  className="relative rounded-t-[24px] text-white p-3.5 sm:p-4 md:py-[20px] md:px-[24px] flex items-center justify-between select-none shadow-sm overflow-hidden"
+                  style={{ background: 'linear-gradient(90deg, #065F46 0%, #064E3B 100%)' }}
+                >
+                  {/* Subtle matte texture / curved background accents */}
+                  <div className="absolute inset-0 pointer-events-none opacity-10 overflow-hidden">
+                    <svg className="w-full h-full" viewBox="0 0 500 100" fill="none" preserveAspectRatio="none">
+                      <path d="M0,80 C150,120 350,0 500,40 L500,0 L0,0 Z" fill="white" />
+                      <circle cx="430" cy="15" r="75" fill="white" />
+                    </svg>
+                  </div>
+
+                  {/* Left Side: 56x56 Mascot Container + Ai Assistant ✨ + Mint-green Online Indicator */}
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 relative z-10">
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 md:w-[56px] md:h-[56px] rounded-2xl overflow-hidden ring-1.5 ring-emerald-400/40 border border-white/20 shrink-0 bg-[#043E30]/70 shadow-inner flex items-center justify-center p-0.5">
                       <img
                         src="/assets/images/oyopasal_ai_robot_avatar.png"
-                        alt="OyoPasal AI Robot"
-                        className="w-full h-full object-cover"
+                        alt="OyoPasal AI Robot Mascot"
+                        className="w-full h-full object-cover select-none"
                       />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="font-bold text-base leading-tight text-white flex items-center gap-1">
-                          <span>{t('chat.title')}</span>
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        </h3>
-                        <span className="text-[11px] bg-white/20 text-white font-semibold px-1.5 py-0.5 rounded">
-                          {isVoiceActive ? 'Gemini 3.8 Live' : 'Gemini 4'}
+                    <div className="min-w-0">
+                      <h3 className="font-display font-extrabold text-xl sm:text-2xl md:text-[27px] leading-tight text-white flex items-center gap-1.5 truncate">
+                        <span>Ai Assistant</span>
+                        <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-[#FACC15] fill-[#FACC15] shrink-0" />
+                      </h3>
+                      {/* Small mint-green online status indicator underneath the title */}
+                      <div className="flex items-center gap-1.5 mt-0.5 sm:mt-1">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-xs" />
                         </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-100">
-                        <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
-                        <span>
-                          {catalogBannerCount
-                            ? `${catalogBannerCount} Live Items • ${t('chat.grounded')}`
-                            : t('chat.grounded')}
+                        <span className="text-[11px] sm:text-xs font-semibold text-emerald-200/90 tracking-wide">
+                          Online
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  {/* Right Side Controls: Voice button, Refresh, Collapse, Close */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 relative z-10">
+                    {/* 1. Voice button: Translucent glass-style green/white pill, yellow waveform icon, white Voice label */}
                     <button
                       type="button"
                       onClick={liveVoice.toggleVoice}
                       aria-label={isVoiceActive ? 'End voice conversation' : 'Start voice conversation'}
                       title={
                         isVoiceActive
-                          ? 'Stop Gemini Live Voice Conversation'
-                          : 'Start Real-Time Voice Conversation (Gemini 3.8 Live)'
+                          ? 'Stop Voice Conversation'
+                          : 'Start Real-Time Voice Conversation'
                       }
-                      className={`px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${isVoiceActive
-                          ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-sm'
-                          : 'bg-white/15 text-white hover:bg-white/25'
-                        }`}
+                      className={`px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border ${
+                        isVoiceActive
+                          ? 'bg-rose-500/90 text-white border-rose-300/40 hover:bg-rose-600 animate-pulse'
+                          : 'bg-white/15 hover:bg-white/25 text-white border-white/20 backdrop-blur-md'
+                      }`}
                     >
                       {isVoiceActive ? (
-                        <PhoneOff className="w-3.5 h-3.5" />
+                        <PhoneOff className="w-3.5 h-3.5 text-white shrink-0" />
                       ) : (
-                        <AudioLines className="w-3.5 h-3.5 text-amber-300" />
+                        <AudioLines className="w-4 h-4 text-[#FACC15] shrink-0" />
                       )}
-                      <span className="hidden sm:inline">
-                        {isVoiceActive ? (language === 'ne' ? 'रोक्नुहोस्' : 'End Voice') : 'Voice'}
+                      <span className="text-white font-semibold">
+                        {isVoiceActive ? (language === 'ne' ? 'रोक्नुहोस्' : 'End') : 'Voice'}
                       </span>
                     </button>
+
+                    {/* 2. Refresh: White outline refresh icon to start a new chat */}
                     <button
                       type="button"
                       onClick={handleClearHistory}
-                      title="Restart chat"
-                      className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                      title="New chat"
+                      aria-label="New chat"
+                      className="p-1.5 sm:p-2 text-white/90 hover:text-white hover:bg-white/15 rounded-full transition-colors cursor-pointer"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <RefreshCw className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white stroke-[2]" />
                     </button>
+
+                    {/* 3. Collapse: White downward chevron to minimize the drawer */}
                     <button
                       type="button"
                       onClick={() => setIsMinimized(!isMinimized)}
-                      title={isMinimized ? 'Expand' : 'Minimize'}
-                      className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                      title={isMinimized ? 'Expand' : 'Collapse'}
+                      aria-label={isMinimized ? 'Expand' : 'Collapse'}
+                      className="p-1.5 sm:p-2 text-white/90 hover:text-white hover:bg-white/15 rounded-full transition-colors cursor-pointer"
                     >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`w-5 h-5 text-white transition-transform duration-200 ${
+                          isMinimized ? 'rotate-180' : ''
+                        }`}
+                      />
                     </button>
+
+                    {/* 4. Close: White X icon to close the assistant panel */}
                     <button
                       type="button"
                       onClick={() => {
@@ -275,10 +300,11 @@ const ChatConciergeInner: React.FC = () => {
                         setIsOpen(false);
                         setIsMinimized(false);
                       }}
-                      title="Close chat"
-                      className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                      title="Close assistant"
+                      aria-label="Close assistant"
+                      className="p-1.5 sm:p-2 text-white/90 hover:text-white hover:bg-white/15 rounded-full transition-colors cursor-pointer"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5 text-white" />
                     </button>
                   </div>
                 </div>
@@ -586,7 +612,7 @@ const ChatConciergeInner: React.FC = () => {
                           title={
                             isVoiceActive
                               ? 'Stop Voice Conversation'
-                              : 'Talk with Gemini 3.8 Live Voice'
+                              : 'Talk with Real-Time Voice'
                           }
                           className={`p-2.5 rounded-xl transition-all shrink-0 cursor-pointer border ${isVoiceActive
                               ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-500 animate-pulse'
@@ -611,13 +637,6 @@ const ChatConciergeInner: React.FC = () => {
                           <Send className="w-4 h-4" />
                         </button>
                       </form>
-                      <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mt-1.5 px-1">
-                        <span>{t('chat.poweredBy')} + Gemini 3.8 Live</span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          {t('chat.valleyGrounded')}
-                        </span>
-                      </div>
                     </div>
                   </>
                 )}

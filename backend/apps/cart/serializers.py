@@ -202,12 +202,23 @@ class CartSerializer(serializers.ModelSerializer):
             vendor_groups_map[v_id]['subtotal'] = round(vendor_groups_map[v_id]['subtotal'] + t_price, 2)
 
         vendor_groups = list(vendor_groups_map.values())
-        subtotal = sum(i['total_price'] for i in items_list)
+        subtotal = round(sum(i['total_price'] for i in items_list), 2)
         item_count = sum(i['quantity'] for i in items_list)
         free_thresh = 499.0
         delivery_fee = 0.0 if (subtotal >= free_thresh or subtotal == 0) else 35.0
-        handling_fee = 15.0 if subtotal > 0 else 0.0
-        total = subtotal + delivery_fee + handling_fee
+
+        # Authoritative tax calculation matching CheckoutService formula (per-product tax_rate e.g. 13% VAT)
+        tax_total = 0.0
+        for it in cart_items:
+            p = getattr(it.variant, 'product', None) if it.variant else None
+            p_tax = float(getattr(p, 'tax_rate', 0.0) or 0.0) if p else 0.0
+            u_p = float(it.unit_price or (it.variant.selling_price if it.variant else 0.0))
+            t_p = float(it.quantity) * u_p
+            tax_total += round(t_p * (p_tax / 100.0), 2)
+        tax_total = round(tax_total, 2)
+
+        handling_fee = 0.0
+        total = round(subtotal + delivery_fee + tax_total, 2)
 
         ret['items'] = items_list
         ret['item_count'] = item_count
@@ -215,6 +226,8 @@ class CartSerializer(serializers.ModelSerializer):
         ret['vendor_count'] = len(vendor_groups)
         ret['subtotal'] = f"{subtotal:.2f}"
         ret['delivery_fee'] = delivery_fee
+        ret['tax_total'] = tax_total
+        ret['tax'] = tax_total
         ret['free_delivery_threshold'] = free_thresh
         ret['amount_needed_for_free_delivery'] = max(0.0, free_thresh - subtotal)
         ret['handling_fee'] = handling_fee

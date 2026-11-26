@@ -44,19 +44,18 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   const inFlightRefreshRef = useRef(false);
 
   const refreshSellerSession = useCallback(async () => {
-    // If user is logged in but has no vendor access, never load or retain seller session
-    if (user && !isUserVendor(user)) {
-      if (currentSellerRef.current || safeStorage.get(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION)) {
-        httpClient.clearSellerToken();
-        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    const hasSellerToken = Boolean(httpClient.getSellerToken());
+    if (!hasSellerToken) {
+      if (currentSellerRef.current) {
         setCurrentSeller(null);
+        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
       }
       return;
     }
 
     if (inFlightRefreshRef.current) return;
 
-    const savedSeller = (user?.vendor as Vendor) || safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
+    const savedSeller = safeStorage.getJson<Vendor>(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION) || currentSellerRef.current;
     if (!savedSeller || !savedSeller.id) return;
 
     inFlightRefreshRef.current = true;
@@ -89,7 +88,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
     } finally {
       inFlightRefreshRef.current = false;
     }
-  }, [user?.id, user?.role]);
+  }, []);
 
   const updateCurrentSeller = useCallback((vendor: Vendor) => {
     const cur = currentSellerRef.current;
@@ -100,35 +99,13 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      if (isUserVendor(user)) {
-        if (user.vendor) {
-          const userVendor = user.vendor as Vendor;
-          if (!currentSellerRef.current || currentSellerRef.current.id !== userVendor.id) {
-            setCurrentSeller(userVendor);
-            safeStorage.setJson(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION, userVendor);
-          }
-        }
-      } else {
-        // Pure customer or non-vendor account logged in: strictly purge stale seller sessions
-        setCurrentSeller(null);
-        httpClient.clearSellerToken();
-        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-      }
-    } else {
-      // No user logged in: ensure no unauthenticated seller session lingers without seller token
-      if (!httpClient.getSellerToken() && currentSellerRef.current) {
-        setCurrentSeller(null);
-        safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
-      }
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user ? isUserVendor(user) : Boolean(httpClient.getSellerToken())) {
+    if (httpClient.getSellerToken()) {
       refreshSellerSession();
+    } else if (currentSellerRef.current) {
+      setCurrentSeller(null);
+      safeStorage.remove(APP_CONFIG.STORAGE_KEYS.SELLER_SESSION);
     }
-  }, [user?.id, user?.role, refreshSellerSession]);
+  }, [refreshSellerSession]);
 
   const loginAsSeller = useCallback(
     async (payload: SellerLoginPayload) => {

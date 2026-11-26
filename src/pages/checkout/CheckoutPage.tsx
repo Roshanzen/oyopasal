@@ -237,13 +237,12 @@ export default function CheckoutPage() {
                   type="button"
                   disabled={isOutsideExpressZone}
                   onClick={() => !isOutsideExpressZone && setDeliveryOption('EXPRESS_12_MINS')}
-                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 ${
-                    isOutsideExpressZone
-                      ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
-                      : deliveryOption === 'EXPRESS_12_MINS'
+                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 ${isOutsideExpressZone
+                    ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                    : deliveryOption === 'EXPRESS_12_MINS'
                       ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600 cursor-pointer'
                       : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isOutsideExpressZone ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' : 'bg-emerald-600 text-white'}`}>
                     <Clock className="w-5 h-5" />
@@ -256,8 +255,8 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     {isOutsideExpressZone ? (
-                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-1 leading-relaxed">
-                        Outside {maxAllowedExpressKm} km Express Zone ({maxDistanceKm.toFixed(1)} km away) — Available via Intercity Standard Delivery (1–2 Days)
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mt-1 leading-relaxed">
+                        Instant delivery is unavailable for this location (Outside {maxAllowedExpressKm} km express radius, {maxDistanceKm.toFixed(1)} km away) — Switched to Standard Delivery
                       </p>
                     ) : (
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('checkout.instantSub')}</p>
@@ -268,11 +267,10 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setDeliveryOption('SCHEDULED_TODAY')}
-                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                    deliveryOption === 'SCHEDULED_TODAY'
-                      ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600'
-                      : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
-                  }`}
+                  className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${deliveryOption === 'SCHEDULED_TODAY'
+                    ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600'
+                    : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
+                    }`}
                 >
                   <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
                     <Clock className="w-5 h-5" />
@@ -342,9 +340,8 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('CASH_ON_DELIVERY')}
-                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${
-                    paymentMethod === 'CASH_ON_DELIVERY' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
-                  }`}
+                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${paymentMethod === 'CASH_ON_DELIVERY' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
+                    }`}
                 >
                   <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <Banknote className="w-5 h-5" />
@@ -388,9 +385,8 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('CARD')}
-                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${
-                    paymentMethod === 'CARD' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
-                  }`}
+                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 cursor-pointer ${paymentMethod === 'CARD' ? 'bg-emerald-50/80 dark:bg-emerald-950/70 border-emerald-600' : 'bg-white dark:bg-[#0f1422] border-slate-200 dark:border-slate-700'
+                    }`}
                 >
                   <div className="w-9 h-9 rounded-xl bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center shrink-0">
                     <CreditCard className="w-5 h-5" />
@@ -474,6 +470,12 @@ export default function CheckoutPage() {
                 <span>{t('checkout.itemsSubtotal')}</span>
                 <span className="tabular-nums font-semibold text-slate-800 dark:text-slate-200">{formatPrice(cart.subtotal)}</span>
               </div>
+              {cart.coupon && (
+                <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
+                  <span>{t('checkout.couponSavings', { code: cart.coupon.code })}</span>
+                  <span className="tabular-nums">- {formatPrice(cart.coupon.discount_amount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>{t('checkout.deliveryFee')}</span>
                 <span className="tabular-nums font-semibold">
@@ -481,13 +483,15 @@ export default function CheckoutPage() {
                 </span>
               </div>
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>{t('checkout.platformFee')}</span>
-                <span className="tabular-nums font-semibold text-slate-800 dark:text-slate-200">{formatPrice(cart.handling_fee)}</span>
+                <span>{language === 'ne' ? 'लागू हुने कर (VAT)' : 'Tax'}</span>
+                <span className="tabular-nums font-semibold text-slate-800 dark:text-slate-200">
+                  {formatPrice(cart.tax_total ?? cart.tax ?? 0)}
+                </span>
               </div>
-              {cart.coupon && (
-                <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
-                  <span>{t('checkout.couponSavings', { code: cart.coupon.code })}</span>
-                  <span className="tabular-nums">- {formatPrice(cart.coupon.discount_amount)}</span>
+              {cart.handling_fee > 0 && (
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>{t('checkout.platformFee')}</span>
+                  <span className="tabular-nums font-semibold text-slate-800 dark:text-slate-200">{formatPrice(cart.handling_fee)}</span>
                 </div>
               )}
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-baseline text-base font-extrabold text-slate-900 dark:text-white">

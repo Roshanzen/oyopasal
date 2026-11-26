@@ -15,6 +15,7 @@ from apps.common.views import (
     ImageKitAuthView,
     ResolveImageUrlView,
     PublicSettingsView,
+    LegalPrivacyPolicyMetadataView,
     api_not_found_view,
     api_server_error_view
 )
@@ -50,6 +51,7 @@ urlpatterns = [
     path('api/v1/health/', HealthCheckView.as_view(), name='health_check'),
     path('api/v1/db/status/', DbStatusView.as_view(), name='db_status'),
     path('api/v1/settings/public/', PublicSettingsView.as_view(), name='public_settings'),
+    path('api/v1/legal/privacy-policies/', LegalPrivacyPolicyMetadataView.as_view(), name='privacy_policy_metadata'),
     path('api/v1/advertisements/', PublicAdvertisementListView.as_view(), name='public_advertisements'),
     path('api/v1/advertisements/<str:id>/click/', AdvertisementClickView.as_view(), name='advertisement_click'),
     path('api/v1/wishlist/', WishlistListView.as_view(), name='wishlist_list'),

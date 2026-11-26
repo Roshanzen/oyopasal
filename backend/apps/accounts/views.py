@@ -35,17 +35,67 @@ User = get_user_model()
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
-    Authenticate user and receive JWT access + refresh tokens with role and organization claims.
+    Customer Login Endpoint (POST /api/auth/login/).
+    Strictly verifies that the authenticated user has the CUSTOMER role.
+    Rejects Vendors attempting to log in through the Customer portal with HTTP 403 Forbidden.
     """
     serializer_class = CustomTokenObtainPairSerializer
 
     @extend_schema(
-        summary="User Login (JWT Token Obtain)",
-        description="Authenticate via email and password to receive JWT tokens with RBAC claims.",
+        summary="Customer Login (JWT Token Obtain)",
+        description="Authenticate customer via email/phone and password. Strictly rejects merchant/vendor credentials.",
         responses={200: CustomTokenObtainPairSerializer}
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed as e:
+            detail_msg = e.detail if hasattr(e, 'detail') else 'Invalid credentials provided.'
+            if isinstance(detail_msg, dict) and 'detail' in detail_msg:
+                detail_msg = detail_msg['detail']
+            return Response({'detail': detail_msg}, status=status.HTTP_401_UNAUTHORIZED)
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.user
+        role_str = getattr(user, 'role', '')
+
+        # Check for administrative roles
+        is_admin = role_str in [
+            UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT_ADMIN,
+            UserRole.FINANCE_ADMIN, UserRole.OPERATIONS_ADMIN,
+            'SUPER_ADMIN', 'ADMIN', 'SUPPORT_ADMIN', 'FINANCE_ADMIN', 'OPERATIONS_ADMIN'
+        ] or user.is_superuser or user.is_staff
+
+        # Merchant / Vendor detection
+        vendor_roles = [UserRole.VENDOR, UserRole.VENDOR_OWNER, UserRole.VENDOR_STAFF, 'VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF']
+        is_vendor = role_str in vendor_roles or hasattr(user, 'vendor_profile') or getattr(user, 'is_vendor', False)
+
+        if is_vendor and not is_admin:
+            return Response({
+                'success': False,
+                'detail': "This account is registered as a Merchant/Vendor. Please sign in via the Merchant Portal at /seller.",
+                'error': {
+                    'code': 'VENDOR_ACCOUNT_PORTAL_MISMATCH',
+                    'message': "This account is registered as a Merchant/Vendor. Please sign in via the Merchant Portal at /seller.",
+                    'action': 'GO_TO_SELLER_PORTAL',
+                    'portal': '/seller',
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if role_str != UserRole.CUSTOMER and not is_admin:
+            return Response({
+                'success': False,
+                'detail': "Only customer accounts are permitted to sign in through the customer storefront.",
+                'error': {
+                    'code': 'CUSTOMER_ROLE_REQUIRED',
+                    'message': "Only customer accounts are permitted to sign in through the customer storefront.",
+                    'action': 'CUSTOMER_LOGIN_ONLY',
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -405,6 +455,22 @@ class FirebaseLoginView(APIView):
                 }
             }, status=status.HTTP_403_FORBIDDEN)
 
+        # Enforce role isolation for Customer Firebase Login
+        role_str = getattr(user, 'role', '')
+        vendor_roles = [UserRole.VENDOR, UserRole.VENDOR_OWNER, UserRole.VENDOR_STAFF, 'VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF']
+        is_vendor = role_str in vendor_roles or hasattr(user, 'vendor_profile') or getattr(user, 'is_vendor', False)
+        is_admin = role_str in [UserRole.SUPER_ADMIN, UserRole.ADMIN] or user.is_superuser or user.is_staff
+        if is_vendor and not is_admin:
+            return Response({
+                'success': False,
+                'detail': "This account is registered as a Merchant/Vendor. Please sign in via the Merchant Portal at /seller.",
+                'error': {
+                    'code': 'VENDOR_ACCOUNT_PORTAL_MISMATCH',
+                    'message': "This account is registered as a Merchant/Vendor. Please sign in via the Merchant Portal at /seller.",
+                    'action': 'GO_TO_SELLER_PORTAL'
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+
         serializer = CustomTokenObtainPairSerializer()
         refresh = serializer.get_token(user)
         user_data = UserDetailSerializer(user).data
@@ -514,8 +580,8 @@ class VendorLoginView(APIView):
                     }
                 }, status=status.HTTP_403_FORBIDDEN)
 
-            # Case 4: Pure Customer account without vendor profile or staff roles and no seller application
-            if (getattr(user, 'role', '') == UserRole.CUSTOMER and not vp) or (not vp and not has_staff_role):
+            # Case 4: Customer account without vendor staff roles
+            if getattr(user, 'role', '') == UserRole.CUSTOMER and not has_staff_role:
                 return Response({
                     'success': False,
                     'detail': "This account is registered as a Customer only. Please click 'Apply to Become a Partner Store' to register a seller store.",
@@ -526,7 +592,31 @@ class VendorLoginView(APIView):
                     }
                 }, status=status.HTTP_403_FORBIDDEN)
 
-            # Case 5: Has vendor profile, check verification & status
+            # Case 5: Non-vendor role and no vendor profile or staff role
+            vendor_roles = [UserRole.VENDOR, UserRole.VENDOR_OWNER, UserRole.VENDOR_STAFF, 'VENDOR', 'VENDOR_OWNER', 'VENDOR_STAFF']
+            if getattr(user, 'role', '') not in vendor_roles and not has_staff_role:
+                return Response({
+                    'success': False,
+                    'detail': "Only users with the Vendor role and an approved vendor account are permitted to sign in to the Vendor portal.",
+                    'error': {
+                        'code': 'VENDOR_ROLE_REQUIRED',
+                        'message': "Only users with the Vendor role and an approved vendor account are permitted to sign in to the Vendor portal.",
+                        'action': 'APPLY_SELLER',
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            if not vp and not has_staff_role:
+                return Response({
+                    'success': False,
+                    'detail': "This account is not associated with an approved merchant store.",
+                    'error': {
+                        'code': 'VENDOR_STORE_NOT_FOUND',
+                        'message': "This account is not associated with an approved merchant store.",
+                        'action': 'APPLY_SELLER',
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Case 6: Has vendor profile, check verification & status
             if vp:
                 has_verified_store = vp.stores.filter(is_verified=True).exists()
                 is_approved = (vp.status in [VendorStatus.APPROVED, 'APPROVED']) or has_verified_store

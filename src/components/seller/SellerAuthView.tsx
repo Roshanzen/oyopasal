@@ -255,10 +255,20 @@ export default function SellerAuthView({
           </div>
         </div>
 
-        {/* Security Footer */}
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
-          Protected by OyoPasal Multi-Factor Authentication & RSA-256 JWT Encryption.
-        </p>
+        {/* Security Footer & Vendor Privacy Policy */}
+        <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6 space-y-1">
+          <p>Protected by OyoPasal Multi-Factor Authentication & RSA-256 JWT Encryption.</p>
+          <p>
+            By accessing the Merchant Portal, you agree to the{' '}
+            <Link
+              to="/vendor/privacy-policy"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+            >
+              Vendor Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </div>
   );

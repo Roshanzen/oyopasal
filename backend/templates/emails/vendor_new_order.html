@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Order Received – Order #{{ sub_order_number }}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #f4f6f8;
+      padding: 30px 0;
+    }
+    .container {
+      max-width: 620px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      background: linear-gradient(135deg, #1B4332 0%, #0F2A1F 100%);
+      padding: 28px 32px;
+      text-align: left;
+      border-bottom: 3px solid #C5A869;
+    }
+    .brand-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #F5EEDB;
+      letter-spacing: 0.5px;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .brand-subtitle {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #C5A869;
+      margin-top: 4px;
+    }
+    .content {
+      padding: 32px;
+    }
+    .greeting {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 10px 0;
+    }
+    .greeting-sub {
+      font-size: 14px;
+      color: #4b5563;
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
+    .card {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6b7280;
+      margin: 0 0 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+    }
+    .info-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .info-grid td {
+      padding: 5px 0;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    .info-label {
+      color: #6b7280;
+      width: 40%;
+      font-weight: 500;
+    }
+    .info-value {
+      color: #111827;
+      font-weight: 600;
+      width: 60%;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-paid {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-cod {
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .table-wrapper {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    .table-wrapper th {
+      background-color: #f3f4f6;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .table-wrapper td {
+      padding: 14px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .product-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .product-img {
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid #e5e7eb;
+      background-color: #f9fafb;
+    }
+    .product-name {
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.3;
+    }
+    .product-sku {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+      font-family: monospace;
+    }
+    .product-attr {
+      font-size: 11px;
+      color: #059669;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+    .financials {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .financials td {
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .total-row td {
+      border-top: 2px solid #111827;
+      font-size: 16px;
+      font-weight: 800;
+      color: #111827;
+      padding-top: 10px;
+    }
+    .cta-container {
+      text-align: center;
+      margin: 32px 0 20px 0;
+    }
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #1B4332 0%, #059669 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.28);
+      border: 1px solid #047857;
+    }
+    .security-note {
+      background-color: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 24px;
+      font-size: 12px;
+      color: #065f46;
+      line-height: 1.5;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 24px 32px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    .footer a {
+      color: #059669;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <!-- Header Banner -->
+      <div class="header">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td>
+              <h1 class="brand-title">OYO Pasal.</h1>
+              <div class="brand-subtitle">Merchant Fulfillment Notification</div>
+            </td>
+            <td align="right">
+              <span style="font-size: 11px; background-color: rgba(197, 168, 105, 0.2); border: 1px solid #C5A869; color: #F5EEDB; padding: 4px 10px; border-radius: 6px; font-weight: 600; text-transform: uppercase;">
+                Store Dispatch
+              </span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Main Content -->
+      <div class="content">
+        <h2 class="greeting">Namaste, {{ store_name }}!</h2>
+        <p class="greeting-sub">
+          A customer has placed a new order containing products from your store. Please prepare and pack the items listed below for prompt courier dispatch.
+        </p>
+
+        <!-- Order & Payment Summary Card -->
+        <div class="card">
+          <div class="card-title">Order Overview</div>
+          <table class="info-grid">
+            <tr>
+              <td class="info-label">Sub-Order Number:</td>
+              <td class="info-value"><strong style="color: #059669;">{{ sub_order_number }}</strong></td>
+            </tr>
+            <tr>
+              <td class="info-label">Master Order Reference:</td>
+              <td class="info-value">{{ order_number }}</td>
+            </tr>
+            <tr>
+              <td class="info-label">Order Date & Time:</td>
+              <td class="info-value">{{ order_date }}</td>
+            </tr>
+            <tr>
+              <td class="info-label">Payment Method:</td>
+              <td class="info-value">
+                {{ payment_method }}
+                {% if payment_status == 'PAID' %}
+                  <span class="status-badge badge-paid">PAID ONLINE</span>
+                {% else %}
+                  <span class="status-badge badge-cod">CASH ON DELIVERY</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="info-label">Fulfillment Status:</td>
+              <td class="info-value"><span style="color: #d97706; font-weight: 700;">{{ fulfillment_status }}</span></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Customer & Delivery Destination Card -->
+        <div class="card">
+          <div class="card-title">Delivery Destination</div>
+          <table class="info-grid">
+            <tr>
+              <td class="info-label">Recipient Name:</td>
+              <td class="info-value">{{ recipient_name }}</td>
+            </tr>
+            {% if recipient_phone %}
+            <tr>
+              <td class="info-label">Contact Phone:</td>
+              <td class="info-value">{{ recipient_phone }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <td class="info-label">Delivery Address:</td>
+              <td class="info-value">{{ delivery_address }}</td>
+            </tr>
+            {% if customer_notes %}
+            <tr>
+              <td class="info-label">Delivery Notes / Landmark:</td>
+              <td class="info-value" style="color: #d97706;">{{ customer_notes }}</td>
+            </tr>
+            {% endif %}
+          </table>
+        </div>
+
+        <!-- Ordered Items Table (Strictly this Vendor's Products) -->
+        <div style="margin-bottom: 24px;">
+          <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 8px;">
+            Ordered Items for Your Store ({{ items|length }})
+          </div>
+          <table class="table-wrapper">
+            <thead>
+              <tr>
+                <th style="width: 55%;">Product</th>
+                <th style="text-align: center; width: 15%;">Qty</th>
+                <th style="text-align: right; width: 15%;">Price</th>
+                <th style="text-align: right; width: 15%;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      {% if item.image_url %}
+                      <td style="padding-right: 10px; vertical-align: top;">
+                        <img src="{{ item.image_url }}" alt="{{ item.product_name }}" class="product-img" />
+                      </td>
+                      {% endif %}
+                      <td>
+                        <div class="product-name">{{ item.product_name }}</div>
+                        {% if item.variant_sku %}
+                        <div class="product-sku">SKU: {{ item.variant_sku }}</div>
+                        {% endif %}
+                        {% if item.attributes_str %}
+                        <div class="product-attr">{{ item.attributes_str }}</div>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <td style="text-align: center; font-weight: 700; color: #111827;">{{ item.quantity }}x</td>
+                <td style="text-align: right; color: #4b5563;">NPR {{ item.unit_price }}</td>
+                <td style="text-align: right; font-weight: 700; color: #111827;">NPR {{ item.total_price }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Vendor Financial Summary -->
+        <div class="card" style="margin-bottom: 12px;">
+          <table class="financials">
+            <tr>
+              <td style="color: #6b7280;">Store Products Subtotal:</td>
+              <td style="text-align: right; font-weight: 600; color: #111827;">NPR {{ vendor_subtotal }}</td>
+            </tr>
+            {% if delivery_fee and delivery_fee != '0.00' %}
+            <tr>
+              <td style="color: #6b7280;">Attributable Delivery Allowance:</td>
+              <td style="text-align: right; font-weight: 600; color: #111827;">NPR {{ delivery_fee }}</td>
+            </tr>
+            {% endif %}
+            <tr class="total-row">
+              <td>Total Payable to Store:</td>
+              <td style="text-align: right; color: #059669;">NPR {{ vendor_net_amount }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="cta-container">
+          <a href="{{ dashboard_order_url }}" class="cta-button" target="_blank">
+            View & Pack Order in Merchant Dashboard &rarr;
+          </a>
+        </div>
+
+        <!-- Privacy & Isolation Security Note -->
+        <div class="security-note">
+          <strong>🔒 Multi-Vendor Privacy Notice:</strong> This notification contains customer fulfillment information solely for items purchased from <strong>{{ store_name }}</strong>. Other vendor items and external checkout details have been filtered to ensure multi-tenant security.
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p style="margin: 0 0 6px 0; font-weight: 600; color: #374151;">
+          OyoPasal — 10-15 Min Quick Commerce Marketplace
+        </p>
+        <p style="margin: 0 0 6px 0;">
+          Kathmandu Valley, Nepal • Need help? Contact <a href="mailto:support@oyopasal.com">support@oyopasal.com</a>
+        </p>
+        <p style="margin: 0; font-size: 11px; color: #9ca3af;">
+          This is an automated transactional order notification sent to registered merchant contacts.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

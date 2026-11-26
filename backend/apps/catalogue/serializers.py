@@ -56,6 +56,24 @@ class CategoryCreateSerializer(serializers.ModelSerializer):
             attrs['parent'] = parent_cat
         else:
             attrs['parent'] = None
+
+        name = attrs.get('name')
+        if name:
+            attrs['name'] = name.strip()
+        parent = attrs.get('parent')
+        if attrs.get('name') and not parent:
+            norm_name = attrs['name']
+            existing = Category.objects.filter(
+                parent__isnull=True,
+                name__iexact=norm_name
+            )
+            if self.instance:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError({
+                    'name': f"A top-level category named '{norm_name}' already exists."
+                })
+
         return attrs
 
     def create(self, validated_data):
@@ -73,20 +91,21 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     breadcrumbs = serializers.SerializerMethodField()
     icon = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
+    product_count = serializers.SerializerMethodField()
     accent = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = [
             'id', 'parent_id', 'name', 'slug', 'description', 'icon_url', 'icon',
-            'image_url', 'ordering', 'item_count', 'accent', 'subcategories', 'breadcrumbs'
+            'image_url', 'ordering', 'item_count', 'product_count', 'accent', 'subcategories', 'breadcrumbs'
         ]
 
     def get_breadcrumbs(self, obj):
         return [{'id': a.id, 'name': a.name, 'slug': a.slug} for a in obj.get_ancestors()]
 
     def get_icon(self, obj):
-        # Map common slugs to Lucide icon identifiers
+        # Map common slugs and names to Lucide icon identifiers
         slug_icons = {
             'fruits-vegetables': 'Apple',
             'dairy-bakery': 'Milk',
@@ -94,15 +113,42 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
             'snacks-beverages': 'Cookie',
             'consumer-electronics': 'Zap',
             'chargers-cables': 'Zap',
-            'handicrafts-art': 'Sparkles',
+            'handicrafts-art': 'Palette',
             'fashion-apparel': 'Shirt',
             'health-wellness': 'HeartPulse',
             'home-kitchen': 'Home',
+            'books': 'BookOpen',
+            'stationary': 'PenTool',
+            'stationery': 'PenTool',
         }
-        return slug_icons.get(obj.slug, 'Package')
+        if obj.slug in slug_icons:
+            return slug_icons[obj.slug]
+        slug_lower = (obj.slug or '').lower()
+        name_lower = (obj.name or '').lower()
+        if 'book' in slug_lower or 'book' in name_lower:
+            return 'BookOpen'
+        if 'station' in slug_lower or 'station' in name_lower or 'pen' in slug_lower:
+            return 'PenTool'
+        if 'craft' in slug_lower or 'art' in slug_lower or 'craft' in name_lower or 'art' in name_lower:
+            return 'Palette'
+        if 'electr' in slug_lower or 'tech' in slug_lower or 'electr' in name_lower:
+            return 'Zap'
+        return 'Package'
+
+    def get_product_count(self, obj):
+        if hasattr(obj, 'product_count') and obj.product_count is not None:
+            return obj.product_count
+        cat_ids = obj.get_descendant_ids()
+        from apps.catalogue.models import Product, ProductStatus
+        return Product.objects.filter(
+            category_id__in=cat_ids,
+            is_deleted=False,
+            status=ProductStatus.APPROVED,
+            store__is_active=True
+        ).count()
 
     def get_item_count(self, obj):
-        return getattr(obj, 'product_count', 12)
+        return self.get_product_count(obj)
 
     def get_accent(self, obj):
         accents = ['#059669', '#16A34A', '#0D9488', '#EA580C', '#2563EB', '#7C3AED', '#DB2777']

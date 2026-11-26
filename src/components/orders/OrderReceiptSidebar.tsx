@@ -36,7 +36,7 @@ export default function OrderReceiptSidebar({
     title: 'Order Address',
     street: '',
     area: '',
-    city: 'Kathmandu',
+    city: order?.delivery_address?.city || order?.delivery_address?.area || '',
     phone: '',
     recipient_name: 'Customer',
     is_default: true,

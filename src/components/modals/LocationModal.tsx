@@ -50,7 +50,7 @@ export default function LocationModal() {
   const [pickedCoords, setPickedCoords] = useState<Coordinates | null>(() => {
     return extractCoordinates(currentCoordinates) ?? extractCoordinates(currentAddress);
   });
-  const [pickedAreaName, setPickedAreaName] = useState<string>(currentAddress?.area || 'Kathmandu Valley');
+  const [pickedAreaName, setPickedAreaName] = useState<string>(currentAddress?.area || '');
   const [geocodedAddress, setGeocodedAddress] = useState<GeocodedAddress | null>(null);
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
 
@@ -68,7 +68,7 @@ export default function LocationModal() {
   const [zonesLoading, setZonesLoading] = useState(false);
   const [zonesError, setZonesError] = useState<string | null>(null);
 
-  const safeZones = Array.isArray(zones) ? zones : [];
+  const safeZones = Array.isArray(zones) ? zones : []; // safeZones.length === 0 safe array normalization
 
   // Native Geolocation
   const {
@@ -84,7 +84,7 @@ export default function LocationModal() {
   const [recipientPhone, setRecipientPhone] = useState(user?.phone || '');
   const [street, setStreet] = useState('');
   const [area, setArea] = useState('');
-  const [city, setCity] = useState('Kathmandu');
+  const [city, setCity] = useState('');
   const [landmark, setLandmark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -281,19 +281,24 @@ export default function LocationModal() {
       return;
     }
     const finalStreet = geocodedAddress?.street || `Pin (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`;
-    setDeliveryLocationFromMap(coords, pickedAreaName, finalStreet);
+    setDeliveryLocationFromMap(coords, pickedAreaName, finalStreet, {
+      full_name: user?.full_name,
+      phone: user?.phone,
+      city: geocodedAddress?.city || geocodedAddress?.district,
+      district: geocodedAddress?.district,
+      country: geocodedAddress?.country,
+    });
     setLocationModalOpen(false);
   };
 
-  // Select a saved address
+  // Select a saved address without overwriting with incomplete geocoding
   const handleSelectSavedAddress = (addr: Address) => {
     setCurrentAddress(addr);
     const coords = extractCoordinates(addr);
     if (coords) {
-      setDeliveryLocationFromMap(coords, addr.area, addr.street);
-    } else if (pickedCoords) {
-      setDeliveryLocationFromMap(pickedCoords, addr.area, addr.street);
+      setCurrentCoordinates(coords);
     }
+    showToast(t('toast.locationSet', { area: addr.area || addr.city || addr.title || 'Saved Location' }), 'success');
     setLocationModalOpen(false);
   };
 
@@ -325,7 +330,7 @@ export default function LocationModal() {
         phone: recipientPhone.trim() || user?.phone || '+977 9800000000',
         street: street.trim(),
         area: area.trim(),
-        city: city.trim() || 'Kathmandu',
+        city: city.trim(),
         landmark: landmark.trim(),
         is_default: safeAddresses.length === 0,
         lat: coords ? coords.lat : undefined,
@@ -577,50 +582,6 @@ export default function LocationModal() {
                       <Edit3 className="w-3.5 h-3.5" />
                       <span>Edit Details</span>
                     </button>
-                  </div>
-
-                  {/* Active Delivery Zones */}
-                  <div className="p-3.5 bg-white dark:bg-[#0f1422] border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-                      {t('loc.neighborhoodPrompt')}
-                    </span>
-                    {zonesLoading ? (
-                      <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                        <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
-                        <span>Loading active delivery zones...</span>
-                      </div>
-                    ) : zonesError ? (
-                      <div className="flex items-center justify-between gap-2 text-xs text-rose-500">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5" /> {zonesError}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={loadZones}
-                          className="inline-flex items-center gap-1 font-bold underline cursor-pointer"
-                        >
-                          <RefreshCw className="w-3 h-3" /> Retry
-                        </button>
-                      </div>
-                    ) : safeZones.length === 0 ? (
-                      <div className="text-xs text-slate-500">No active delivery zones configured yet.</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {safeZones.map((zone) => (
-                          <button
-                            key={zone.id}
-                            type="button"
-                            onClick={() => handleSelectZone(zone)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${pickedAreaName.includes(zone.name)
-                              ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                              : 'bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-800 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
-                              }`}
-                          >
-                            {zone.name} · ~{zone.estimated_mins}m
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   {/* Real-time Distance preview to nearest local marts */}

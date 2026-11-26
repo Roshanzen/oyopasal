@@ -41,6 +41,14 @@ export default function SellerOrdersTab({
   const [trackingFulfillment, setTrackingFulfillment] = useState<SellerFulfillmentItem | null>(null);
   const safeOrders = Array.isArray(sellerOrders) ? sellerOrders : [];
 
+  const urlOrderId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('order_id') : null;
+
+  React.useEffect(() => {
+    if (urlOrderId && orderStatusFilter !== 'all') {
+      setOrderStatusFilter('all');
+    }
+  }, [urlOrderId]);
+
   const filterOptions: { id: 'all' | 'pending' | 'packed' | 'dispatched'; label: string }[] = [
     { id: 'all', label: language === 'ne' ? `सबै (${safeOrders.length})` : `All Orders (${safeOrders.length})` },
     {
@@ -160,14 +168,31 @@ export default function SellerOrdersTab({
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredOrders.map((ord) => (
+            {filteredOrders.map((ord) => {
+              const isTargetOrder = Boolean(
+                urlOrderId && (
+                  ord.order_number?.toLowerCase() === urlOrderId.toLowerCase() ||
+                  String(ord.fulfillment_id) === urlOrderId ||
+                  String(ord.id) === urlOrderId
+                )
+              );
+              return (
               <div
                 key={ord.fulfillment_id}
-                className="p-4 sm:p-5 rounded-xl bg-slate-50/80 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                className={`p-4 sm:p-5 rounded-xl bg-slate-50/80 dark:bg-slate-950 border transition-all ${
+                  isTargetOrder
+                    ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30 shadow-md'
+                    : 'border-slate-200 dark:border-slate-800'
+                } flex flex-col lg:flex-row lg:items-center justify-between gap-4`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-slate-900 dark:text-white text-base">{ord.order_number}</span>
+                    {isTargetOrder && (
+                      <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded font-bold shadow-xs">
+                        {language === 'ne' ? 'चयनित अर्डर' : 'Selected Order'}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{new Date(ord.created_at).toLocaleString()}</span>
                     <span className="text-xs bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-semibold">
                       {translateOrderStatus(ord.status, language)}
@@ -275,7 +300,8 @@ export default function SellerOrdersTab({
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 

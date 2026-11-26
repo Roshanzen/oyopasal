@@ -184,12 +184,13 @@ class TestCustomerVendorLoginExperience(APITestCase):
         self.assertIn('vendor', vdata)
         self.assertEqual(vdata['vendor']['status'], 'APPROVED')
 
-        # Customer Login (POST /api/v1/auth/token/) also functions cleanly with credentials
-        res_clogin = self.client.post('/api/v1/auth/token/', {
+        # Customer Login (POST /api/v1/auth/login/) strictly rejects Vendor credentials with HTTP 403 Forbidden
+        res_clogin = self.client.post('/api/v1/auth/login/', {
             'email': self.customer_email,
             'password': new_vendor_password
         }, format='json')
 
-        self.assertEqual(res_clogin.status_code, 200)
+        self.assertEqual(res_clogin.status_code, 403)
         cdata = res_clogin.json()
-        self.assertIn('access', cdata)
+        self.assertEqual(cdata.get('error', {}).get('code'), 'VENDOR_ACCOUNT_PORTAL_MISMATCH')
+        self.assertIn('registered as a merchant/vendor', cdata.get('detail', '').lower())

@@ -251,8 +251,8 @@ class PublicSettingsView(APIView):
             'store_support': {
                 'brandName': 'OyoPasal',
                 'tagline': '10–15 MIN DELIVERY',
-                'email': 'support@oyopasal.com.np',
-                'phone': '+977 1-4782910',
+                'email': 'oyopasal@gmail.com',
+                'phone': '+977 9818638565',
                 'address': 'New Baneshwor, Kathmandu, Nepal',
                 'hours': '6:00 AM – 11:00 PM Daily',
             },
@@ -308,6 +308,55 @@ class DbStatusView(APIView):
                     'users': 0,
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LegalPrivacyPolicyMetadataView(APIView):
+    """
+    Exposes official legal and privacy policy metadata, contacts, statutory compliance references,
+    and section inventories for Customer and Vendor portals.
+    """
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Privacy Policy Metadata & Legal Directory",
+        description="Public metadata for Customer and Vendor privacy policies under Nepal Privacy Act 2075.",
+        responses={200: dict}
+    )
+    def get(self, request):
+        return Response({
+            "success": True,
+            "version": "2026.11-v1",
+            "effective_date": "2026-11-26",
+            "statutory_framework": "Nepal Individual Privacy Act, 2075 (2018) & Electronic Transactions Act, 2063",
+            "jurisdiction": "Kathmandu, Federal Democratic Republic of Nepal",
+            "contact_directory": {
+                "customer_privacy": "privacy@oyopasal.com",
+                "vendor_privacy": "merchant-privacy@oyopasal.com",
+                "data_protection_officer": "dpo@oyopasal.com",
+                "phone": "+977 01-5970000",
+                "headquarters": "OyoPasal Marketplace, New Baneshwor, Kathmandu, Nepal"
+            },
+            "policies": {
+                "customer": {
+                    "title": "Customer Privacy Policy",
+                    "route": "/privacy-policy",
+                    "audience": "Registered shoppers, guest visitors, and consumers purchasing from OyoPasal vendors",
+                    "sections_count": 15,
+                    "payment_methods_supported": ["eSewa", "Khalti", "Cash on Delivery (COD)"],
+                    "card_storage_policy": "Zero PCI raw card number / wallet MPIN storage on OyoPasal servers"
+                },
+                "vendor": {
+                    "title": "Vendor Privacy Policy",
+                    "route": "/vendor/privacy-policy",
+                    "alias_route": "/seller/privacy-policy",
+                    "audience": "Store owners, merchant administrators, and authorized vendor staff",
+                    "sections_count": 15,
+                    "custodian_duty": "Strict prohibition against copying, exporting, or marketing to customer phone numbers",
+                    "financial_retention": "7 years pursuant to Nepal Income Tax Act, 2058"
+                }
+            }
+        }, status=status.HTTP_200_OK)
+
 
 
 

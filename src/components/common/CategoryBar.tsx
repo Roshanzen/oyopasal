@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { categoryService } from '../../services';
 import { Category } from '../../types';
@@ -75,6 +75,32 @@ export default function CategoryBar() {
 
   const currentPath = location.pathname;
 
+  // Deduplicate categories by normalized name: cat.name.trim().toLowerCase()
+  // Retains only the first occurrence while preserving the original category object, slug, ID, etc.
+  const displayCategories = useMemo(() => {
+    if (!Array.isArray(categories)) return [];
+    const seenNames = new Set<string>();
+    const uniqueCategories: Category[] = [];
+
+    for (const cat of categories) {
+      if (!cat) continue;
+      const rawName = typeof cat.name === 'string' ? cat.name : '';
+      const normalized = rawName.trim().toLowerCase();
+
+      if (normalized) {
+        if (!seenNames.has(normalized)) {
+          seenNames.add(normalized);
+          uniqueCategories.push(cat);
+        }
+      } else if (cat.id) {
+        // Safe fallback for records with missing name
+        uniqueCategories.push(cat);
+      }
+    }
+
+    return uniqueCategories;
+  }, [categories]);
+
   return (
     <div className="bg-white dark:bg-[#0b0f19] border-b border-slate-200/80 dark:border-slate-800 py-3 relative shadow-2xs transition-colors duration-200 select-none">
       <div className="w-full px-4 sm:px-6 lg:px-10 relative">
@@ -124,7 +150,7 @@ export default function CategoryBar() {
               />
             ))
           ) : (
-            (categories || []).map((cat) => {
+            (displayCategories || []).map((cat) => {
               const IconComp = ICON_MAP[cat.icon] || Package;
               const isActive = currentPath === `/category/${cat.slug}`;
 

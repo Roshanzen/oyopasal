@@ -46,17 +46,46 @@ export function useCheckout() {
       });
     }
 
-    let maxDist = 0;
-    let minAllowedExpress = 15.0;
+    const storeCoordsList: { lat: number; lng: number; maxRadius: number }[] = [];
+
+    if (cart?.vendor_groups) {
+      cart.vendor_groups.forEach((g: any) => {
+        const v = g.vendor;
+        if (v && typeof v.lat === 'number' && typeof v.lng === 'number') {
+          storeCoordsList.push({ lat: v.lat, lng: v.lng, maxRadius: v.max_local_delivery_km ?? 15.0 });
+        }
+      });
+    }
+    if (cart?.items) {
+      cart.items.forEach((it: any) => {
+        const v = it.product?.vendor;
+        const st = it.product?.store;
+        const lat = typeof st?.latitude === 'number' ? st.latitude : (typeof v?.lat === 'number' ? v.lat : undefined);
+        const lng = typeof st?.longitude === 'number' ? st.longitude : (typeof v?.lng === 'number' ? v.lng : undefined);
+        if (lat !== undefined && lng !== undefined) {
+          storeCoordsList.push({ lat, lng, maxRadius: st?.max_local_delivery_km ?? v?.max_local_delivery_km ?? 15.0 });
+        }
+      });
+    }
 
     cartVendorIds.forEach((vId) => {
       const v = (vendors || []).find((vend) => String(vend.id) === vId || vend.slug === vId);
       if (v && typeof v.lat === 'number' && typeof v.lng === 'number') {
-        const dist = calculateDistanceInKm(v.lat, v.lng, currentAddress.lat!, currentAddress.lng!);
-        if (dist > maxDist) maxDist = dist;
-        const vMax = typeof v.max_local_delivery_km === 'number' ? v.max_local_delivery_km : 15.0;
-        if (vMax < minAllowedExpress) minAllowedExpress = vMax;
+        storeCoordsList.push({
+          lat: v.lat,
+          lng: v.lng,
+          maxRadius: typeof v.max_local_delivery_km === 'number' ? v.max_local_delivery_km : 15.0,
+        });
       }
+    });
+
+    let maxDist = 0;
+    let minAllowedExpress = 15.0;
+
+    storeCoordsList.forEach((store) => {
+      const dist = calculateDistanceInKm(store.lat, store.lng, currentAddress.lat!, currentAddress.lng!);
+      if (dist > maxDist) maxDist = dist;
+      if (store.maxRadius < minAllowedExpress) minAllowedExpress = store.maxRadius;
     });
 
     const isOutside = maxDist > minAllowedExpress;

@@ -370,10 +370,18 @@ class OrderService:
             parent_order.save(update_fields=['status', 'updated_at'])
         elif any(s in [OrderStatus.SHIPPED, OrderStatus.OUT_FOR_DELIVERY] for s in statuses):
             if parent_order.status != OrderStatus.DELIVERED:
-                parent_order.status = OrderStatus.SHIPPED
+                parent_order.status = OrderStatus.OUT_FOR_DELIVERY
                 parent_order.save(update_fields=['status', 'updated_at'])
-        elif any(s in [OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH] for s in statuses):
-            if parent_order.status not in [OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
-                parent_order.status = OrderStatus.PROCESSING
+        elif any(s == OrderStatus.READY_FOR_DISPATCH for s in statuses):
+            if parent_order.status not in [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+                parent_order.status = OrderStatus.READY_FOR_DISPATCH
+                parent_order.save(update_fields=['status', 'updated_at'])
+        elif any(s in [OrderStatus.PACKED, OrderStatus.PROCESSING] for s in statuses):
+            if parent_order.status not in [OrderStatus.READY_FOR_DISPATCH, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+                parent_order.status = OrderStatus.PACKED
+                parent_order.save(update_fields=['status', 'updated_at'])
+        elif any(s in [OrderStatus.CONFIRMED, OrderStatus.PENDING_PAYMENT] for s in statuses):
+            if parent_order.status not in [OrderStatus.PACKED, OrderStatus.READY_FOR_DISPATCH, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+                parent_order.status = OrderStatus.CONFIRMED
                 parent_order.save(update_fields=['status', 'updated_at'])
 

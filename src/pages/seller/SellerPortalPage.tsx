@@ -197,7 +197,7 @@ export default function SellerPortalPage() {
     ];
 
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col justify-between h-full">
+    <div className="flex flex-col justify-between min-h-full">
       <div>
         {/* Top Store Identity Card */}
         <div className="bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-xl p-3 mb-4">
@@ -309,7 +309,7 @@ export default function SellerPortalPage() {
   );
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-76px)] bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 transition-colors">
       {/* Mobile Top Navigation Bar (screens < lg) */}
       <div className="lg:hidden sticky top-16 z-30 flex items-center justify-between px-4 py-3 bg-white dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -365,7 +365,7 @@ export default function SellerPortalPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scrollbar overscroll-y-contain">
               {renderSidebarContent(true)}
             </div>
           </div>
@@ -375,7 +375,7 @@ export default function SellerPortalPage() {
       {/* Two-Column App Shell */}
       <div className="flex flex-1 w-full">
         {/* Left Vertical Sidebar (Desktop) */}
-        <aside className="w-[250px] shrink-0 bg-white dark:bg-[#0B1120] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 sticky top-16 h-[calc(100vh-64px)] hidden lg:flex">
+        <aside className="w-[260px] shrink-0 bg-white dark:bg-[#0B1120] border-r border-slate-200 dark:border-slate-800 p-4 sticky top-16 md:top-[76px] h-[calc(100vh-64px)] md:h-[calc(100vh-76px)] overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth sidebar-scrollbar hidden lg:flex flex-col select-none">
           {renderSidebarContent(false)}
         </aside>
 

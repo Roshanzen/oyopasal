@@ -247,13 +247,23 @@ export default function BecomeSellerPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Storefront</span>
           </Link>
-          <Link
-            to="/seller/track"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
-          >
-            <span>Already applied? Track status</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-3 sm:gap-4 text-xs font-bold">
+            <Link
+              to="/seller"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
+            >
+              <span>Already a seller? Login</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <Link
+              to="/seller/track"
+              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
+            >
+              <span>Track status</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
         {/* Hero Section */}
@@ -617,11 +627,20 @@ export default function BecomeSellerPage() {
             </div>
           </div>
 
-          {/* Submit Action */}
+          {/* Submit Action & Login as a Seller Link */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Applications are typically reviewed within 24–48 business hours.
-            </p>
+            <div className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left space-y-1">
+              <p>Applications are typically reviewed within 24–48 business hours.</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Already have a seller account?{' '}
+                <Link
+                  to="/seller"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold underline transition-colors"
+                >
+                  Login as a Seller →
+                </Link>
+              </p>
+            </div>
             <button
               type="submit"
               disabled={submitting || !declarationConfirmed}

@@ -21,6 +21,7 @@
   --text-3xl--line-height: 1.2;
   --text-4xl: 2.75rem;
   --text-4xl--line-height: 1.15;
+  --font-serif: "Cinzel", "Playfair Display", Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -102,5 +103,76 @@
 .animate-drop-glow {
   animation: drop-glow-pulse 3s ease-in-out infinite;
 }
+
+/* Vintage Brand Logo Pasal Text High-Contrast Styling */
+.vintage-pasal-fill {
+  fill: #1B4332;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+.dark .vintage-pasal-fill {
+  fill: #F5EEDB;
+}
+
+.vintage-pasal-stroke {
+  stroke: #1B4332;
+}
+.dark .vintage-pasal-stroke {
+  stroke: #F5EEDB;
+}
+
+.vintage-pasal-highlight {
+  stroke: #C5A869;
+}
+.dark .vintage-pasal-highlight {
+  stroke: #1B4332;
+}
+
+.vintage-pasal-glow {
+  stroke: #F5EEDB;
+  opacity: 0.85;
+}
+.dark .vintage-pasal-glow {
+  stroke: #091811;
+  opacity: 0.95;
+}
+
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 0px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #D1D5DB;
+  border-radius: 9999px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #9CA3AF;
+}
+
+.dark .sidebar-scrollbar {
+  scrollbar-color: #334155 transparent;
+}
+
+.dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #334155;
+}
+
+.dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
+}
+
 
 

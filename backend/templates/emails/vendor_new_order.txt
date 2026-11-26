@@ -1,0 +1,54 @@
+======================================================
+OYOPASAL — MERCHANT ORDER NOTIFICATION
+======================================================
+
+Namaste, {{ store_name }}!
+
+You have received a new customer order on OyoPasal.
+Please review the details below and prepare the items for prompt dispatch.
+
+------------------------------------------------------
+ORDER DETAILS
+------------------------------------------------------
+Sub-Order Number:       {{ sub_order_number }}
+Master Order Reference: {{ order_number }}
+Order Date & Time:      {{ order_date }}
+Payment Method:         {{ payment_method }} ({{ payment_status }})
+Fulfillment Status:     {{ fulfillment_status }}
+
+------------------------------------------------------
+DELIVERY DESTINATION
+------------------------------------------------------
+Recipient Name:         {{ recipient_name }}
+{% if recipient_phone %}Contact Phone:          {{ recipient_phone }}{% endif %}
+Delivery Address:       {{ delivery_address }}
+{% if customer_notes %}Delivery Notes:         {{ customer_notes }}{% endif %}
+
+------------------------------------------------------
+ORDERED ITEMS FOR YOUR STORE ({{ items|length }})
+------------------------------------------------------
+{% for item in items %}
+* {{ item.product_name }}
+  Qty: {{ item.quantity }}x | Unit Price: NPR {{ item.unit_price }} | Total: NPR {{ item.total_price }}
+  {% if item.variant_sku %}SKU: {{ item.variant_sku }}{% endif %}
+  {% if item.attributes_str %}{{ item.attributes_str }}{% endif %}
+{% endfor %}
+
+------------------------------------------------------
+FINANCIAL SUMMARY
+------------------------------------------------------
+Store Products Subtotal: NPR {{ vendor_subtotal }}
+{% if delivery_fee and delivery_fee != '0.00' %}Attributable Delivery:   NPR {{ delivery_fee }}{% endif %}
+Total Payable to Store:  NPR {{ vendor_net_amount }}
+
+------------------------------------------------------
+MERCHANT DASHBOARD LINK
+------------------------------------------------------
+View and pack this order in your merchant portal:
+{{ dashboard_order_url|safe }}
+
+======================================================
+Multi-Vendor Privacy Notice: This notification contains fulfillment details strictly for items purchased from {{ store_name }}. Other vendor products in this checkout are segregated.
+OyoPasal — Quick Commerce, Kathmandu, Nepal
+Support: support@oyopasal.com
+======================================================

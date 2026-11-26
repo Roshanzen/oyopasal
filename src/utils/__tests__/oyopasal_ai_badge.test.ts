@@ -117,3 +117,42 @@ import path from 'node:path';
       }
     });
 
+    test('OyoPasal AI Badge 7: Chat drawer header matches emerald reference and footer caption is removed', () => {
+      const conciergeContent = fs.readFileSync(
+        path.resolve(process.cwd(), 'src/components/layout/ChatConcierge.tsx'),
+        'utf-8'
+      );
+
+      // Verify header matches required emerald-to-forest styling
+      assert.ok(
+        conciergeContent.includes('#065F46') && conciergeContent.includes('#064E3B'),
+        'Header must feature emerald-to-forest linear gradient (#065F46 to #064E3B)'
+      );
+      assert.ok(
+        conciergeContent.includes('rounded-t-[24px]'),
+        'Header must feature rounded top corners of 24px'
+      );
+      assert.ok(
+        conciergeContent.includes('Ai Assistant'),
+        'Header title must be "Ai Assistant"'
+      );
+
+      // Verify bottom caption bar is completely removed from footer
+      assert.equal(
+        conciergeContent.includes('chat.poweredBy'),
+        false,
+        'Footer must not render chat.poweredBy caption'
+      );
+      assert.equal(
+        conciergeContent.includes('chat.valleyGrounded'),
+        false,
+        'Footer must not render chat.valleyGrounded caption'
+      );
+      assert.equal(
+        conciergeContent.includes('Live Store & Location Synced'),
+        false,
+        'Footer must not render "Live Store & Location Synced"'
+      );
+    });
+
+

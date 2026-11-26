@@ -142,12 +142,14 @@ class IsSupplier(permissions.BasePermission):
 
 
 class IsCustomer(permissions.BasePermission):
-    """Allows access to Customers (including vendor owners and staff shopping as customers)."""
+    """Allows access to authenticated Customers and Administrators."""
     def has_permission(self, request, view):
-        return bool(
-            request.user and
-            request.user.is_authenticated
-        )
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        role = getattr(request.user, 'role', '')
+        return role in ['CUSTOMER', 'SUPER_ADMIN', 'ADMIN']
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):

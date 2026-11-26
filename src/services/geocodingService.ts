@@ -1,3 +1,5 @@
+import { formatGpsAddress } from '../utils/addressFormatter';
+
 export interface GeocodedAddress {
   formattedAddress: string;
   street: string;
@@ -133,26 +135,21 @@ export const geocodingService = {
       const postalCode = addr.postcode || '';
       const country = addr.country || 'Nepal';
 
-      // Build short readable label without duplicating tokens
-      let shortLabel = '';
-      const cleanArea = (area || '').trim();
-      const cleanCity = (city || '').trim();
-      if (cleanArea && cleanCity && cleanArea.toLowerCase() !== cleanCity.toLowerCase()) {
-        shortLabel = `${cleanArea}, ${cleanCity}`;
-      } else if (cleanArea) {
-        shortLabel = cleanArea;
-      } else if (cleanCity) {
-        shortLabel = cleanCity;
-      } else if (street) {
-        shortLabel = street;
-      } else {
-        shortLabel = Number.isFinite(lat) && Number.isFinite(lng)
-          ? `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`
-          : 'Selected Location';
-      }
+      const { formattedAddress, shortLabel } = formatGpsAddress({
+        street,
+        locality: area || city,
+        area,
+        municipality: addr.municipality || '',
+        city,
+        district,
+        province,
+        country,
+        lat,
+        lng,
+      });
 
       const result: GeocodedAddress = {
-        formattedAddress: json.display_name || shortLabel,
+        formattedAddress,
         street,
         area: area || street || city || '',
         city,
@@ -238,12 +235,22 @@ export const geocodingService = {
           const addr = item.address || {};
           const street = addr.road || addr.street || addr.residential || '';
           const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.hamlet || '';
-          const city = addr.city || addr.town || addr.municipality || addr.county || 'Kathmandu';
+          const city = addr.city || addr.town || addr.municipality || addr.county || addr.district || '';
           const name = item.name || item.display_name?.split(',')[0] || street || area || 'Location';
+          const { formattedAddress: computedFormatted } = formatGpsAddress({
+            street,
+            locality: name !== street ? name : (area || city),
+            area,
+            city,
+            district: addr.district || addr.county || city,
+            country: addr.country || 'Nepal',
+            lat,
+            lng,
+          });
 
           return {
             id: String(item.place_id || `search-${idx}-${Date.now()}`),
-            formattedAddress: item.display_name || `${name}, ${city}`,
+            formattedAddress: item.display_name || computedFormatted,
             name,
             street,
             area,

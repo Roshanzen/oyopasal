@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import HomePage from '../pages/home/HomePage';
 import { SellerRoute } from './SellerRoute';
 
@@ -17,6 +17,8 @@ const RiderPortalPage = lazy(() => import('../pages/admin/RiderPortalPage'));
 const BecomeSellerPage = lazy(() => import('../pages/seller/BecomeSellerPage'));
 const TrackApplicationPage = lazy(() => import('../pages/seller/TrackApplicationPage'));
 const VendorActivationPage = lazy(() => import('../pages/seller/VendorActivationPage'));
+const CustomerPrivacyPolicyPage = lazy(() => import('../pages/legal/CustomerPrivacyPolicyPage'));
+const VendorPrivacyPolicyPage = lazy(() => import('../pages/legal/VendorPrivacyPolicyPage'));
 
 function PageFallback() {
   return (
@@ -44,12 +46,16 @@ export function AppRoutes() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders/:id" element={<OrderTrackingPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/wishlist" element={<Navigate to="/account?tab=wishlist" replace />} />
         <Route path="/become-seller" element={<BecomeSellerPage />} />
         <Route path="/seller/apply" element={<BecomeSellerPage />} />
         <Route path="/seller/track" element={<TrackApplicationPage />} />
         <Route path="/track-application" element={<TrackApplicationPage />} />
         <Route path="/vendor/activate" element={<VendorActivationPage />} />
         <Route path="/seller/activate" element={<VendorActivationPage />} />
+        <Route path="/privacy-policy" element={<CustomerPrivacyPolicyPage />} />
+        <Route path="/vendor/privacy-policy" element={<VendorPrivacyPolicyPage />} />
+        <Route path="/seller/privacy-policy" element={<VendorPrivacyPolicyPage />} />
         <Route
           path="/seller"
           element={

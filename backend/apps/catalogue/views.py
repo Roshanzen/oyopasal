@@ -49,6 +49,17 @@ class PublicCategoryListView(generics.ListCreateAPIView):
     permission_classes = [CanManageCategories]
     pagination_class = None
 
+    def get_queryset(self):
+        return Category.objects.filter(
+            is_active=True,
+            parent__isnull=True
+        ).prefetch_related(
+            Prefetch(
+                'subcategories',
+                queryset=Category.objects.filter(is_active=True).order_by('ordering', 'name')
+            )
+        ).order_by('ordering', 'name').distinct()
+
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return CategoryCreateSerializer

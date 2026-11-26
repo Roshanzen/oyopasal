@@ -10,6 +10,7 @@ export interface Category {
   image_url?: string | null;
   ordering?: number;
   item_count: number;
+  product_count?: number;
   accent: string;
   description: string;
   subcategories?: Category[];
