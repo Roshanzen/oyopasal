@@ -2,14 +2,25 @@ from rest_framework import serializers
 from apps.orders.models import Order, VendorSubOrder, OrderItem, OrderStatusHistory, OrderStatus
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    store_name = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = [
-            'id', 'variant', 'product_name', 'variant_sku',
-            'attributes_snapshot', 'unit_price', 'quantity',
+            'id', 'variant', 'product_name', 'product_title_snapshot', 'store_name_snapshot',
+            'store_name', 'variant_sku', 'attributes_snapshot', 'unit_price', 'quantity',
             'total_price', 'tax_rate', 'tax_amount'
         ]
         read_only_fields = ['id']
+
+    def get_store_name(self, obj):
+        if obj.store_name_snapshot:
+            return obj.store_name_snapshot
+        if obj.store and obj.store.name:
+            return obj.store.name
+        if obj.sub_order and getattr(obj.sub_order, 'store_name_snapshot', ''):
+            return obj.sub_order.store_name_snapshot
+        return ''
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -18,6 +29,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ret['color_code'] = attrs.get('color_code') or attrs.get('color_value') or ''
         ret['size'] = attrs.get('size') or ''
         ret['variant_name'] = attrs.get('name') or ''
+        ret['product_name'] = instance.product_title_snapshot or instance.product_name or ''
         return ret
 
 
@@ -37,13 +49,13 @@ class VendorSubOrderDetailSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     timeline = OrderStatusHistorySerializer(many=True, read_only=True)
     vendor_name = serializers.CharField(source='vendor.business_name', read_only=True)
-    store_name = serializers.CharField(source='store.name', read_only=True)
+    store_name = serializers.SerializerMethodField()
     shipping_destination = serializers.JSONField(source='parent_order.shipping_address_snapshot', read_only=True)
 
     class Meta:
         model = VendorSubOrder
         fields = [
-            'id', 'sub_order_number', 'vendor_name', 'store_name',
+            'id', 'sub_order_number', 'vendor_name', 'store_name', 'store_name_snapshot',
             'status', 'subtotal', 'delivery_fee', 'commission_rate',
             'commission_amount', 'vendor_net_amount',
             'tracking_number', 'delivery_provider', 'cancellation_reason',
@@ -52,19 +64,29 @@ class VendorSubOrderDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
 
+    def get_store_name(self, obj):
+        if obj.store and obj.store.name:
+            return obj.store.name
+        return obj.store_name_snapshot or (obj.vendor.business_name if obj.vendor else 'Local Store')
+
 
 class VendorSubOrderListSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source='vendor.business_name', read_only=True)
-    store_name = serializers.CharField(source='store.name', read_only=True)
+    store_name = serializers.SerializerMethodField()
     item_count = serializers.IntegerField(source='items.count', read_only=True)
 
     class Meta:
         model = VendorSubOrder
         fields = [
-            'id', 'sub_order_number', 'vendor_name', 'store_name',
+            'id', 'sub_order_number', 'vendor_name', 'store_name', 'store_name_snapshot',
             'status', 'subtotal', 'vendor_net_amount', 'item_count',
             'tracking_number', 'created_at'
         ]
+
+    def get_store_name(self, obj):
+        if obj.store and obj.store.name:
+            return obj.store.name
+        return obj.store_name_snapshot or (obj.vendor.business_name if obj.vendor else 'Local Store')
 
 
 def normalize_status_to_step_index(raw_status):

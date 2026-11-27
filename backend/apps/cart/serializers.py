@@ -69,8 +69,9 @@ class CartSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         items_list = []
         vendor_groups_map = {}
+        cart_items = list(instance.items.select_related('variant', 'variant__product', 'variant__product__vendor', 'variant__product__category').prefetch_related('variant__product__images'))
 
-        for it in instance.items.select_related('variant', 'variant__product', 'variant__product__vendor', 'variant__product__category').prefetch_related('variant__product__images'):
+        for it in cart_items:
             p = it.variant.product if it.variant else None
             v = p.vendor if p else None
             cat = p.category if p else None

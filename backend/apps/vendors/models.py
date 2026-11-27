@@ -7,6 +7,7 @@ class VendorStatus(models.TextChoices):
     APPROVED = 'APPROVED', 'Approved & Active'
     REJECTED = 'REJECTED', 'Rejected'
     SUSPENDED = 'SUSPENDED', 'Suspended'
+    ARCHIVED = 'ARCHIVED', 'Archived'
 
 
 class VendorProfile(BaseModel):

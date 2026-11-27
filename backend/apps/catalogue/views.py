@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, Count
 from django.utils import timezone
 from rest_framework import generics, status, filters
 from rest_framework.views import APIView
@@ -64,6 +64,39 @@ class PublicCategoryListView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return CategoryCreateSerializer
         return CategoryTreeSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        categories = list(queryset)
+
+        # Batch compute dynamic product counts across root categories and subcategories in 1 query
+        cat_map = {c.id: c.get_descendant_ids() for c in categories}
+        all_cat_ids = set()
+        for ids in cat_map.values():
+            all_cat_ids.update(ids)
+
+        counts = (
+            Product.objects.filter(
+                category_id__in=all_cat_ids,
+                is_deleted=False,
+                status=ProductStatus.APPROVED,
+                store__is_active=True
+            )
+            .values('category_id')
+            .annotate(total=Count('id'))
+        )
+        cat_count_lookup = {item['category_id']: item['total'] for item in counts}
+
+        for c in categories:
+            c.product_count = sum(cat_count_lookup.get(cid, 0) for cid in cat_map.get(c.id, []))
+            c.item_count = c.product_count
+            subcategories = getattr(c, '_prefetched_objects_cache', {}).get('subcategories', [])
+            for sub in subcategories:
+                sub.product_count = cat_count_lookup.get(sub.id, 0)
+                sub.item_count = sub.product_count
+
+        serializer = self.get_serializer(categories, many=True, context={'request': request})
+        return Response(serializer.data)
 
     @extend_schema(summary="List or Create Categories")
     def create(self, request, *args, **kwargs):

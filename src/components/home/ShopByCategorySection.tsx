@@ -1,34 +1,11 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import {
-  BookOpen,
-  PenTool,
-  Palette,
-  Zap,
-  Apple,
-  Milk,
-  Package,
-  Cookie,
-  Shirt,
-  HeartPulse,
-  Home,
-  Headphones,
-  Laptop,
-  ShoppingBag,
-  Sparkles,
-  ArrowRight,
-  RefreshCw,
-  AlertCircle,
-  Folder,
-  type LucideIcon,
-} from 'lucide-react';
+import { RefreshCw, AlertCircle, Folder, Package } from 'lucide-react';
 import { Category } from '../../types';
 import { categoryService } from '../../services';
 import { useApp } from '../../context';
-import { translateCategoryName, translateCategoryDescription } from '../../i18n';
-import { toNepaliDigits } from '../../utils';
-import { getCategoryIcon } from '../../utils/categoryIcons';
+import { translateCategoryName } from '../../i18n';
+import { resolveCategoryImageUrl } from '../../utils';
 
 interface ShopByCategorySectionProps {
   initialCategories?: Category[];
@@ -40,18 +17,14 @@ export default function ShopByCategorySection({
   initialLoading,
 }: ShopByCategorySectionProps) {
   const navigate = useNavigate();
-  const { t, language } = useApp();
+  const { language } = useApp();
 
   const [categories, setCategories] = useState<Category[]>(initialCategories || []);
   const [loading, setLoading] = useState<boolean>(
     initialLoading !== undefined ? initialLoading : (initialCategories ? false : true)
   );
   const [error, setError] = useState<string | null>(null);
-  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
-
-  const markBrokenImage = (key: string) => {
-    setBrokenImages((prev) => ({ ...prev, [key]: true }));
-  };
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const fetchCategories = useCallback(async (isInitial = false) => {
     try {
@@ -61,7 +34,7 @@ export default function ShopByCategorySection({
       const rawResults = res.results || [];
       // Filter active parent categories, sorted by ordering
       const activeCats = rawResults
-        .filter((cat) => cat.parent_id == null && (cat as any).is_active !== false)
+        .filter((cat) => (cat.parent_id == null && cat.parent == null) && (cat as any).is_active !== false)
         .sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
 
       // Deduplicate categories by normalized name: cat.name.trim().toLowerCase()
@@ -111,63 +84,34 @@ export default function ShopByCategorySection({
     };
   }, [fetchCategories]);
 
-  // Compute item count display string
-  const formatItemCount = useCallback(
-    (cat: Category) => {
-      const count = cat.product_count !== undefined ? cat.product_count : (cat.item_count ?? 0);
-      if (language === 'ne') {
-        return `${toNepaliDigits(count)} सामानहरू`;
-      }
-      return `${count} ${count === 1 ? 'item' : 'items'}`;
-    },
-    [language]
-  );
-
   return (
     <section
       data-testid="shop-by-category-section"
-      className="py-6 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200/70 dark:border-slate-800 my-2 select-none"
+      className="py-6 bg-transparent my-2 select-none"
     >
       <div className="w-full px-4 sm:px-6 lg:px-10">
-        {/* Section Header */}
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
-              {t('home.shopByCatTitle')}
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              {t('home.shopByCatSub')}
-            </p>
-          </div>
-          <motion.div whileHover={{ x: 2 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              to="/categories"
-              className="text-sm font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 group"
-              title="Browse all categories"
-            >
-              <span>{t('home.allCategories')}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </motion.div>
+        {/* Section Header: Left Title + Right Link */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
+            Popular Categories
+          </h2>
+          <Link
+            to="/categories"
+            className="text-sm font-semibold text-[#059669] hover:text-[#047857] inline-flex items-center gap-1 transition-colors"
+            title="Explore All Categories"
+          >
+            <span>Explore All Categories</span>
+            <span aria-hidden="true">&rsaquo;</span>
+          </Link>
         </div>
 
-        {/* Loading State: Clean Skeleton Cards */}
+        {/* Loading State: Square Skeleton Tiles */}
         {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <div
-                key={`cat-skeleton-${idx}`}
-                className="bg-white dark:bg-[#111726] rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between animate-pulse min-h-[160px]"
-              >
-                <div>
-                  <div className="w-11 h-11 rounded-xl bg-slate-200 dark:bg-slate-800 mb-2.5" />
-                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-md w-3/4 mb-1.5" />
-                  <div className="h-3 bg-slate-100 dark:bg-slate-800/60 rounded-md w-1/2" />
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-md w-16" />
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-200 dark:bg-slate-800" />
-                </div>
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3.5">
+            {Array.from({ length: 10 }).map((_, idx) => (
+              <div key={`cat-skeleton-${idx}`} className="flex flex-col items-center">
+                <div className="w-full aspect-square rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                <div className="w-16 h-3.5 bg-slate-200 dark:bg-slate-800 rounded-md mt-2 animate-pulse" />
               </div>
             ))}
           </div>
@@ -200,55 +144,61 @@ export default function ShopByCategorySection({
           </div>
         )}
 
-        {/* Dynamic Categories Grid: Multi-column responsive layout */}
+        {/* Popular Categories Grid: Compact Square-Tile Layout */}
         {!loading && !error && categories.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3.5">
             {categories.map((cat) => {
-              const imgKey = `cat-${cat.id}`;
-              const hasValidImg = Boolean(cat.image_url) && !brokenImages[imgKey];
-              const IconComponent = getCategoryIcon(cat);
+              const uploadedSrc = resolveCategoryImageUrl(cat);
+              const isBroken = Boolean(failedImages[cat.id]);
+              const hasValidImage = Boolean(uploadedSrc) && !isBroken;
+
+              const displayName = translateCategoryName(cat.slug, cat.name, language);
+
+              const handleNavigate = () => {
+                navigate(cat.slug ? `/category/${cat.slug}` : `/category/${cat.id}`);
+              };
 
               return (
-                <motion.div
+                <div
                   key={cat.id}
-                  whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => navigate(cat.slug ? `/category/${cat.slug}` : `/category/${cat.id}`)}
-                  className="bg-white dark:bg-[#111726] rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                  role="link"
+                  tabIndex={0}
+                  onClick={handleNavigate}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleNavigate();
+                    }
+                  }}
+                  className="group flex flex-col items-center text-center cursor-pointer select-none"
                 >
-                  <div>
-                    {/* Icon Badge: Distinct category icon or uploaded thumbnail */}
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold mb-2.5 overflow-hidden transition-colors shadow-2xs">
-                      {hasValidImg ? (
-                        <img
-                          src={cat.image_url!}
-                          alt={cat.name}
-                          referrerPolicy="no-referrer"
-                          onError={() => markBrokenImage(imgKey)}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <IconComponent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                      )}
-                    </div>
-
-                    {/* Live Category Title */}
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                      {translateCategoryName(cat.slug, cat.name, language)}
-                    </h3>
-
-                    {/* Category Description */}
-                    <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
-                      {translateCategoryDescription(cat.slug, cat.description, language)}
-                    </p>
+                  {/* Square Image Tile */}
+                  <div className="w-full aspect-square rounded-2xl bg-[#F3F4F6] dark:bg-slate-800/80 p-3 flex items-center justify-center overflow-hidden border border-transparent group-hover:border-emerald-200 dark:group-hover:border-emerald-800 group-hover:bg-emerald-50/40 dark:group-hover:bg-slate-800 transition-all">
+                    {hasValidImage ? (
+                      <img
+                        src={uploadedSrc!}
+                        alt={displayName || cat.name || 'Category'}
+                        loading="lazy"
+                        onError={() => {
+                          setFailedImages((prev) => ({
+                            ...prev,
+                            [cat.id]: true,
+                          }));
+                        }}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
+                        <Package className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400 dark:text-slate-500 stroke-[1.5]" />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Live Item Count in Emerald Green (#00875A) with Right Arrow */}
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-[#00875A] dark:text-emerald-400 font-bold">
-                    <span>{formatItemCount(cat)}</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </motion.div>
+                  {/* Centered Category Title */}
+                  <span className="mt-2 text-xs sm:text-[13px] font-semibold text-slate-800 dark:text-slate-200 group-hover:text-[#059669] leading-snug line-clamp-2 max-w-[115px]">
+                    {displayName}
+                  </span>
+                </div>
               );
             })}
           </div>

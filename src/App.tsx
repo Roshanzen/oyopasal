@@ -10,6 +10,7 @@ import { AppRoutes } from './routes';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import Header from './components/layout/Header';
 import CategoryBar from './components/common/CategoryBar';
+import Footer from './components/layout/Footer';
 import MobileBottomNav from './components/layout/MobileBottomNav';
 import { ChatConcierge } from './components/layout/ChatConcierge';
 import CartDrawer from './components/modals/CartDrawer';
@@ -22,13 +23,23 @@ import ToastContainer from './components/feedback/ToastContainer';
 
 function AppShell() {
   const location = useLocation();
+
+  // Informational legal policy routes should show the footer even if starting with /vendor or /seller
+  const isPolicyRoute =
+    location.pathname === '/privacy-policy' ||
+    location.pathname === '/vendor/privacy-policy' ||
+    location.pathname === '/seller/privacy-policy';
+
   const isPortalRoute =
-    location.pathname.startsWith('/admin') ||
-    location.pathname.startsWith('/rider') ||
-    location.pathname.startsWith('/seller') ||
-    location.pathname.startsWith('/vendor') ||
-    location.pathname === '/become-seller' ||
-    location.pathname === '/track-application';
+    !isPolicyRoute && (
+      location.pathname.startsWith('/admin') ||
+      location.pathname.startsWith('/rider') ||
+      location.pathname.startsWith('/seller') ||
+      location.pathname.startsWith('/vendor') ||
+      location.pathname.startsWith('/supplier') ||
+      location.pathname === '/become-seller' ||
+      location.pathname === '/track-application'
+    );
 
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
@@ -44,6 +55,12 @@ function AppShell() {
           <AppRoutes />
         </ErrorBoundary>
       </main>
+
+      {!isPortalRoute && (
+        <ErrorBoundary fallbackTitle="Footer unavailable">
+          <Footer />
+        </ErrorBoundary>
+      )}
 
       <CartDrawer />
       <LocationModal />

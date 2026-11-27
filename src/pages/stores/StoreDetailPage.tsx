@@ -306,14 +306,6 @@ export default function StoreDetailPage() {
     if (matchedVendorFromContext?.image && !list.includes(matchedVendorFromContext.image)) {
       list.push(matchedVendorFromContext.image);
     }
-    // Fallback sample photos if empty
-    if (list.length === 0) {
-      list.push(
-        'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1587049352847-4a222e784d38?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1516594798947-e65505dbb29d?auto=format&fit=crop&w=1200&q=80'
-      );
-    }
     return list;
   }, [store, matchedVendorFromContext]);
 
@@ -466,8 +458,7 @@ export default function StoreDetailPage() {
             alt={storeName}
             className="w-full h-full object-cover object-center"
             onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80';
+              (e.target as HTMLImageElement).style.display = 'none';
             }}
           />
         ) : (
@@ -510,8 +501,7 @@ export default function StoreDetailPage() {
                   alt={storeName}
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=300&q=80';
+                    (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               ) : (

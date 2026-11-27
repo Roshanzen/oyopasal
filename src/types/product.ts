@@ -4,15 +4,21 @@ export interface Category {
   name: string;
   name_ne?: string;
   slug: string;
+  parent?: string | number | null;
   parent_id?: string | number | null;
-  icon: string;
+  icon?: string;
   icon_url?: string;
   image_url?: string | null;
+  imageUrl?: string | null;
+  image?: string | { url?: string; src?: string; file?: string; path?: string } | null;
+  cover_image?: string | null;
+  coverImage?: string | null;
   ordering?: number;
   item_count: number;
   product_count?: number;
-  accent: string;
+  accent?: string;
   description: string;
+  is_active?: boolean;
   subcategories?: Category[];
 }
 

@@ -15,11 +15,67 @@ from apps.catalogue.models import (
 from apps.stores.models import Store
 
 class SubCategorySerializer(serializers.ModelSerializer):
-    parent_id = serializers.UUIDField(source='parent.id', read_only=True)
+    parent_id = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
+    parent = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
+    image_url = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    imageUrl = serializers.SerializerMethodField()
+    item_count = serializers.SerializerMethodField()
+    product_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ['id', 'parent_id', 'name', 'slug', 'icon_url', 'image_url', 'ordering']
+        fields = [
+            'id', 'parent_id', 'parent', 'name', 'slug', 'description', 'icon_url',
+            'image_url', 'image', 'imageUrl', 'ordering', 'is_active', 'item_count', 'product_count'
+        ]
+
+    def get_image_url(self, obj):
+        url = None
+        if hasattr(obj, 'image') and obj.image:
+            try:
+                url = obj.image.url
+            except Exception:
+                url = None
+        if not url:
+            url = getattr(obj, 'image_url', None)
+        if not url:
+            return None
+        url = str(url).strip()
+        if not url:
+            return None
+        if not url.startswith('http') and not url.startswith('data:'):
+            if not url.startswith('/'):
+                url = f"/{url}"
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+        return url
+
+    def get_image(self, obj):
+        if hasattr(obj, 'image') and obj.image:
+            try:
+                return obj.image.url
+            except Exception:
+                pass
+        return self.get_image_url(obj)
+
+    def get_imageUrl(self, obj):
+        return self.get_image_url(obj)
+
+    def get_product_count(self, obj):
+        if hasattr(obj, 'product_count') and obj.product_count is not None:
+            return obj.product_count
+        from apps.catalogue.models import Product, ProductStatus
+        return Product.objects.filter(
+            category_id=obj.id,
+            is_deleted=False,
+            status=ProductStatus.APPROVED,
+            store__is_active=True
+        ).count()
+
+    def get_item_count(self, obj):
+        return self.get_product_count(obj)
 
 
 class CategoryCreateSerializer(serializers.ModelSerializer):
@@ -29,7 +85,7 @@ class CategoryCreateSerializer(serializers.ModelSerializer):
         model = Category
         fields = [
             'id', 'parent_id', 'name', 'slug', 'description',
-            'icon_url', 'image_url', 'ordering', 'is_active'
+            'icon_url', 'image', 'image_url', 'ordering', 'is_active'
         ]
         read_only_fields = ['id']
         extra_kwargs = {
@@ -38,6 +94,7 @@ class CategoryCreateSerializer(serializers.ModelSerializer):
             'ordering': {'required': False, 'default': 0},
             'description': {'required': False, 'allow_blank': True},
             'icon_url': {'required': False, 'allow_blank': True},
+            'image': {'required': False, 'allow_null': True},
             'image_url': {'required': False, 'allow_blank': True},
         }
 
@@ -87,9 +144,13 @@ class CategoryCreateSerializer(serializers.ModelSerializer):
 
 class CategoryTreeSerializer(serializers.ModelSerializer):
     parent_id = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
+    parent = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
     subcategories = SubCategorySerializer(many=True, read_only=True)
     breadcrumbs = serializers.SerializerMethodField()
     icon = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    imageUrl = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
     product_count = serializers.SerializerMethodField()
     accent = serializers.SerializerMethodField()
@@ -97,9 +158,42 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'parent_id', 'name', 'slug', 'description', 'icon_url', 'icon',
-            'image_url', 'ordering', 'item_count', 'product_count', 'accent', 'subcategories', 'breadcrumbs'
+            'id', 'parent_id', 'parent', 'name', 'slug', 'description', 'icon_url', 'icon',
+            'image_url', 'image', 'imageUrl', 'is_active', 'ordering', 'item_count', 'product_count', 'accent', 'subcategories', 'breadcrumbs'
         ]
+
+    def get_image_url(self, obj):
+        url = None
+        if hasattr(obj, 'image') and obj.image:
+            try:
+                url = obj.image.url
+            except Exception:
+                url = None
+        if not url:
+            url = getattr(obj, 'image_url', None)
+        if not url:
+            return None
+        url = str(url).strip()
+        if not url:
+            return None
+        if not url.startswith('http') and not url.startswith('data:'):
+            if not url.startswith('/'):
+                url = f"/{url}"
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+        return url
+
+    def get_image(self, obj):
+        if hasattr(obj, 'image') and obj.image:
+            try:
+                return obj.image.url
+            except Exception:
+                pass
+        return self.get_image_url(obj)
+
+    def get_imageUrl(self, obj):
+        return self.get_image_url(obj)
 
     def get_breadcrumbs(self, obj):
         return [{'id': a.id, 'name': a.name, 'slug': a.slug} for a in obj.get_ancestors()]
@@ -153,6 +247,10 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     def get_accent(self, obj):
         accents = ['#059669', '#16A34A', '#0D9488', '#EA580C', '#2563EB', '#7C3AED', '#DB2777']
         return accents[abs(hash(str(obj.slug))) % len(accents)]
+
+
+# Canonical alias for CategoryTreeSerializer
+CategorySerializer = CategoryTreeSerializer
 
 
 class BrandSerializer(serializers.ModelSerializer):

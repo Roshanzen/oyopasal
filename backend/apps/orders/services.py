@@ -186,11 +186,13 @@ class CheckoutService:
             commission_amount = round((sub_subtotal * (commission_rate / Decimal('100.00'))), 2)
             vendor_net = sub_subtotal - commission_amount
 
+            st_name = store.name if store else (vendor.business_name if vendor else '')
             sub_order = VendorSubOrder.objects.create(
                 parent_order=parent_order,
                 sub_order_number=sub_order_number,
                 vendor=vendor,
                 store=store,
+                store_name_snapshot=st_name,
                 status=initial_status,
                 subtotal=sub_subtotal,
                 delivery_fee=sub_delivery,
@@ -211,10 +213,14 @@ class CheckoutService:
                 item_tax = round(t_price * (prod_tax / Decimal('100.00')), 2)
                 order_tax_total += item_tax
 
+                p_title = item.variant.product.name if (item.variant and hasattr(item.variant, 'product')) else ''
                 OrderItem.objects.create(
                     sub_order=sub_order,
+                    store=store,
                     variant=item.variant,
-                    product_name=item.variant.product.name,
+                    product_name=p_title,
+                    product_title_snapshot=p_title,
+                    store_name_snapshot=st_name,
                     variant_sku=item.variant.sku,
                     attributes_snapshot=item.variant.attributes,
                     unit_price=u_price,

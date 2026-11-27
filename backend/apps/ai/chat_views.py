@@ -318,12 +318,14 @@ class DirectChatOrderView(APIView):
 
                 first_product = v_items[0][0]
                 store = getattr(first_product, 'store', None)
+                st_name = store.name if store else (vendor.business_name if vendor else '')
 
                 sub_order = VendorSubOrder.objects.create(
                     parent_order=order,
                     sub_order_number=f"{order_number}-{vendor.slug if vendor else 'v'}",
                     vendor=vendor,
                     store=store,
+                    store_name_snapshot=st_name,
                     subtotal=v_subtotal,
                     delivery_fee=Decimal('0.00'),
                     commission_rate=commission_rate,
@@ -335,8 +337,11 @@ class DirectChatOrderView(APIView):
                 for product, variant, qty, unit_price, line_total in v_items:
                     OrderItem.objects.create(
                         sub_order=sub_order,
+                        store=store,
                         variant=variant,
                         product_name=product.name,
+                        product_title_snapshot=product.name,
+                        store_name_snapshot=st_name,
                         variant_sku=variant.sku if variant else product.base_sku,
                         unit_price=unit_price,
                         quantity=qty,

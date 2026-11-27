@@ -3,11 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import ProductCard from '../../components/common/ProductCard';
 import { ErrorAlert } from '../../components/feedback/ErrorAlert';
 import { SkeletonCard } from '../../components/loaders/SkeletonCard';
-import { Sparkles, Folder, Layers, ArrowLeft } from 'lucide-react';
+import { Sparkles, Folder, Layers, ArrowLeft, Package } from 'lucide-react';
 import { useApp } from '../../context';
 import { useCategoryCatalog } from '../../hooks';
 import { translateCategoryName, translateCategoryDescription } from '../../i18n';
 import { Category } from '../../types';
+import { resolveCategoryImageUrl } from '../../utils';
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -163,7 +164,8 @@ export default function CategoryPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {categories.map((cat) => {
-              const hasImg = Boolean(cat.image_url) && !brokenCatImgs[cat.id];
+              const imgSrc = resolveCategoryImageUrl(cat);
+              const hasImg = Boolean(imgSrc) && !brokenCatImgs[cat.id];
               return (
                 <div
                   key={cat.id}
@@ -174,14 +176,17 @@ export default function CategoryPage() {
                     <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold mb-3 overflow-hidden group-hover:scale-105 transition-transform">
                       {hasImg ? (
                         <img
-                          src={cat.image_url!}
+                          src={imgSrc!}
                           alt={cat.name}
                           referrerPolicy="no-referrer"
-                          onError={() => setBrokenCatImgs((prev) => ({ ...prev, [cat.id]: true }))}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            setBrokenCatImgs((prev) => ({ ...prev, [cat.id]: true }));
+                          }}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <Package className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                       )}
                     </div>
                     <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
@@ -231,11 +236,10 @@ export default function CategoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveSubcategorySlug(null)}
-                className={`min-w-[130px] max-w-[145px] bg-white rounded-xl p-2.5 border transition-all cursor-pointer flex flex-col items-start shadow-xs shrink-0 select-none text-left ${
-                  activeSubcategorySlug === null
+                className={`min-w-[130px] max-w-[145px] bg-white rounded-xl p-2.5 border transition-all cursor-pointer flex flex-col items-start shadow-xs shrink-0 select-none text-left ${activeSubcategorySlug === null
                     ? 'border-2 border-[#059669] ring-2 ring-emerald-500/20'
                     : 'border-slate-200 hover:border-[#059669]'
-                }`}
+                  }`}
               >
                 <div className="w-full h-[84px] rounded-lg bg-emerald-50 overflow-hidden mb-2 flex items-center justify-center">
                   <Sparkles className="w-6 h-6 text-[#059669]" />
@@ -248,7 +252,8 @@ export default function CategoryPage() {
               {/* Subcategories */}
               {subcategories.map((sub) => {
                 const isSelected = activeSubcategorySlug === sub.slug;
-                const hasImg = Boolean(sub.image_url) && !brokenCatImgs[sub.id];
+                const subImgSrc = resolveCategoryImageUrl(sub);
+                const hasImg = Boolean(subImgSrc) && !brokenCatImgs[sub.id];
                 return (
                   <button
                     key={sub.id}
@@ -256,19 +261,21 @@ export default function CategoryPage() {
                     onClick={() => {
                       setActiveSubcategorySlug(isSelected ? null : sub.slug);
                     }}
-                    className={`min-w-[130px] max-w-[145px] bg-white rounded-xl p-2.5 border transition-all cursor-pointer flex flex-col items-start shadow-xs shrink-0 select-none text-left ${
-                      isSelected
+                    className={`min-w-[130px] max-w-[145px] bg-white rounded-xl p-2.5 border transition-all cursor-pointer flex flex-col items-start shadow-xs shrink-0 select-none text-left ${isSelected
                         ? 'border-2 border-[#059669] ring-2 ring-emerald-500/20'
                         : 'border-slate-200 hover:border-[#059669]'
-                    }`}
+                      }`}
                   >
                     <div className="w-full h-[84px] rounded-lg bg-slate-50 overflow-hidden mb-2 flex items-center justify-center">
                       {hasImg ? (
                         <img
-                          src={sub.image_url!}
+                          src={subImgSrc!}
                           alt={sub.name}
                           referrerPolicy="no-referrer"
-                          onError={() => setBrokenCatImgs((prev) => ({ ...prev, [sub.id]: true }))}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            setBrokenCatImgs((prev) => ({ ...prev, [sub.id]: true }));
+                          }}
                           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                         />
                       ) : (

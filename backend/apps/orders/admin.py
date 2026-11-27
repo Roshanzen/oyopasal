@@ -25,13 +25,13 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(VendorSubOrder)
 class VendorSubOrderAdmin(admin.ModelAdmin):
-    list_display = ('sub_order_number', 'parent_order', 'vendor', 'store', 'status', 'subtotal', 'commission_amount', 'vendor_net_amount', 'created_at')
+    list_display = ('sub_order_number', 'parent_order', 'vendor', 'store', 'store_name_snapshot', 'status', 'subtotal', 'commission_amount', 'vendor_net_amount', 'created_at')
     list_filter = ('status', 'vendor')
-    search_fields = ('sub_order_number', 'parent_order__order_number', 'vendor__business_name')
+    search_fields = ('sub_order_number', 'parent_order__order_number', 'vendor__business_name', 'store_name_snapshot')
     inlines = [OrderItemInline, OrderStatusHistoryInline]
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('product_name', 'variant_sku', 'sub_order', 'unit_price', 'quantity', 'total_price')
-    search_fields = ('product_name', 'variant_sku', 'sub_order__sub_order_number')
+    list_display = ('product_name', 'product_title_snapshot', 'store_name_snapshot', 'store', 'variant_sku', 'sub_order', 'unit_price', 'quantity', 'total_price')
+    search_fields = ('product_name', 'product_title_snapshot', 'store_name_snapshot', 'variant_sku', 'sub_order__sub_order_number')
 

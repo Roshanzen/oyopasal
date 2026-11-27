@@ -22,6 +22,7 @@ class Category(BaseModel, SoftDeletableModel):
     slug = models.SlugField(max_length=180, unique=True, blank=True, db_index=True)
     description = models.TextField(blank=True)
     icon_url = models.URLField(max_length=500, blank=True)
+    image = models.ImageField(upload_to="categories/", blank=True, null=True)
     image_url = models.URLField(max_length=500, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
     ordering = models.PositiveIntegerField(default=0)
@@ -228,7 +229,29 @@ class Product(BaseModel, SoftDeletableModel):
     def __str__(self):
         return f"{self.name} ({self.base_sku})"
 
+    def clean(self):
+        super().clean()
+        if self.category_id:
+            cat = getattr(self, 'category', None)
+            if cat and (not cat.is_active or cat.is_deleted):
+                if not self.pk or (hasattr(self, '_state') and self._state.adding):
+                    raise ValidationError({'category': 'Cannot assign products to an inactive or archived category.'})
+                else:
+                    orig = Product.all_objects.filter(pk=self.pk).values('category_id').first()
+                    if orig and orig['category_id'] != self.category_id:
+                        raise ValidationError({'category': 'Cannot reassign products to an inactive or archived category.'})
+
     def save(self, *args, **kwargs):
+        if self.category_id:
+            cat = getattr(self, 'category', None)
+            if cat and (not cat.is_active or cat.is_deleted):
+                if not self.pk or (hasattr(self, '_state') and self._state.adding):
+                    raise ValidationError('Cannot assign products to an inactive or archived category.')
+                else:
+                    orig = Product.all_objects.filter(pk=self.pk).values('category_id').first()
+                    if orig and orig['category_id'] != self.category_id:
+                        raise ValidationError('Cannot reassign products to an inactive or archived category.')
+
         if not self.slug:
             base_slug = slugify(self.name) or str(self.id)[:8]
             slug = base_slug

@@ -94,8 +94,16 @@ class VendorSubOrder(BaseModel):
     )
     store = models.ForeignKey(
         Store,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='suborders'
+    )
+    store_name_snapshot = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Immutable snapshot of store name at the time of purchase'
     )
     status = models.CharField(
         max_length=35,
@@ -126,6 +134,14 @@ class VendorSubOrder(BaseModel):
     def __str__(self):
         return f"{self.sub_order_number} - {self.vendor.business_name} ({self.get_status_display()})"
 
+    def save(self, *args, **kwargs):
+        if not self.store_name_snapshot:
+            if self.store and self.store.name:
+                self.store_name_snapshot = self.store.name
+            elif self.vendor and self.vendor.business_name:
+                self.store_name_snapshot = self.vendor.business_name
+        super().save(*args, **kwargs)
+
 
 class OrderItem(BaseModel):
     """
@@ -136,12 +152,31 @@ class OrderItem(BaseModel):
         on_delete=models.CASCADE,
         related_name='items'
     )
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_items'
+    )
     variant = models.ForeignKey(
         ProductVariant,
         on_delete=models.PROTECT,
         related_name='order_items'
     )
     product_name = models.CharField(max_length=255)
+    product_title_snapshot = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Immutable snapshot of product title at the time of purchase'
+    )
+    store_name_snapshot = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Immutable snapshot of store name at the time of purchase'
+    )
     variant_sku = models.CharField(max_length=100)
     attributes_snapshot = models.JSONField(default=dict, blank=True)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -157,6 +192,25 @@ class OrderItem(BaseModel):
 
     def __str__(self):
         return f"{self.quantity}x {self.product_name} ({self.variant_sku})"
+
+    def save(self, *args, **kwargs):
+        if not self.product_title_snapshot:
+            self.product_title_snapshot = self.product_name or (
+                self.variant.product.name if (self.variant and hasattr(self.variant, 'product')) else ''
+            )
+        if not self.store:
+            if self.sub_order and self.sub_order.store:
+                self.store = self.sub_order.store
+            elif self.variant and hasattr(self.variant, 'product') and getattr(self.variant.product, 'store', None):
+                self.store = self.variant.product.store
+        if not self.store_name_snapshot:
+            if self.store and self.store.name:
+                self.store_name_snapshot = self.store.name
+            elif self.sub_order and getattr(self.sub_order, 'store_name_snapshot', ''):
+                self.store_name_snapshot = self.sub_order.store_name_snapshot
+            elif self.sub_order and self.sub_order.vendor:
+                self.store_name_snapshot = self.sub_order.vendor.business_name
+        super().save(*args, **kwargs)
 
 
 class OrderStatusHistory(BaseModel):

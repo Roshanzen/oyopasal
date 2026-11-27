@@ -1,0 +1,97 @@
+{% extends "admin/base_site.html" %}
+{% load i18n l10n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% translate 'Confirm Test Store Cleanup' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" style="max-width: 1000px;">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 24px;">
+    <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 8px;">
+      {% translate "Confirm Dependency-Aware Store Cleanup" %}
+    </h2>
+    <p style="color: #475569; font-size: 14px; margin-bottom: 16px; line-height: 1.5;">
+      {% translate "Before proceeding, OyoPasal has analyzed the complete dependency graph for each selected store. Stores with historical orders or transactions will be preserved and safely archived rather than deleted to ensure customer receipts and financial ledgers remain intact." %}
+    </p>
+
+    <div style="overflow-x: auto; margin-top: 16px; margin-bottom: 24px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #334155;">
+            <th style="padding: 10px 12px;">{% translate "Store" %}</th>
+            <th style="padding: 10px 12px;">{% translate "Vendor" %}</th>
+            <th style="padding: 10px 12px;">{% translate "Products / Variants" %}</th>
+            <th style="padding: 10px 12px;">{% translate "Orders / Transactions" %}</th>
+            <th style="padding: 10px 12px;">{% translate "Action to be Executed" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in analyses %}
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 12px; font-weight: 600; color: #1e293b;">
+              {{ a.store.name }}
+              <div style="font-size: 11px; color: #64748b; font-weight: normal;">Slug: {{ a.store.slug }}</div>
+            </td>
+            <td style="padding: 12px; color: #475569;">
+              {{ a.store.vendor.business_name }}
+            </td>
+            <td style="padding: 12px; color: #475569;">
+              {{ a.products_count }} products / {{ a.variants_count }} variants
+            </td>
+            <td style="padding: 12px; color: #475569;">
+              {% if a.has_orders_or_transactions %}
+                <span style="color: #b45309; font-weight: 600;">
+                  {{ a.order_items_count }} items / {{ a.suborders_count }} sub-orders
+                </span>
+                <div style="font-size: 11px; color: #b45309;">
+                  {% for r in a.reasons_to_protect %}{{ r }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </div>
+              {% else %}
+                <span style="color: #059669; font-weight: 500;">0 orders / 0 transactions</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px;">
+              {% if a.action_recommendation == 'DELETE' %}
+                <span style="display: inline-block; padding: 4px 8px; border-radius: 9999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700;">
+                  {% translate "Permanently Delete (0 Orders)" %}
+                </span>
+              {% elif a.action_recommendation == 'ARCHIVE' %}
+                <span style="display: inline-block; padding: 4px 8px; border-radius: 9999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700;">
+                  {% translate "Safely Archive (Preserve Orders)" %}
+                </span>
+              {% else %}
+                <span style="display: inline-block; padding: 4px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700;">
+                  {% translate "Skip (Production Store)" %}
+                </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <form action="" method="post">
+      {% csrf_token %}
+      {% for obj in queryset %}
+        <input type="hidden" name="_selected_action" value="{{ obj.pk }}" />
+      {% endfor %}
+      <input type="hidden" name="action" value="force_delete_test_stores" />
+      <input type="hidden" name="confirmed" value="yes" />
+
+      <div style="display: flex; gap: 12px; align-items: center; margin-top: 16px;">
+        <input type="submit" value="{% translate 'Yes, Execute Safe Cleanup' %}" style="background: #059669; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;" />
+        <a href="{% url opts|admin_urlname:'changelist' %}" style="color: #475569; text-decoration: underline; font-size: 13px; margin-left: 8px;">
+          {% translate 'Cancel and Return' %}
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
